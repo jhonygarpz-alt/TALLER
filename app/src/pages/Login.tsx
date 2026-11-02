@@ -19,7 +19,7 @@ export default function Login() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setError(error.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos' : error.message)
     } else {
-      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { nombre } } })
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { nombre }, emailRedirectTo: window.location.origin + import.meta.env.BASE_URL } })
       if (error) setError(error.message)
       else if (!data.session) setInfo('Cuenta creada. Confirma tu correo y después inicia sesión. Dirección debe activar tu acceso y asignarte un rol.')
     }
