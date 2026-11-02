@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { AlertTriangle, Camera, ClipboardList, DollarSign, FileText, Package, Printer, Trash2, Truck, Wrench } from 'lucide-react'
+import { AlertTriangle, Camera, ClipboardList, DollarSign, FileText, Package, Pencil, Printer, Trash2, Truck, Wrench } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 import EliminarOrden from './EliminarOrden'
+import EditarOrden from './EditarOrden'
 import { supabase } from '../../lib/supabase'
 import { useAlertas } from '../../lib/alertas'
 import { fecha } from '../../lib/format'
@@ -27,6 +28,7 @@ export default function Expediente() {
   const [o, setO] = useState<VOrden | null>(null)
   const [noExiste, setNoExiste] = useState(false)
   const [eliminar, setEliminar] = useState(false)
+  const [editar, setEditar] = useState(false)
   const { puede } = useAuth()
 
   const recargar = useCallback(async () => {
@@ -62,7 +64,8 @@ export default function Expediente() {
           <div className="rounded-xl bg-slate-50 p-2"><div className="text-[11px] text-slate-500">Días</div><div className="text-sm font-bold">{o.dias_en_taller}</div></div>
         </div>
         <div className="no-print flex gap-2 self-start md:flex-col">
-          <button className="btn btn-secondary btn-sm" onClick={() => window.print()} title="Imprimir o guardar como PDF"><Printer className="h-4 w-4" /></button>
+          {puede('ordenes.gestionar') && !['entregado', 'cancelado'].includes(o.etapa) && <button className="btn btn-primary btn-sm" onClick={() => setEditar(true)} title="Editar orden"><Pencil className="h-4 w-4" /> Editar</button>}
+          <button className="btn btn-secondary btn-sm" onClick={() => window.print()} title="Imprimir o guardar como PDF"><Printer className="h-4 w-4" /> Imprimir</button>
           {puede('excepciones.autorizar') && <button className="btn btn-sm border border-red-200 bg-white text-red-600 hover:bg-red-50" onClick={() => setEliminar(true)} title="Eliminar orden"><Trash2 className="h-4 w-4" /> Eliminar</button>}
         </div>
       </div>
@@ -84,6 +87,7 @@ export default function Expediente() {
       {tab === 'costos' && <Costos {...props} />}
       {tab === 'entrega' && <Entrega {...props} />}
       {eliminar && <EliminarOrden o={o} onClose={() => setEliminar(false)} />}
+      {editar && <EditarOrden o={o} onClose={() => setEditar(false)} onGuardado={() => { setEditar(false); recargar() }} />}
     </div>
   )
 }
