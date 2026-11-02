@@ -1,3 +1,4 @@
+import UnidadSelect from './UnidadSelect'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, PackageCheck, Plus, XCircle } from 'lucide-react'
@@ -91,10 +92,9 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
             <div className="text-sm font-semibold sm:col-span-2">Nuevo material del catálogo</div>
             <Field label="Descripción *" className="sm:col-span-2"><input className="input" value={nm.descripcion} onChange={e => setNm({ ...nm, descripcion: e.target.value })} placeholder="Ej. Lija grano 320" /></Field>
             <Field label="Tipo"><select className="input" value={nm.tipo} onChange={e => setNm({ ...nm, tipo: e.target.value })}>{Object.entries(TIPOS_MATERIAL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-            <Field label="Unidad"><input className="input" list="unidades-sol" value={nm.unidad} onChange={e => setNm({ ...nm, unidad: e.target.value })} /></Field>
+            <Field label="Unidad"><UnidadSelect value={nm.unidad} onChange={v => setNm({ ...nm, unidad: v })} /></Field>
             <Field label="Categoría"><input className="input" value={nm.categoria} onChange={e => setNm({ ...nm, categoria: e.target.value })} placeholder="Ej. Lijas y abrasivos" /></Field>
             <Field label="Código"><input className="input" value={nm.codigo} onChange={e => setNm({ ...nm, codigo: e.target.value })} /></Field>
-            <datalist id="unidades-sol">{['pza', 'lt', 'ml', 'kg', 'g', 'galón', 'hoja', 'rollo', 'juego', 'm'].map(u => <option key={u} value={u} />)}</datalist>
             <p className="text-[11px] text-slate-500 sm:col-span-2">Se crea con existencia 0. Para poder entregarlo, registra su existencia en Inventario → Existencias → Ajustar, o recibe una compra.</p>
             <div className="flex justify-end gap-2 sm:col-span-2">
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAlta(false)}>Cancelar</button>

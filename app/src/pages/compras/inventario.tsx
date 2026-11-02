@@ -9,6 +9,7 @@ import { descargarCSV } from '../../lib/exportar'
 import type { Material, Proveedor } from '../../lib/tipos'
 import { Badge, Card, Empty, ErrorMsg, Field, Modal } from '../../components/ui'
 import Solicitudes from '../../components/Solicitudes'
+import UnidadSelect from '../../components/UnidadSelect'
 
 /* ----------------------------- SOLICITUDES ----------------------------- */
 export function TabSolicitudes() {
@@ -48,11 +49,10 @@ function MaterialForm({ m, proveedores, onDone }: { m: Material | null; proveedo
       <Field label="Tipo"><select className="input" value={f.tipo} onChange={set('tipo')}>{Object.entries(TIPOS_MATERIAL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
       <Field label="Descripción *" className="sm:col-span-2"><input className="input" required value={f.descripcion} onChange={set('descripcion')} /></Field>
       <Field label="Categoría"><input className="input" list="cats" value={f.categoria} onChange={set('categoria')} /></Field>
-      <Field label="Unidad de medida"><input className="input" list="unis" value={f.unidad} onChange={set('unidad')} /></Field>
+      <Field label="Unidad de medida"><UnidadSelect value={f.unidad} onChange={v => setF({ ...f, unidad: v })} /></Field>
       <Field label="Nivel mínimo"><input className="input" type="number" step="0.001" min="0" value={f.minimo} onChange={set('minimo')} /></Field>
       <Field label="Proveedor habitual"><select className="input" value={f.proveedor_id} onChange={set('proveedor_id')}><option value="">—</option>{proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.activo} onChange={e => setF({ ...f, activo: e.target.checked })} /> Activo</label>
-      <datalist id="unis">{['pza', 'lt', 'ml', 'kg', 'g', 'galón', 'hoja', 'rollo', 'juego', 'm'].map(u => <option key={u} value={u} />)}</datalist>
       <datalist id="cats">{['Pintura base', 'Barniz / transparente', 'Primer', 'Thinner / solventes', 'Lijas y abrasivos', 'Masillas', 'Cintas y enmascarado', 'Pulido', 'Refacciones de carrocería'].map(c => <option key={c} value={c} />)}</datalist>
       {!m && <p className="text-xs text-slate-500 sm:col-span-2">La existencia inicial se registra con “Ajustar” (inventario inicial) o al recibir una compra.</p>}
       <div className="flex justify-end gap-2 sm:col-span-2"><button type="button" className="btn btn-secondary" onClick={onDone}>Cancelar</button><button className="btn btn-primary">Guardar</button></div>

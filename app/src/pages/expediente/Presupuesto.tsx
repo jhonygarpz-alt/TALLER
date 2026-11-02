@@ -1,3 +1,4 @@
+import UnidadSelect from '../../components/UnidadSelect'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { CheckCircle2, FilePlus2, Plus, Send, Trash2, XCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -96,7 +97,7 @@ export default function Presupuesto({ o, recargar }: TabProps) {
               <Field label="Concepto"><select className="input" value={f.concepto} onChange={e => setF({ ...f, concepto: e.target.value, unidad: e.target.value === 'pintura' ? 'lt' : f.unidad })}>{Object.entries(CONCEPTOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
               <Field label="Descripción *" className="sm:col-span-2"><input className="input" required value={f.descripcion} onChange={e => setF({ ...f, descripcion: e.target.value })} /></Field>
               <Field label="Cantidad"><input className="input" type="number" step="0.001" min="0.001" required value={f.cantidad} onChange={e => setF({ ...f, cantidad: e.target.value })} /></Field>
-              <Field label="Unidad"><input className="input" value={f.unidad} onChange={e => setF({ ...f, unidad: e.target.value })} /></Field>
+              <Field label="Unidad"><UnidadSelect value={f.unidad} onChange={v => setF({ ...f, unidad: v })} /></Field>
               <Field label="Precio unit. *"><input className="input" type="number" step="0.01" min="0" required value={f.precio_unit} onChange={e => setF({ ...f, precio_unit: e.target.value })} /></Field>
               <Field label="Costo est. unit." hint="Para comparar vs real"><input className="input" type="number" step="0.01" min="0" value={f.costo_unit} onChange={e => setF({ ...f, costo_unit: e.target.value })} /></Field>
               <div className="flex items-end lg:col-span-8"><button className="btn btn-secondary"><Plus className="h-4 w-4" /> Agregar partida</button></div>
