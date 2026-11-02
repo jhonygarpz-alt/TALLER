@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useAlertas } from '../lib/alertas'
 import { usePeriodo } from '../lib/periodo'
-import { ETAPAS, fecha, money, pct, AREAS, type Etapa } from '../lib/format'
+import { ETAPAS, fecha, hoyISO, money, pct, type Etapa } from '../lib/format'
 import { vehiculoTxt, type Rentabilidad, type VOrden } from '../lib/tipos'
 import { Badge, Card, Empty, KpiCard, TableWrap } from '../components/ui'
 import { Barras, Dona, type Dato } from '../components/Graficas'
@@ -16,10 +16,10 @@ import { Miniatura } from '../components/Fotos'
 import PeriodoSelect from '../components/PeriodoSelect'
 
 const GRUPOS: { label: string; etapas: Etapa[]; color: string; filtro: string }[] = [
-  { label: 'Diagnóstico / autorización', etapas: ['diagnostico', 'esperando_autorizacion'], color: '#ca8a04', filtro: 'etapa:diagnostico,esperando_autorizacion' },
+  { label: 'Recepción / diagnóstico', etapas: ['recepcion', 'diagnostico', 'esperando_autorizacion'], color: '#ca8a04', filtro: 'etapa:recepcion,diagnostico,esperando_autorizacion' },
   { label: 'En reparación', etapas: ['en_reparacion'], color: '#2563eb', filtro: 'etapa:en_reparacion' },
   { label: 'Hojalatería', etapas: ['hojalateria'], color: '#0891b2', filtro: 'etapa:hojalateria' },
-  { label: 'Pintura', etapas: ['pintura'], color: '#9333ea', filtro: 'etapa:pintura' },
+  { label: 'Preparación / pintura', etapas: ['preparacion', 'pintura'], color: '#9333ea', filtro: 'etapa:preparacion,pintura' },
   { label: 'Detallado / calidad', etapas: ['detallado', 'control_calidad'], color: '#ea580c', filtro: 'etapa:detallado,control_calidad' },
   { label: 'Listos para entrega', etapas: ['listo_entrega'], color: '#16a34a', filtro: 'etapa:listo_entrega' },
 ]
@@ -36,8 +36,8 @@ export default function Inicio() {
   const per = usePeriodo('mes')
   const [asignadas, setAsignadas] = useState(0)
   const [citas, setCitas] = useState(0)
-  const [entregadas, setEntregadas] = useState(0)
-  const [prod, setProd] = useState<Dato[]>([])
+  const [pendientes, setPendientes] = useState(0)
+  const [porAseg, setPorAseg] = useState<Dato[]>([])
   const [rent, setRent] = useState<Rentabilidad[]>([])
   const [cobrado, setCobrado] = useState(0)
   const verFin = puede('finanzas.ver')
@@ -47,12 +47,11 @@ export default function Inicio() {
     supabase.from('asignaciones').select('id', { count: 'exact', head: true }).gte('fecha_asignacion', desde).lt('fecha_asignacion', hasta)
       .then(r => setAsignadas(r.count ?? 0))
     supabase.from('asignaciones').select('id', { count: 'exact', head: true }).eq('estatus', 'cita_programada').then(r => setCitas(r.count ?? 0))
-    supabase.from('ordenes').select('id', { count: 'exact', head: true }).eq('etapa', 'entregado').gte('fecha_entrega', desde).lt('fecha_entrega', hasta)
-      .then(r => setEntregadas(r.count ?? 0))
-    supabase.from('actividades').select('area').eq('estado', 'validada').gte('validado_at', desde).lt('validado_at', hasta).then(({ data }) => {
+    supabase.from('actividades').select('id', { count: 'exact', head: true }).in('estado', ['asignada', 'en_proceso', 'terminada']).then(r => setPendientes(r.count ?? 0))
+    supabase.from('v_ordenes').select('aseguradora_nombre').gte('fecha_ingreso', desde).lt('fecha_ingreso', hasta).neq('etapa', 'cancelado').then(({ data }) => {
       const c: Record<string, number> = {}
-      for (const r of data ?? []) c[r.area] = (c[r.area] ?? 0) + 1
-      setProd(Object.keys(AREAS).map(k => ({ label: AREAS[k], value: c[k] ?? 0, color: '#2563eb' })))
+      for (const r of data ?? []) { const k = r.aseguradora_nombre ?? 'Particular'; c[k] = (c[k] ?? 0) + 1 }
+      setPorAseg(Object.entries(c).sort((x, y) => y[1] - x[1]).map(([label, value]) => ({ label, value, color: '#2563eb' })))
     })
     if (verFin) {
       supabase.from('v_rentabilidad').select('*').eq('etapa', 'entregado').gte('fecha_entrega', desde).lt('fecha_entrega', hasta)
@@ -62,8 +61,9 @@ export default function Inicio() {
     }
   }, [per.desde, per.hasta, verFin]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const sieteDias = new Date(Date.now() + 7 * 86400000).toLocaleDateString('en-CA')
   const cuenta = (etapas: Etapa[]) => a.activas.filter(o => etapas.includes(o.etapa)).length
-  const dona = GRUPOS.map(g => ({ label: g.label, value: cuenta(g.etapas), color: g.color, to: `/vehiculos?filtro=${g.filtro}` }))
+  const dona = GRUPOS.map(g => ({ label: g.label, value: cuenta(g.etapas), color: g.color, to: `/ordenes?filtro=${g.filtro}` }))
   const particulares = a.activas.filter(o => o.tipo === 'particular').length
 
   const fin = useMemo(() => {
@@ -82,13 +82,13 @@ export default function Inicio() {
   const hoy = hoyTxt.charAt(0).toUpperCase() + hoyTxt.slice(1)
 
   const alertas = [
-    { n: a.proximas.length, t: 'Vehículos próximos a vencer su fecha de entrega', to: '/vehiculos?filtro=proximos', icon: CalendarClock, c: 'text-amber-600 bg-amber-50' },
-    { n: a.retrasadas.length, t: 'Vehículos retrasados', to: '/vehiculos?filtro=retrasados', icon: AlertTriangle, c: 'text-red-600 bg-red-50' },
-    { n: a.detenidas.length, t: 'Vehículos detenidos por falta de materiales', to: '/vehiculos?filtro=detenidos', icon: PackageX, c: 'text-orange-600 bg-orange-50' },
+    { n: a.proximas.length, t: 'Vehículos próximos a vencer su fecha de entrega', to: '/ordenes?filtro=proximos', icon: CalendarClock, c: 'text-amber-600 bg-amber-50' },
+    { n: a.retrasadas.length, t: 'Vehículos retrasados', to: '/ordenes?filtro=retrasados', icon: AlertTriangle, c: 'text-red-600 bg-red-50' },
+    { n: a.detenidas.length, t: 'Vehículos detenidos por falta de materiales', to: '/ordenes?filtro=detenidos', icon: PackageX, c: 'text-orange-600 bg-orange-50' },
     { n: a.comprasPorAutorizar, t: 'Compras pendientes de autorización', to: '/compras?tab=compras&estado=por_autorizar', icon: ShoppingCart, c: 'text-blue-600 bg-blue-50' },
-    { n: a.sinActualizar.length, t: `Vehículos sin actualización de avance (+${a.config.dias_sin_actualizacion ?? 2} días)`, to: '/vehiculos?filtro=sin_actualizar', icon: Clock, c: 'text-slate-600 bg-slate-100' },
-    { n: a.sinContactar, t: 'Clientes sin contactar (asignaciones)', to: '/vehiculos?tab=asignaciones&estatus=sin_contactar', icon: PhoneOff, c: 'text-purple-600 bg-purple-50' },
-    { n: a.listas.length, t: 'Trabajos terminados pendientes de entrega', to: '/vehiculos?filtro=etapa:listo_entrega', icon: CheckCircle2, c: 'text-green-600 bg-green-50' },
+    { n: a.sinActualizar.length, t: `Vehículos sin actualización de avance (+${a.config.dias_sin_actualizacion ?? 2} días)`, to: '/ordenes?filtro=sin_actualizar', icon: Clock, c: 'text-slate-600 bg-slate-100' },
+    { n: a.sinContactar, t: 'Clientes sin contactar (asignaciones)', to: '/ordenes?tab=asignaciones&estatus=sin_contactar', icon: PhoneOff, c: 'text-purple-600 bg-purple-50' },
+    { n: a.listas.length, t: 'Trabajos terminados pendientes de entrega', to: '/ordenes?filtro=etapa:listo_entrega', icon: CheckCircle2, c: 'text-green-600 bg-green-50' },
   ]
 
   return (
@@ -103,18 +103,18 @@ export default function Inicio() {
 
       {/* INDICADORES PRINCIPALES */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
-        <KpiCard icon={Car} tone="blue" value={a.activas.length} label="Vehículos en taller" to="/vehiculos?filtro=activos" />
-        <KpiCard icon={Inbox} tone="indigo" value={asignadas} label="Asignados (periodo)" to="/vehiculos?tab=asignaciones" />
-        <KpiCard icon={CalendarCheck} tone="sky" value={citas} label="Citas programadas" to="/vehiculos?tab=asignaciones&estatus=cita_programada" />
-        <KpiCard icon={ClipboardList} tone="amber" value={cuenta(['diagnostico', 'esperando_autorizacion'])} label="En diagnóstico" to="/vehiculos?filtro=etapa:diagnostico,esperando_autorizacion" />
-        <KpiCard icon={Wrench} tone="orange" value={cuenta(['en_reparacion'])} label="En reparación" to="/vehiculos?filtro=etapa:en_reparacion" />
-        <KpiCard icon={Hammer} tone="cyan" value={cuenta(['hojalateria'])} label="En hojalatería" to="/vehiculos?filtro=etapa:hojalateria" />
-        <KpiCard icon={Paintbrush} tone="purple" value={cuenta(['pintura'])} label="En pintura" to="/vehiculos?filtro=etapa:pintura" />
-        <KpiCard icon={Sparkles} tone="slate" value={cuenta(['detallado', 'control_calidad'])} label="Detallado y calidad" to="/vehiculos?filtro=etapa:detallado,control_calidad" />
-        <KpiCard icon={CheckCircle2} tone="green" value={cuenta(['listo_entrega'])} label="Listos para entrega" to="/vehiculos?filtro=etapa:listo_entrega" />
-        <KpiCard icon={Truck} tone="slate" value={entregadas} label="Entregados (periodo)" to={`/vehiculos?filtro=etapa:entregado`} />
-        <KpiCard icon={AlertTriangle} tone="red" value={a.retrasadas.length} label="Retrasados" to="/vehiculos?filtro=retrasados" />
-        <KpiCard icon={User} tone="blue" value={particulares} label="Particulares activos" to="/vehiculos?filtro=particulares" />
+        <KpiCard icon={Car} tone="blue" value={a.activas.length} label="Vehículos en taller" to="/ordenes?filtro=activos" />
+        <KpiCard icon={Inbox} tone="indigo" value={asignadas} label="Asignados (periodo)" to="/ordenes?tab=asignaciones" />
+        <KpiCard icon={CalendarCheck} tone="sky" value={citas} label="Citas programadas" to="/ordenes?tab=asignaciones&estatus=cita_programada" />
+        <KpiCard icon={ClipboardList} tone="amber" value={cuenta(['recepcion', 'diagnostico', 'esperando_autorizacion'])} label="En diagnóstico" to="/ordenes?filtro=etapa:recepcion,diagnostico,esperando_autorizacion" />
+        <KpiCard icon={Wrench} tone="orange" value={cuenta(['en_reparacion'])} label="En reparación" to="/ordenes?filtro=etapa:en_reparacion" />
+        <KpiCard icon={Hammer} tone="cyan" value={cuenta(['hojalateria'])} label="En hojalatería" to="/ordenes?filtro=etapa:hojalateria" />
+        <KpiCard icon={Paintbrush} tone="purple" value={cuenta(['preparacion', 'pintura'])} label="En pintura" to="/ordenes?filtro=etapa:preparacion,pintura" />
+        <KpiCard icon={CheckCircle2} tone="green" value={cuenta(['listo_entrega'])} label="Listos para entrega" to="/ordenes?filtro=etapa:listo_entrega" />
+        <KpiCard icon={Truck} tone="sky" value={a.activas.filter(o => o.fecha_compromiso && o.fecha_compromiso >= hoyISO() && o.fecha_compromiso <= sieteDias).length} label="Entregas programadas (7 días)" to="/calendario" />
+        <KpiCard icon={AlertTriangle} tone="red" value={a.retrasadas.length} label="Retrasados" to="/ordenes?filtro=retrasados" />
+        <KpiCard icon={Sparkles} tone="indigo" value={pendientes} label="Trabajos pendientes" to="/mano-obra" />
+        <KpiCard icon={User} tone="blue" value={particulares} label="Particulares activos" to="/ordenes?filtro=particulares" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -122,8 +122,8 @@ export default function Inicio() {
           {a.activas.length === 0 ? <Empty icon={Car}>No hay vehículos en el taller</Empty>
             : <Dona datos={dona} centro="En taller" onClick={d => d.to && nav(d.to)} />}
         </Card>
-        <Card title={<>Productividad del taller <span className="text-sm font-medium text-slate-500">(trabajos validados)</span></>}>
-          {prod.every(d => d.value === 0) ? <Empty icon={Wrench}>Sin trabajos validados en el periodo</Empty> : <Barras datos={prod} />}
+        <Card title={<>Órdenes por aseguradora <span className="text-sm font-medium text-slate-500">(ingresadas en el periodo)</span></>}>
+          {porAseg.length === 0 ? <Empty icon={Car}>Sin órdenes ingresadas en el periodo</Empty> : <Barras datos={porAseg} />}
         </Card>
         <Card title={<>Resumen financiero <span className="text-sm font-medium text-slate-500">(órdenes entregadas)</span></>}>
           {!verFin ? <p className="text-sm text-slate-500">Tu rol no tiene acceso a indicadores económicos.</p> : (
@@ -158,7 +158,7 @@ export default function Inicio() {
             ['Costos de mano de obra', fin.manoObra, 'Destajos y mano de obra adicional'], ['Otros costos', fin.otros + fin.indirectos, 'Externos, otros e indirectos'],
             ['Utilidad estimada', fin.utilidad, ''], ['Margen de rentabilidad', null, ''],
           ].map(([l, v, h]) => (
-            <Link key={l as string} to="/resultados" className="card !p-4 hover:border-blue-300">
+            <Link key={l as string} to="/costos" className="card !p-4 hover:border-blue-300">
               <div className="text-xs font-medium text-slate-500">{l}</div>
               <div className={`mt-1 text-lg font-extrabold ${(l as string).startsWith('Utilidad') || (l as string).startsWith('Margen') ? (fin.utilidad >= 0 ? 'text-green-600' : 'text-red-600') : ''}`}>
                 {v === null ? pct(fin.margen) : money(v)}
@@ -182,13 +182,13 @@ export default function Inicio() {
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-5">
-        <Card title="Últimos vehículos en taller" className="xl:col-span-3" action={<Link to="/vehiculos?filtro=activos" className="text-sm font-semibold text-blue-600 hover:underline">Ver todos</Link>}>
+        <Card title="Últimos vehículos en taller" className="xl:col-span-3" action={<Link to="/ordenes?filtro=activos" className="text-sm font-semibold text-blue-600 hover:underline">Ver todos</Link>}>
           {ultimas.length === 0 ? <Empty icon={Car}>Aún no hay órdenes. Registra la primera recepción.</Empty> : (
             <TableWrap>
               <table className="tbl">
                 <thead><tr><th># Orden</th><th>Vehículo</th><th>Cliente / Aseguradora</th><th>Estado</th><th>Fecha ingreso</th><th></th></tr></thead>
                 <tbody>{ultimas.map(o => (
-                  <tr key={o.id} className="cursor-pointer" onClick={() => nav(`/vehiculos/orden/${o.id}`)}>
+                  <tr key={o.id} className="cursor-pointer" onClick={() => nav(`/ordenes/${o.id}`)}>
                     <td className="font-bold whitespace-nowrap">{o.folio}</td>
                     <td><div className="flex items-center gap-3"><Miniatura path={o.foto_portada} /><div><div className="font-medium">{o.marca} {o.modelo}</div><div className="text-xs text-slate-500">{o.placas ?? '—'}</div></div></div></td>
                     <td><div className="font-medium">{o.aseguradora_nombre ?? 'Particular'}</div><div className="text-xs text-slate-500">{o.siniestro ?? o.cliente_nombre}</div></td>
@@ -201,7 +201,7 @@ export default function Inicio() {
             </TableWrap>
           )}
         </Card>
-        <Card title="Vehículos próximos a entregar" className="xl:col-span-2" action={<Link to="/vehiculos?filtro=etapa:listo_entrega" className="text-sm font-semibold text-blue-600 hover:underline">Ver todos</Link>}>
+        <Card title="Vehículos próximos a entregar" className="xl:col-span-2" action={<Link to="/ordenes?filtro=etapa:listo_entrega" className="text-sm font-semibold text-blue-600 hover:underline">Ver todos</Link>}>
           {a.listas.length === 0 ? <Empty icon={CheckCircle2}>No hay vehículos listos para entrega</Empty> : (
             <ul className="divide-y">
               {a.listas.slice(0, 5).map(o => (
@@ -215,7 +215,7 @@ export default function Inicio() {
                     <Badge cls={ETAPAS.listo_entrega.badge}>Listo para entrega</Badge>
                     <div className="mt-1 text-slate-500">📅 {fecha(o.fecha_compromiso)}</div>
                   </div>
-                  {puede('ordenes.gestionar') && <Link to={`/vehiculos/orden/${o.id}?tab=entrega`} className="btn btn-success btn-sm">Entregar</Link>}
+                  {puede('ordenes.gestionar') && <Link to={`/ordenes/${o.id}?tab=entrega`} className="btn btn-success btn-sm">Entregar</Link>}
                 </li>
               ))}
             </ul>
@@ -226,11 +226,11 @@ export default function Inicio() {
       {/* ACCESOS RÁPIDOS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {[
-          { t: 'Nuevo vehículo', s: 'Crear orden de trabajo', to: '/vehiculos/recepcion', icon: Car, g: 'from-blue-700 to-blue-500', p: 'ordenes.gestionar', plus: true },
-          { t: 'Cotización', s: 'Órdenes por presupuestar', to: '/vehiculos?filtro=etapa:diagnostico', icon: FileText, g: 'from-emerald-700 to-emerald-500', p: 'presupuestos.gestionar' },
-          { t: 'Asignar trabajos', s: 'A técnicos y áreas', to: '/taller?tab=actividades', icon: Wrench, g: 'from-violet-700 to-purple-500', p: 'actividades.asignar' },
-          { t: 'Solicitar material', s: 'Pintura y refacciones', to: '/compras?tab=solicitudes&nueva=1', icon: ShoppingCart, g: 'from-orange-600 to-amber-500', p: 'materiales.solicitar' },
-          { t: 'Generar reporte', s: 'Resultados y KPIs', to: '/resultados?tab=reportes', icon: Search, g: 'from-slate-700 to-slate-500', p: 'reportes.ver' },
+          { t: 'Nuevo vehículo', s: 'Crear orden de trabajo', to: '/ordenes/nueva', icon: Car, g: 'from-blue-700 to-blue-500', p: 'ordenes.gestionar', plus: true },
+          { t: 'Cotización', s: 'Órdenes por presupuestar', to: '/ordenes?filtro=etapa:diagnostico', icon: FileText, g: 'from-emerald-700 to-emerald-500', p: 'presupuestos.gestionar' },
+          { t: 'Asignar trabajos', s: 'A técnicos y áreas', to: '/mano-obra?tab=trabajos', icon: Wrench, g: 'from-violet-700 to-purple-500', p: 'actividades.asignar' },
+          { t: 'Solicitar material', s: 'Pintura y refacciones', to: '/inventario?tab=solicitudes&nueva=1', icon: ShoppingCart, g: 'from-orange-600 to-amber-500', p: 'materiales.solicitar' },
+          { t: 'Generar reporte', s: 'Resultados y KPIs', to: '/reportes', icon: Search, g: 'from-slate-700 to-slate-500', p: 'reportes.ver' },
         ].filter(q => puede(q.p)).map(q => (
           <Link key={q.t} to={q.to} className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${q.g} p-5 text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg`}>
             <q.icon className="absolute -right-3 -bottom-3 h-24 w-24 opacity-15" strokeWidth={1.2} />

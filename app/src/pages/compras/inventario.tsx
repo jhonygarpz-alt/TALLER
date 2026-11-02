@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeftRight, ClipboardList, Download, Package, Paintbrush, Plus, ShoppingCart, Truck } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Download, Package, Paintbrush, Plus, ShoppingCart } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
-import { useAlertas } from '../../lib/alertas'
+
 import { ESTADO_COMPRA, ESTADO_SOLICITUD, TIPOS_MATERIAL, clean, errorTexto, fecha, fechaHora, hoyISO, money2, num } from '../../lib/format'
 import { descargarCSV } from '../../lib/exportar'
 import type { Material, Proveedor } from '../../lib/tipos'
-import { Badge, Card, Empty, ErrorMsg, Field, Modal, PageHeader, Tabs, useTab } from '../../components/ui'
+import { Badge, Card, Empty, ErrorMsg, Field, Modal } from '../../components/ui'
 import Solicitudes from '../../components/Solicitudes'
 
 /* ----------------------------- SOLICITUDES ----------------------------- */
-function TabSolicitudes() {
+export function TabSolicitudes() {
   const [sp] = useSearchParams()
   const [estado, setEstado] = useState('solicitada')
   return (
@@ -84,7 +84,7 @@ function Ajuste({ m, onDone }: { m: Material; onDone: () => void }) {
   )
 }
 
-function TabMateriales() {
+export function TabMateriales() {
   const { puede } = useAuth()
   const [rows, setRows] = useState<Material[]>([])
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
@@ -142,7 +142,7 @@ function TabMateriales() {
 
 /* ----------------------------- PINTURA ----------------------------- */
 interface PinturaRow { orden_id: number; folio: string; tipo: string; etapa: string; cantidad_presupuestada: number; cantidad_real: number; costo_presupuestado: number; costo_real: number; diferencia: number; entregado_por: string | null }
-function TabPintura() {
+export function TabPintura() {
   const [rows, setRows] = useState<PinturaRow[]>([])
   const [umbral, setUmbral] = useState(15)
   useEffect(() => { supabase.from('v_pintura').select('*').order('folio', { ascending: false }).then(({ data }) => setRows((data ?? []) as PinturaRow[])) }, [])
@@ -164,7 +164,7 @@ function TabPintura() {
             <thead><tr><th>Orden</th><th>Tipo</th><th className="text-right">Consumo pres.</th><th className="text-right">Consumo real</th><th className="text-right">Costo pres.</th><th className="text-right">Costo real</th><th className="text-right">Diferencia</th><th>Entregó</th></tr></thead>
             <tbody>{rows.map(r => { const d = desv(r); return (
               <tr key={r.orden_id}>
-                <td><Link className="font-semibold text-blue-600 hover:underline" to={`/vehiculos/orden/${r.orden_id}?tab=materiales`}>{r.folio}</Link></td>
+                <td><Link className="font-semibold text-blue-600 hover:underline" to={`/ordenes/${r.orden_id}?tab=materiales`}>{r.folio}</Link></td>
                 <td className="text-xs">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</td>
                 <td className="text-right">{num(r.cantidad_presupuestada, 3)}</td><td className="text-right">{num(r.cantidad_real, 3)}</td>
                 <td className="text-right">{money2(r.costo_presupuestado)}</td><td className="text-right">{money2(r.costo_real)}</td>
@@ -181,7 +181,7 @@ function TabPintura() {
 
 /* ----------------------------- COMPRAS ----------------------------- */
 interface CompraRow { id: number; fecha: string; estado: string; factura: string | null; notas: string | null; proveedores?: { nombre: string } | null; compra_partidas: { cantidad: number; costo_unit: number }[] }
-function TabCompras() {
+export function TabCompras() {
   const { puede } = useAuth()
   const nav = useNavigate()
   const [sp] = useSearchParams()
@@ -202,7 +202,7 @@ function TabCompras() {
     e.preventDefault()
     const { data, error } = await supabase.from('compras').insert(clean(f)).select('id').single()
     if (error) return setError(errorTexto(error))
-    nav(`/compras/compra/${data.id}`)
+    nav(`/compras/${data.id}`)
   }
   const total = (c: CompraRow) => c.compra_partidas.reduce((s, p) => s + p.cantidad * p.costo_unit, 0)
   return (
@@ -218,7 +218,7 @@ function TabCompras() {
           <div className="overflow-x-auto"><table className="tbl">
             <thead><tr><th>Folio</th><th>Fecha</th><th>Proveedor</th><th>Factura</th><th>Estado</th><th className="text-right">Partidas</th><th className="text-right">Total</th></tr></thead>
             <tbody>{rows.map(c => (
-              <tr key={c.id} className="cursor-pointer" onClick={() => nav(`/compras/compra/${c.id}`)}>
+              <tr key={c.id} className="cursor-pointer" onClick={() => nav(`/compras/${c.id}`)}>
                 <td className="font-bold">REQ-{String(c.id).padStart(4, '0')}</td><td>{fecha(c.fecha)}</td><td>{c.proveedores?.nombre ?? '—'}</td><td>{c.factura ?? '—'}</td>
                 <td><Badge cls={ESTADO_COMPRA[c.estado].badge}>{ESTADO_COMPRA[c.estado].label}</Badge></td>
                 <td className="text-right">{c.compra_partidas.length}</td><td className="text-right font-semibold">{money2(total(c))}</td>
@@ -240,7 +240,7 @@ function TabCompras() {
 }
 
 /* ----------------------------- PROVEEDORES ----------------------------- */
-function TabProveedores() {
+export function TabProveedores() {
   const { puede } = useAuth()
   const [rows, setRows] = useState<Proveedor[]>([])
   const [edit, setEdit] = useState<Proveedor | 'nuevo' | null>(null)
@@ -284,26 +284,13 @@ function TabProveedores() {
 
 /* ----------------------------- MOVIMIENTOS Y PRECIOS ----------------------------- */
 interface Mov { id: number; fecha: string; tipo: string; cantidad: number; costo_unit: number; existencia_resultante: number; motivo: string | null; orden_id: number | null; compra_id: number | null; materiales?: { descripcion: string; unidad: string }; ordenes?: { folio: string } | null; perfiles?: { nombre: string } | null }
-interface AlertaPrecio { id: number; fecha: string; descripcion: string; unidad: string; costo_unit: number; costo_anterior: number; aumento_pct: number; proveedor_nombre: string | null; compra_id: number | null }
-function TabMovimientos() {
+export function TabMovimientos() {
   const [movs, setMovs] = useState<Mov[]>([])
-  const [alertas, setAlertas] = useState<AlertaPrecio[]>([])
   useEffect(() => {
     supabase.from('movimientos_inventario').select('*, materiales(descripcion,unidad), ordenes(folio), perfiles(nombre)').order('fecha', { ascending: false }).limit(300).then(({ data }) => setMovs((data ?? []) as Mov[]))
-    supabase.from('v_alertas_precio').select('*').order('fecha', { ascending: false }).limit(50).then(({ data }) => setAlertas((data ?? []) as AlertaPrecio[]))
   }, [])
   return (
     <div className="space-y-5">
-      <Card title={<span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-500" /> Alertas por aumento de precio</span>}>
-        {alertas.length === 0 ? <p className="text-sm text-slate-400">Sin aumentos de precio por encima del umbral configurado.</p> : (
-          <ul className="divide-y text-sm">{alertas.map(a => (
-            <li key={a.id} className="flex flex-wrap justify-between gap-2 py-2">
-              <span><b>{a.descripcion}</b> · {a.proveedor_nombre ?? '—'} · {fecha(a.fecha)}</span>
-              <span>{money2(a.costo_anterior)} → <b>{money2(a.costo_unit)}</b> <Badge cls="bg-red-100 text-red-700">+{a.aumento_pct}%</Badge></span>
-            </li>))}
-          </ul>
-        )}
-      </Card>
       <Card title="Movimientos de inventario (últimos 300)" action={<button className="btn btn-secondary btn-sm" onClick={() => descargarCSV('movimientos_inventario', movs.map(m => ({ ...m, material: m.materiales?.descripcion, unidad: m.materiales?.unidad, orden: m.ordenes?.folio, usuario: m.perfiles?.nombre })), [
         { key: 'fecha', label: 'Fecha' }, { key: 'material', label: 'Material' }, { key: 'tipo', label: 'Tipo' }, { key: 'cantidad', label: 'Cantidad' }, { key: 'unidad', label: 'Unidad' },
         { key: 'costo_unit', label: 'Costo unit.' }, { key: 'existencia_resultante', label: 'Existencia resultante' }, { key: 'orden', label: 'Orden' }, { key: 'motivo', label: 'Motivo' }, { key: 'usuario', label: 'Usuario' },
@@ -316,36 +303,12 @@ function TabMovimientos() {
                 <td className="text-xs whitespace-nowrap">{fechaHora(m.fecha)}</td><td>{m.materiales?.descripcion}</td>
                 <td><span className={m.tipo === 'entrada' ? 'text-green-700' : m.tipo === 'salida' ? 'text-red-600' : 'text-amber-700'}>{m.tipo}</span></td>
                 <td className="text-right">{num(m.cantidad, 3)} {m.materiales?.unidad}</td><td className="text-right">{money2(m.costo_unit)}</td><td className="text-right">{num(m.existencia_resultante, 3)}</td>
-                <td className="text-xs">{m.motivo}{m.orden_id && <> · <Link className="text-blue-600" to={`/vehiculos/orden/${m.orden_id}?tab=materiales`}>{m.ordenes?.folio}</Link></>}{m.compra_id && <> · <Link className="text-blue-600" to={`/compras/compra/${m.compra_id}`}>REQ-{String(m.compra_id).padStart(4, '0')}</Link></>}</td>
+                <td className="text-xs">{m.motivo}{m.orden_id && <> · <Link className="text-blue-600" to={`/ordenes/${m.orden_id}?tab=materiales`}>{m.ordenes?.folio}</Link></>}{m.compra_id && <> · <Link className="text-blue-600" to={`/compras/${m.compra_id}`}>REQ-{String(m.compra_id).padStart(4, '0')}</Link></>}</td>
                 <td className="text-xs">{m.perfiles?.nombre ?? '—'}</td>
               </tr>))}</tbody>
           </table></div>
         )}
       </Card>
-    </div>
-  )
-}
-
-export default function Compras() {
-  const al = useAlertas()
-  const tab = useTab('solicitudes')
-  return (
-    <div>
-      <PageHeader title="Compras" subtitle="Inventario, materiales, pintura y proveedores" />
-      <Tabs tabs={[
-        { id: 'solicitudes', label: 'Solicitudes de material', icon: ClipboardList, count: al.solicitudesPorAutorizar + al.solicitudesPorEntregar },
-        { id: 'materiales', label: 'Catálogo e inventario', icon: Package },
-        { id: 'pintura', label: 'Control de pintura', icon: Paintbrush },
-        { id: 'compras', label: 'Requisiciones y compras', icon: ShoppingCart, count: al.comprasPorAutorizar },
-        { id: 'proveedores', label: 'Proveedores', icon: Truck },
-        { id: 'movimientos', label: 'Movimientos y precios', icon: ArrowLeftRight },
-      ]} />
-      {tab === 'solicitudes' && <TabSolicitudes />}
-      {tab === 'materiales' && <TabMateriales />}
-      {tab === 'pintura' && <TabPintura />}
-      {tab === 'compras' && <TabCompras />}
-      {tab === 'proveedores' && <TabProveedores />}
-      {tab === 'movimientos' && <TabMovimientos />}
     </div>
   )
 }

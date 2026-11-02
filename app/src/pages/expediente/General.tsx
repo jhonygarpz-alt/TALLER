@@ -56,6 +56,8 @@ export default function General(props: TabProps) {
   const { puede } = useAuth()
   const [hist, setHist] = useState<Hist[]>([])
   const [motivo, setMotivo] = useState(o.motivo_retraso ?? '')
+  const [motivos, setMotivos] = useState<string[]>([])
+  useEffect(() => { supabase.from('motivos_retraso').select('nombre').eq('activo', true).order('nombre').then(({ data }) => setMotivos((data ?? []).map(m => m.nombre))) }, [])
   const [error, setError] = useState<string | null>(null)
   const puedeEditar = puede('ordenes.gestionar') || puede('actividades.asignar')
   const cerrada = o.etapa === 'entregado' || o.etapa === 'cancelado'
@@ -100,7 +102,8 @@ export default function General(props: TabProps) {
             <span><b>Detenido por falta de materiales</b> <span className="text-slate-500">(genera alerta en el tablero)</span></span>
           </label>
           <div className="mt-3 flex gap-2">
-            <input className="input" placeholder="Motivo de retraso (si aplica)" value={motivo} disabled={!puedeEditar} onChange={e => setMotivo(e.target.value)} />
+            <datalist id="motivos-retraso">{motivos.map(m => <option key={m} value={m} />)}</datalist>
+            <input className="input" list="motivos-retraso" placeholder="Motivo de retraso (elige del catálogo o escribe)" value={motivo} disabled={!puedeEditar} onChange={e => setMotivo(e.target.value)} />
             {puedeEditar && motivo !== (o.motivo_retraso ?? '') && <button className="btn btn-primary" onClick={() => actualizar({ motivo_retraso: motivo || null })}>Guardar</button>}
           </div>
           <p className="mt-2 text-xs text-slate-400">Última actualización de avance: {fechaHora(o.ultima_actualizacion)}</p>

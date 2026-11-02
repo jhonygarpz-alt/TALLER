@@ -22,6 +22,7 @@ export default function Recepcion() {
   const nav = useNavigate()
   const [sp] = useSearchParams()
   const asignacionId = sp.get('asignacion')
+  const vehiculoId = sp.get('vehiculo')
   const [paso, setPaso] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -58,7 +59,8 @@ export default function Recepcion() {
         }))
       })
     }
-  }, [asignacionId])
+    if (vehiculoId) buscarPlacas(vehiculoId)
+  }, [asignacionId, vehiculoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const tiposFiltrados = useMemo(() => tipos.filter(t => f.tipo === 'particular' ? t.aseguradora_id === null : String(t.aseguradora_id) === f.aseguradora_id), [tipos, f.tipo, f.aseguradora_id])
 
@@ -68,13 +70,15 @@ export default function Recepcion() {
     setF(p => ({ ...p, tipo_reparacion_id: id, fecha_compromiso: t ? d.toLocaleDateString('en-CA') : p.fecha_compromiso }))
   }
 
-  async function buscarPlacas() {
+  async function buscarPlacas(porId?: string) {
     const pl = f.placas.trim().toUpperCase()
-    if (!pl) return
-    const { data } = await supabase.from('vehiculos').select('id, cliente_id, marca, modelo, anio, color, vin, clientes(nombre, telefono, email, rfc)').ilike('placas', pl).limit(1)
+    if (!pl && !porId) return
+    const base = supabase.from('vehiculos').select('id, cliente_id, marca, modelo, anio, color, vin, placas, clientes(nombre, telefono, email, rfc)')
+    const { data } = await (porId ? base.eq('id', porId) : base.ilike('placas', pl)).limit(1)
     setBuscado(true)
-    const v = data?.[0] as unknown as { id: number; cliente_id: number | null; marca: string; modelo: string; anio: number | null; color: string | null; vin: string | null; clientes: { nombre: string; telefono: string | null; email: string | null; rfc: string | null } | null } | undefined
+    const v = data?.[0] as unknown as { id: number; cliente_id: number | null; marca: string; modelo: string; anio: number | null; color: string | null; vin: string | null; placas: string | null; clientes: { nombre: string; telefono: string | null; email: string | null; rfc: string | null } | null } | undefined
     if (!v) { setExistente(null); return }
+    if (porId) setF(p => ({ ...p, placas: v.placas ?? '' }))
     setExistente({ vehiculo_id: v.id, cliente_id: v.cliente_id, texto: `${v.marca} ${v.modelo} ${v.anio ?? ''} de ${v.clientes?.nombre ?? 'sin propietario'}` })
     setF(p => ({ ...p, marca: v.marca, modelo: v.modelo, anio: v.anio ? String(v.anio) : '', color: v.color ?? '', vin: v.vin ?? '',
       cliente_nombre: v.clientes?.nombre ?? p.cliente_nombre, cliente_telefono: v.clientes?.telefono ?? p.cliente_telefono,
@@ -128,7 +132,7 @@ export default function Recepcion() {
       }
       al.recargar()
       if (fallidas.length) alert(`La orden se creó, pero ${fallidas.length} foto(s) no se pudieron subir. Agrégalas desde el expediente.`)
-      nav(`/vehiculos/orden/${orden.id}`)
+      nav(`/ordenes/${orden.id}`)
     } catch (e) {
       setError(errorTexto(e))
       setGuardando(false)
@@ -140,7 +144,7 @@ export default function Recepcion() {
   const pasos = ['Origen', 'Propietario y vehículo', 'Condiciones de ingreso', 'Fotografías']
   return (
     <div className="mx-auto max-w-3xl">
-      <Link to="/vehiculos" className="text-sm font-medium text-blue-600 hover:underline">← Vehículos</Link>
+      <Link to="/ordenes" className="text-sm font-medium text-blue-600 hover:underline">← Órdenes de trabajo</Link>
       <PageHeader title="Recepción de vehículo" subtitle={asignacionId ? `Desde asignación · siniestro ${f.siniestro}` : 'Genera una nueva orden de trabajo'} />
 
       <ol className="mb-6 grid grid-cols-4 gap-2">
@@ -188,8 +192,8 @@ export default function Recepcion() {
 
         {paso === 2 && (<>
           <div className="flex gap-2">
-            <Field label="Placas" className="flex-1"><input className="input uppercase" value={f.placas} onChange={e => { set('placas')(e); setBuscado(false); setExistente(null) }} onBlur={buscarPlacas} /></Field>
-            <button type="button" className="btn btn-secondary mt-5" onClick={buscarPlacas}><Search className="h-4 w-4" /> Buscar</button>
+            <Field label="Placas" className="flex-1"><input className="input uppercase" value={f.placas} onChange={e => { set('placas')(e); setBuscado(false); setExistente(null) }} onBlur={() => buscarPlacas()} /></Field>
+            <button type="button" className="btn btn-secondary mt-5" onClick={() => buscarPlacas()}><Search className="h-4 w-4" /> Buscar</button>
           </div>
           {existente && <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">✓ Vehículo ya registrado: <b>{existente.texto}</b>. Se reutilizarán sus datos (sin capturar dos veces).</div>}
           {buscado && !existente && f.placas && <div className="text-xs text-slate-500">Placas no registradas: se dará de alta un vehículo nuevo.</div>}

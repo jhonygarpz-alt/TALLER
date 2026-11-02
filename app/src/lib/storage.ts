@@ -37,7 +37,7 @@ async function comprimir(file: File): Promise<Blob> {
   } catch { return file }
 }
 
-export type CategoriaFoto = 'recepcion' | 'diagnostico' | 'dano' | 'actividad' | 'entrega' | 'conformidad' | 'pieza_retirada'
+export type CategoriaFoto = 'recepcion' | 'diagnostico' | 'dano' | 'actividad' | 'entrega' | 'conformidad' | 'pieza_retirada' | 'proceso' | 'factura'
 
 export async function subirFoto(file: File, ordenId: number, categoria: CategoriaFoto, refId?: number | null, descripcion?: string) {
   const blob = await comprimir(file)

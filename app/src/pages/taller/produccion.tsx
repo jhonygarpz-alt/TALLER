@@ -1,79 +1,19 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { BadgeDollarSign, Download, Gauge, KanbanSquare, ListChecks, Plus, Users } from 'lucide-react'
+import { Download, Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
-import { useAlertas } from '../../lib/alertas'
+
 import { usePeriodo } from '../../lib/periodo'
-import { AREAS, ESTADO_ACTIVIDAD, ESTADO_DESTAJO, ETAPAS, ETAPAS_TABLERO, errorTexto, fecha, money2, num } from '../../lib/format'
+import { AREAS, ESTADO_ACTIVIDAD, ESTADO_DESTAJO, errorTexto, fecha, money2, num } from '../../lib/format'
 import { descargarCSV } from '../../lib/exportar'
-import type { Tarifa, Tecnico, VOrden } from '../../lib/tipos'
-import { Badge, Card, Empty, ErrorMsg, Field, PageHeader, SinPermiso, Tabs, useTab } from '../../components/ui'
-import { Miniatura } from '../../components/Fotos'
+import type { Tarifa, Tecnico } from '../../lib/tipos'
+import { Badge, Card, Empty, ErrorMsg, Field, SinPermiso } from '../../components/ui'
+
 import Actividades from '../../components/Actividades'
 import PeriodoSelect from '../../components/PeriodoSelect'
 
-function Tablero() {
-  const al = useAlertas()
-  const [entregadas, setEntregadas] = useState<VOrden[]>([])
-  const [tipo, setTipo] = useState<'todos' | 'aseguradora' | 'particular'>('todos')
-  useEffect(() => {
-    const hace7 = new Date(); hace7.setDate(hace7.getDate() - 7)
-    supabase.from('v_ordenes').select('*').eq('etapa', 'entregado').gte('fecha_entrega', hace7.toISOString()).order('fecha_entrega', { ascending: false })
-      .then(({ data }) => setEntregadas((data ?? []) as VOrden[]))
-  }, [])
-  const todas = [...al.activas, ...entregadas].filter(o => tipo === 'todos' || o.tipo === tipo)
-  return (
-    <div>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        {(['todos', 'aseguradora', 'particular'] as const).map(t => (
-          <button key={t} onClick={() => setTipo(t)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${tipo === t ? 'bg-navy-800 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}>
-            {t === 'todos' ? 'Todos' : t === 'aseguradora' ? 'Aseguradora' : 'Particulares'}
-          </button>
-        ))}
-        <span className="ml-auto text-xs text-slate-400">Entregados: últimos 7 días · Toca una tarjeta para abrir el expediente</span>
-      </div>
-      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-4 md:mx-0 md:px-0">
-        {ETAPAS_TABLERO.map(e => {
-          const items = todas.filter(o => o.etapa === e)
-          return (
-            <div key={e} className="flex w-72 shrink-0 flex-col rounded-2xl bg-slate-200/60 p-2">
-              <div className="mb-2 flex items-center justify-between px-2 pt-1">
-                <span className="flex items-center gap-2 text-sm font-bold text-slate-700"><span className="h-2.5 w-2.5 rounded-full" style={{ background: ETAPAS[e].color }} />{ETAPAS[e].label}</span>
-                <span className="rounded-full bg-white px-2 text-xs font-bold text-slate-600">{items.length}</span>
-              </div>
-              <div className="flex max-h-[70vh] flex-col gap-2 overflow-y-auto">
-                {items.length === 0 && <div className="py-6 text-center text-xs text-slate-400">Sin vehículos</div>}
-                {items.map(o => (
-                  <Link key={o.id} to={`/vehiculos/orden/${o.id}`} className={`rounded-xl border bg-white p-2.5 shadow-sm transition hover:shadow-md ${o.retrasado ? 'border-red-300' : 'border-transparent'}`}>
-                    <div className="flex gap-2.5">
-                      <Miniatura path={o.foto_portada} className="h-14 w-16" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between"><span className="text-sm font-bold">{o.folio}</span><span className="font-mono text-xs text-slate-500">{o.placas}</span></div>
-                        <div className="truncate text-xs text-slate-600">{o.marca} {o.modelo} {o.anio}</div>
-                        <div className="truncate text-[11px] text-slate-400">{o.aseguradora_nombre ?? 'Particular'}</div>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-[11px]">
-                      <span className="truncate text-slate-500">👤 {o.tecnicos_activos ?? o.asesor_nombre ?? 'Sin responsable'}</span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between text-[11px]">
-                      <span className={o.retrasado ? 'font-bold text-red-600' : 'text-slate-500'}>📅 {fecha(o.fecha_compromiso)}{o.retrasado && ' · retrasado'}</span>
-                      <span className="rounded bg-slate-100 px-1.5 font-semibold text-slate-600">{o.dias_en_taller} d</span>
-                    </div>
-                    {o.detenido_material && <div className="mt-1 rounded bg-orange-50 px-1.5 text-[11px] font-semibold text-orange-700">Detenido por material</div>}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function ListaActividades() {
+export function ListaActividades() {
   const { perfil } = useAuth()
   const [sp, setSp] = useSearchParams()
   const estado = sp.get('estado') ?? 'abiertas'
@@ -110,7 +50,7 @@ interface DestajoRow {
   tecnicos?: { nombre: string }; ordenes?: { folio: string }; actividades?: { actividad: string; pieza: string | null; area: string }
 }
 
-function Destajos() {
+export function Destajos() {
   const { puede } = useAuth()
   const [rows, setRows] = useState<DestajoRow[]>([])
   const [estado, setEstado] = useState('pendiente')
@@ -179,7 +119,7 @@ function Destajos() {
                 <tr key={r.id}>
                   <td>{['pendiente', 'autorizado'].includes(r.estado) && <input type="checkbox" checked={sel.has(r.id)} onChange={e => { const s = new Set(sel); if (e.target.checked) s.add(r.id); else s.delete(r.id); setSel(s) }} />}</td>
                   <td className="font-medium">{r.tecnicos?.nombre}</td>
-                  <td><Link className="text-blue-600 hover:underline" to={`/vehiculos/orden/${r.orden_id}?tab=costos`}>{r.ordenes?.folio}</Link></td>
+                  <td><Link className="text-blue-600 hover:underline" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.ordenes?.folio}</Link></td>
                   <td>{r.actividades?.actividad}<div className="text-xs text-slate-500">{AREAS[r.actividades?.area ?? '']}{r.actividades?.pieza && ` · ${r.actividades.pieza}`}</div></td>
                   <td><Badge cls={ESTADO_DESTAJO[r.estado].badge}>{ESTADO_DESTAJO[r.estado].label}</Badge>{r.referencia_pago && <div className="text-[11px] text-slate-500">Ref. {r.referencia_pago}</div>}</td>
                   <td className="text-xs text-slate-500">Gen. {fecha(r.generado_at)}{r.autorizado_at && <><br />Aut. {fecha(r.autorizado_at)}</>}{r.pagado_at && <><br />Pag. {fecha(r.pagado_at)}</>}</td>
@@ -204,7 +144,7 @@ function Destajos() {
 
 interface ActProd { tecnico_id: number; orden_id: number; estado: string; horas: number | null; rechazos: number; importe_destajo: number; fecha_asignacion: string; validado_at: string | null; tecnicos?: { nombre: string } }
 
-function Productividad() {
+export function Productividad() {
   const per = usePeriodo('mes')
   const [rows, setRows] = useState<ActProd[]>([])
   useEffect(() => {
@@ -242,7 +182,7 @@ function Productividad() {
   )
 }
 
-function TecnicosTarifas() {
+export function TecnicosTarifas() {
   const { puede } = useAuth()
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
   const [tarifas, setTarifas] = useState<Tarifa[]>([])
@@ -321,27 +261,6 @@ function TecnicosTarifas() {
         )}
         <p className="mt-2 text-xs text-slate-400">Los cambios de tarifa quedan en auditoría y no modifican trabajos ya terminados.</p>
       </Card>
-    </div>
-  )
-}
-
-export default function Taller() {
-  const tab = useTab('tablero')
-  return (
-    <div>
-      <PageHeader title="Taller" subtitle="Producción, trabajos y destajos" />
-      <Tabs tabs={[
-        { id: 'tablero', label: 'Tablero de producción', icon: KanbanSquare },
-        { id: 'actividades', label: 'Trabajos', icon: ListChecks },
-        { id: 'destajos', label: 'Destajos', icon: BadgeDollarSign },
-        { id: 'productividad', label: 'Productividad', icon: Gauge },
-        { id: 'tecnicos', label: 'Técnicos y tarifas', icon: Users },
-      ]} />
-      {tab === 'tablero' && <Tablero />}
-      {tab === 'actividades' && <ListaActividades />}
-      {tab === 'destajos' && <Destajos />}
-      {tab === 'productividad' && <Productividad />}
-      {tab === 'tecnicos' && <TecnicosTarifas />}
     </div>
   )
 }

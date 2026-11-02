@@ -1,13 +1,13 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { BarChart3, ChevronDown, ChevronRight, Download, FileSpreadsheet, Printer, Target, TrendingUp, Wallet } from 'lucide-react'
+import { ChevronDown, ChevronRight, Download, FileSpreadsheet, Printer } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { usePeriodo } from '../../lib/periodo'
 import { AREAS, ESTADO_DESTAJO, ETAPAS, TIPOS_MATERIAL, errorTexto, fecha, money, money2, pct } from '../../lib/format'
 import { descargarCSV } from '../../lib/exportar'
 import type { Rentabilidad, VOrden } from '../../lib/tipos'
-import { Badge, Card, Empty, ErrorMsg, PageHeader, SinPermiso, Tabs, useTab } from '../../components/ui'
+import { Badge, Card, Empty, ErrorMsg } from '../../components/ui'
 import { Barras } from '../../components/Graficas'
 import PeriodoSelect from '../../components/PeriodoSelect'
 import { DesgloseRentabilidad } from '../expediente/Costos'
@@ -24,7 +24,7 @@ const COLS_RENT = [
 const sum = (rows: Rentabilidad[], k: keyof Rentabilidad) => rows.reduce((s, r) => s + Number(r[k] ?? 0), 0)
 
 /* ------------------------------ RENTABILIDAD ------------------------------ */
-function TabRentabilidad() {
+export function TabRentabilidad() {
   const per = usePeriodo('mes')
   const [base, setBase] = useState<'entrega' | 'ingreso'>('entrega')
   const [tipo, setTipo] = useState('')
@@ -63,7 +63,7 @@ function TabRentabilidad() {
                 <Fragment key={r.orden_id}>
                   <tr className="cursor-pointer" onClick={() => setAbierta(abierta === r.orden_id ? null : r.orden_id)}>
                     <td>{abierta === r.orden_id ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
-                    <td><Link className="font-bold text-blue-600 hover:underline" to={`/vehiculos/orden/${r.orden_id}?tab=costos`} onClick={e => e.stopPropagation()}>{r.folio}</Link></td>
+                    <td><Link className="font-bold text-blue-600 hover:underline" to={`/ordenes/${r.orden_id}?tab=costos`} onClick={e => e.stopPropagation()}>{r.folio}</Link></td>
                     <td className="text-xs">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</td>
                     <td><Badge cls={ETAPAS[r.etapa].badge}>{ETAPAS[r.etapa].label}</Badge></td>
                     <td className="text-right">{money(r.ingreso_reconocido)}</td><td className="text-right text-slate-500">{money(r.facturado)}</td><td className="text-right text-slate-500">{money(r.cobrado)}</td>
@@ -85,7 +85,7 @@ function TabRentabilidad() {
 
 /* ------------------------------ KPIs ASEGURADORA ------------------------------ */
 interface AsigK { estatus: string; primer_contacto: string | null }
-function TabKpis() {
+export function TabKpis() {
   const per = usePeriodo('mes')
   const [aseg, setAseg] = useState<{ id: number; nombre: string }[]>([])
   const [asegId, setAsegId] = useState('')
@@ -180,7 +180,7 @@ function TabKpis() {
 
 /* ------------------------------ FINANCIERO ------------------------------ */
 interface Gasto { id: number; mes: string; concepto: string; monto: number }
-function TabFinanciero() {
+export function TabFinanciero() {
   const { puede } = useAuth()
   const per = usePeriodo('mes')
   const [rows, setRows] = useState<Rentabilidad[]>([])
@@ -285,7 +285,7 @@ function TabFinanciero() {
           <div className="-mx-5 overflow-x-auto px-5"><table className="tbl">
             <thead><tr><th>Orden</th><th>Tipo</th><th>Entrega</th><th className="text-right">Ingreso reconocido</th><th className="text-right">Facturado</th><th className="text-right">Cobrado</th><th className="text-right">Pendiente</th></tr></thead>
             <tbody>{pendientes.map(r => (
-              <tr key={r.orden_id}><td><Link className="font-bold text-blue-600" to={`/vehiculos/orden/${r.orden_id}?tab=costos`}>{r.folio}</Link></td><td className="text-xs">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</td>
+              <tr key={r.orden_id}><td><Link className="font-bold text-blue-600" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.folio}</Link></td><td className="text-xs">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</td>
                 <td>{fecha(r.fecha_entrega)}</td><td className="text-right">{money(r.ingreso_reconocido)}</td><td className="text-right">{money(r.facturado)}</td><td className="text-right">{money(r.cobrado)}</td><td className="text-right font-bold text-red-600">{money(r.por_cobrar)}</td></tr>))}
             </tbody>
           </table></div>
@@ -296,7 +296,7 @@ function TabFinanciero() {
 }
 
 /* ------------------------------ REPORTES ------------------------------ */
-function TabReportes() {
+export function TabReportes() {
   const { puede } = useAuth()
   const per = usePeriodo('mes')
   const [cargando, setCargando] = useState<string | null>(null)
@@ -383,29 +383,6 @@ function TabReportes() {
         <button className="btn btn-secondary btn-sm mt-3" onClick={() => window.print()}><Printer className="h-4 w-4" /> Imprimir esta página</button>
         <p className="mt-3 text-xs text-slate-400">Pendiente de implementar: plantillas PDF con formato propio (logotipo, encabezados) para cada reporte.</p>
       </Card>
-    </div>
-  )
-}
-
-export default function Resultados() {
-  const { puede } = useAuth()
-  const tab = useTab(puede('finanzas.ver') ? 'rentabilidad' : 'kpis')
-  if (!puede('reportes.ver') && !puede('finanzas.ver')) return <SinPermiso que="Resultados" />
-  return (
-    <div>
-      <PageHeader title="Resultados" subtitle="Rentabilidad, KPIs y reportes">
-        <button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}><Printer className="h-4 w-4" /> Imprimir / PDF</button>
-      </PageHeader>
-      <Tabs tabs={[
-        { id: 'rentabilidad', label: 'Rentabilidad por vehículo', icon: TrendingUp, hidden: !puede('finanzas.ver') },
-        { id: 'kpis', label: 'KPIs aseguradora', icon: Target },
-        { id: 'financiero', label: 'Indicadores financieros', icon: Wallet, hidden: !puede('finanzas.ver') },
-        { id: 'reportes', label: 'Reportes', icon: BarChart3 },
-      ]} />
-      {tab === 'rentabilidad' && puede('finanzas.ver') && <TabRentabilidad />}
-      {tab === 'kpis' && <TabKpis />}
-      {tab === 'financiero' && puede('finanzas.ver') && <TabFinanciero />}
-      {tab === 'reportes' && <TabReportes />}
     </div>
   )
 }

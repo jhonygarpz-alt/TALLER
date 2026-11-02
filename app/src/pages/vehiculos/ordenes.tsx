@@ -1,23 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Car, Download, Inbox, Plus, X } from 'lucide-react'
+import { Car, Download, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../lib/auth'
+
 import { useAlertas } from '../../lib/alertas'
 import { ETAPAS, ESTATUS_CONTACTO, fecha, hoyISO, limpiaBusqueda, type Etapa } from '../../lib/format'
 import { descargarCSV } from '../../lib/exportar'
 import type { VOrden } from '../../lib/tipos'
-import { Badge, Card, Empty, PageHeader, Tabs, useTab } from '../../components/ui'
+import { Badge, Card, Empty } from '../../components/ui'
 import { Miniatura } from '../../components/Fotos'
 import { EtapaBadge } from '../Inicio'
-import Asignaciones from './Asignaciones'
+
 
 const FILTROS: Record<string, string> = {
   activos: 'En taller', retrasados: 'Retrasados', proximos: 'Próximos a vencer', detenidos: 'Detenidos por material',
   sin_actualizar: 'Sin actualización', particulares: 'Particulares activos', aseguradora: 'Aseguradora activos', todos: 'Todos',
 }
 
-function ListaOrdenes() {
+export function ListaOrdenes() {
   const [sp, setSp] = useSearchParams()
   const nav = useNavigate()
   const al = useAlertas()
@@ -87,7 +87,7 @@ function ListaOrdenes() {
           <ul className="divide-y text-sm">{asigs.map(a => (
             <li key={a.id} className="flex items-center justify-between gap-2 py-2">
               <span><b>{a.siniestro}</b> · {a.asegurado} {a.placas && <span className="text-slate-500">· {a.placas}</span>}</span>
-              <Link className="text-blue-600 hover:underline" to={`/vehiculos?tab=asignaciones&ver=${a.id}`}><Badge cls={ESTATUS_CONTACTO[a.estatus].badge}>{ESTATUS_CONTACTO[a.estatus].label}</Badge></Link>
+              <Link className="text-blue-600 hover:underline" to={`/ordenes?tab=asignaciones&ver=${a.id}`}><Badge cls={ESTATUS_CONTACTO[a.estatus].badge}>{ESTATUS_CONTACTO[a.estatus].label}</Badge></Link>
             </li>))}
           </ul>
         </Card>
@@ -99,7 +99,7 @@ function ListaOrdenes() {
             <table className="tbl">
               <thead><tr><th>Orden</th><th>Vehículo</th><th>Cliente / Aseguradora</th><th>Estado</th><th>Responsable</th><th>Compromiso</th><th className="text-right">Días</th></tr></thead>
               <tbody>{rows.map(o => (
-                <tr key={o.id} className="cursor-pointer" onClick={() => nav(`/vehiculos/orden/${o.id}`)}>
+                <tr key={o.id} className="cursor-pointer" onClick={() => nav(`/ordenes/${o.id}`)}>
                   <td className="font-bold whitespace-nowrap">{o.folio}{o.detenido_material && <div className="text-[11px] font-semibold text-orange-600">Detenido por material</div>}</td>
                   <td><div className="flex items-center gap-3"><Miniatura path={o.foto_portada} /><div><div className="font-medium">{o.marca} {o.modelo} {o.anio}</div><div className="text-xs text-slate-500">{o.placas ?? '—'} {o.color && `· ${o.color}`}</div></div></div></td>
                   <td><div className="font-medium">{o.aseguradora_nombre ?? 'Particular'}</div><div className="text-xs text-slate-500">{o.siniestro ? `${o.siniestro} · ` : ''}{o.cliente_nombre}</div></td>
@@ -114,24 +114,6 @@ function ListaOrdenes() {
         )}
       </Card>
       {rows.length > 0 && <p className="text-xs text-slate-400">{rows.length} órdenes</p>}
-    </div>
-  )
-}
-
-export default function Vehiculos() {
-  const { puede } = useAuth()
-  const al = useAlertas()
-  const tab = useTab('ordenes')
-  return (
-    <div>
-      <PageHeader title="Vehículos" subtitle="Expedientes, órdenes de trabajo y asignaciones">
-        {puede('ordenes.gestionar') && <Link to="/vehiculos/recepcion" className="btn btn-primary"><Plus className="h-4 w-4" /> Nueva recepción</Link>}
-      </PageHeader>
-      <Tabs tabs={[
-        { id: 'ordenes', label: 'Órdenes de trabajo', icon: Car },
-        { id: 'asignaciones', label: 'Asignaciones', icon: Inbox, count: al.sinContactar },
-      ]} />
-      {tab === 'ordenes' ? <ListaOrdenes /> : <Asignaciones />}
     </div>
   )
 }

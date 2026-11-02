@@ -39,7 +39,7 @@ export default function Expediente() {
 
   return (
     <div>
-      <div className="no-print"><Link to="/vehiculos" className="text-sm font-medium text-blue-600 hover:underline">← Vehículos</Link></div>
+      <div className="no-print"><Link to="/ordenes" className="text-sm font-medium text-blue-600 hover:underline">← Órdenes de trabajo</Link></div>
       <div className="card mt-2 mb-5 flex flex-col gap-4 md:flex-row md:items-center">
         <Miniatura path={o.foto_portada} className="h-24 w-full md:w-36" />
         <div className="min-w-0 flex-1">

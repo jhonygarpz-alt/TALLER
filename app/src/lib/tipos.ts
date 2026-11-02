@@ -24,7 +24,7 @@ export interface Rentabilidad {
 }
 
 export interface Material {
-  id: number; codigo: string | null; descripcion: string; tipo: 'pintura' | 'material' | 'refaccion'; categoria: string | null
+  id: number; codigo: string | null; descripcion: string; tipo: 'pintura' | 'material' | 'refaccion' | 'herramienta'; categoria: string | null
   unidad: string; existencia: number; costo_promedio: number; minimo: number; proveedor_id: number | null; activo: boolean
 }
 export interface Tecnico { id: number; nombre: string; area: string; perfil_id: string | null; activo: boolean }

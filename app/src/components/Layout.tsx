@@ -1,17 +1,26 @@
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Car, ChevronDown, ChevronRight, Home, LogOut, Menu, Search, Settings, ShoppingCart, BarChart3, Wrench, X } from 'lucide-react'
+import { BarChart3, Bell, CalendarDays, Car, ChevronDown, ChevronRight, ClipboardList, Coins, FileText, HardHat, LayoutDashboard, LogOut, Menu, Package, Search, Settings, ShoppingCart, Users, Wrench, X } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useAlertas } from '../lib/alertas'
 import { ROLES } from '../lib/format'
 
-const NAV = [
-  { to: '/', label: 'Inicio', sub: '', icon: Home },
-  { to: '/vehiculos', label: 'Vehículos', sub: 'Expedientes', icon: Car },
-  { to: '/taller', label: 'Taller', sub: 'Producción', icon: Wrench },
-  { to: '/compras', label: 'Compras', sub: 'Inventario', icon: ShoppingCart },
-  { to: '/resultados', label: 'Resultados', sub: 'Reportes', icon: BarChart3 },
+// Menú de 12 módulos. "permiso" oculta el módulo a quien no puede consultarlo (la base de datos también lo impide)
+const NAV: { to: string; label: string; icon: LucideIcon; permiso?: string[] }[] = [
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/clientes', label: 'Clientes y aseguradoras', icon: Users },
+  { to: '/ordenes', label: 'Órdenes de trabajo', icon: ClipboardList },
+  { to: '/procesos', label: 'Procesos del taller', icon: Wrench },
+  { to: '/inventario', label: 'Inventario', icon: Package },
+  { to: '/compras', label: 'Compras', icon: ShoppingCart },
+  { to: '/mano-obra', label: 'Mano de obra y destajos', icon: HardHat },
+  { to: '/calendario', label: 'Calendario', icon: CalendarDays },
+  { to: '/costos', label: 'Costos y rentabilidad', icon: Coins, permiso: ['finanzas.ver'] },
+  { to: '/facturacion', label: 'Facturación y cobranza', icon: FileText, permiso: ['finanzas.ver'] },
+  { to: '/reportes', label: 'Reportes y KPIs', icon: BarChart3, permiso: ['reportes.ver', 'finanzas.ver'] },
+  { to: '/administracion', label: 'Administración', icon: Settings, permiso: ['usuarios.gestionar', 'config.gestionar', 'auditoria.ver'] },
 ]
 
 export function Logo() {
@@ -22,7 +31,7 @@ export function Logo() {
         <Wrench className="absolute -top-1 -left-1 h-4 w-4 rotate-[-30deg] text-white" />
       </div>
       <div className="leading-tight">
-        <div className="text-xl font-extrabold tracking-tight text-white">TallerPro</div>
+        <div className="text-xl font-extrabold tracking-tight text-white">Admin Taller</div>
         <div className="text-xs text-slate-400">Control de Taller</div>
       </div>
     </div>
@@ -38,13 +47,13 @@ function Campana() {
     document.addEventListener('mousedown', f); return () => document.removeEventListener('mousedown', f)
   }, [])
   const items = [
-    { n: a.retrasadas.length, t: 'vehículos retrasados', to: '/vehiculos?filtro=retrasados', c: 'text-red-600' },
-    { n: a.proximas.length, t: 'próximos a vencer su entrega', to: '/vehiculos?filtro=proximos', c: 'text-amber-600' },
-    { n: a.detenidas.length, t: 'detenidos por falta de material', to: '/vehiculos?filtro=detenidos', c: 'text-orange-600' },
-    { n: a.sinActualizar.length, t: 'sin actualización de avance', to: '/vehiculos?filtro=sin_actualizar', c: 'text-slate-700' },
-    { n: a.listas.length, t: 'terminados pendientes de entrega', to: '/vehiculos?filtro=etapa:listo_entrega', c: 'text-green-700' },
+    { n: a.retrasadas.length, t: 'vehículos retrasados', to: '/ordenes?filtro=retrasados', c: 'text-red-600' },
+    { n: a.proximas.length, t: 'próximos a vencer su entrega', to: '/ordenes?filtro=proximos', c: 'text-amber-600' },
+    { n: a.detenidas.length, t: 'detenidos por falta de material', to: '/ordenes?filtro=detenidos', c: 'text-orange-600' },
+    { n: a.sinActualizar.length, t: 'sin actualización de avance', to: '/ordenes?filtro=sin_actualizar', c: 'text-slate-700' },
+    { n: a.listas.length, t: 'terminados pendientes de entrega', to: '/ordenes?filtro=etapa:listo_entrega', c: 'text-green-700' },
     { n: a.comprasPorAutorizar, t: 'compras por autorizar', to: '/compras?tab=compras&estado=por_autorizar', c: 'text-blue-700' },
-    { n: a.sinContactar, t: 'asignaciones sin contactar', to: '/vehiculos?tab=asignaciones&estatus=sin_contactar', c: 'text-purple-700' },
+    { n: a.sinContactar, t: 'asignaciones sin contactar', to: '/ordenes?tab=asignaciones&estatus=sin_contactar', c: 'text-purple-700' },
   ].filter(i => i.n > 0)
   return (
     <div className="relative" ref={ref}>
@@ -88,7 +97,7 @@ function MenuUsuario() {
       {open && (
         <div className="absolute right-0 z-40 mt-2 w-56 rounded-xl border bg-white p-1.5 shadow-xl">
           {(puede('usuarios.gestionar') || puede('config.gestionar') || puede('auditoria.ver')) && (
-            <Link to="/configuracion" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><Settings className="h-4 w-4" /> Configuración</Link>
+            <Link to="/administracion" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><Settings className="h-4 w-4" /> Configuración</Link>
           )}
           <button onClick={() => supabase.auth.signOut()} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"><LogOut className="h-4 w-4" /> Cerrar sesión</button>
         </div>
@@ -98,6 +107,7 @@ function MenuUsuario() {
 }
 
 export default function Layout() {
+  const { puede } = useAuth()
   const [menu, setMenu] = useState(false)
   const [q, setQ] = useState('')
   const nav = useNavigate()
@@ -106,33 +116,27 @@ export default function Layout() {
 
   function buscar(e: FormEvent) {
     e.preventDefault()
-    if (q.trim()) nav(`/vehiculos?q=${encodeURIComponent(q.trim())}`)
+    if (q.trim()) nav(`/ordenes?q=${encodeURIComponent(q.trim())}`)
   }
 
   return (
     <div className="min-h-screen md:flex">
       {menu && <div className="fixed inset-0 z-30 bg-slate-900/50 md:hidden" onClick={() => setMenu(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-navy-800 transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 ${menu ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center justify-between px-5 py-6">
+        <div className="flex items-center justify-between px-5 py-5">
           <Logo />
           <button className="text-slate-400 md:hidden" onClick={() => setMenu(false)} aria-label="Cerrar menú"><X className="h-6 w-6" /></button>
         </div>
-        <nav className="flex-1 space-y-1.5 px-3">
-          {NAV.map(n => (
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
+          {NAV.filter(n => !n.permiso || n.permiso.some(p => puede(p))).map(n => (
             <NavLink key={n.to} to={n.to} end={n.to === '/'}
-              className={({ isActive }) => `group flex items-center gap-4 rounded-xl px-4 py-3 transition ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' : 'text-slate-300 hover:bg-navy-700 hover:text-white'}`}>
-              {({ isActive }) => (<>
-                <n.icon className="h-6 w-6 shrink-0" />
-                <span className="flex-1 leading-tight">
-                  <span className="block text-[15px] font-semibold">{n.label}</span>
-                  {n.sub && <span className={`block text-xs ${isActive ? 'text-blue-100' : 'text-slate-400'}`}>{n.sub}</span>}
-                </span>
-                {n.sub && <ChevronRight className="h-4 w-4 opacity-50" />}
-              </>)}
+              className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30' : 'text-slate-300 hover:bg-navy-700 hover:text-white'}`}>
+              <n.icon className="h-5 w-5 shrink-0" />
+              <span className="flex-1 leading-tight">{n.label}</span>
             </NavLink>
           ))}
         </nav>
-        <div className="px-5 py-4 text-[11px] text-slate-500">TallerPro · v0.1</div>
+        <div className="px-5 py-4 text-[11px] text-slate-500">Admin Taller · v0.2</div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">

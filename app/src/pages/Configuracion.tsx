@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { History, KeyRound, Plus, Settings2, Users } from 'lucide-react'
+import { FolderTree, HardHat, History, KeyRound, Plus, Settings2, Truck, Users } from 'lucide-react'
+import { TecnicosTarifas } from './taller/produccion'
+import { TabProveedores } from './compras/inventario'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { ROLES, errorTexto, fechaHora } from '../lib/format'
+import { AREAS, ROLES, errorTexto, fechaHora } from '../lib/format'
 import { Badge, Card, Empty, ErrorMsg, Field, Modal, PageHeader, SinPermiso, Tabs, useTab } from '../components/ui'
 
 interface Perfil { id: string; email: string; nombre: string; rol: string; activo: boolean; created_at: string }
@@ -265,21 +267,71 @@ function Auditoria() {
   )
 }
 
+/** Catálogos de operación: sucursales, motivos de retraso y áreas del taller */
+function Catalogos() {
+  const { puede } = useAuth()
+  const [suc, setSuc] = useState<{ id: number; nombre: string; direccion: string | null; activo: boolean }[]>([])
+  const [mot, setMot] = useState<{ id: number; nombre: string; activo: boolean }[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const editar = puede('config.gestionar')
+  const cargar = useCallback(() => {
+    supabase.from('sucursales').select('*').order('nombre').then(({ data }) => setSuc(data ?? []))
+    supabase.from('motivos_retraso').select('*').order('nombre').then(({ data }) => setMot(data ?? []))
+  }, [])
+  useEffect(() => { cargar() }, [cargar])
+  async function run(p: PromiseLike<{ error: unknown }>) { const { error } = await p; setError(error ? errorTexto(error) : null); cargar() }
+  const alta = (tabla: string, campos: Record<string, unknown>) => (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const form = e.currentTarget; run(supabase.from(tabla).insert(campos)).then(() => form.reset()) }
+  const lista = (rows: { id: number; nombre: string; activo: boolean; direccion?: string | null }[], tabla: string) => (
+    <ul className="divide-y text-sm">{rows.map(r => (
+      <li key={r.id} className={`flex items-center justify-between py-2 ${r.activo ? '' : 'opacity-50'}`}>
+        <span><b>{r.nombre}</b>{r.direccion && <span className="text-slate-500"> · {r.direccion}</span>}</span>
+        {editar && <button className="text-xs text-slate-500 hover:underline" onClick={() => run(supabase.from(tabla).update({ activo: !r.activo }).eq('id', r.id))}>{r.activo ? 'Desactivar' : 'Activar'}</button>}
+      </li>))}
+    </ul>
+  )
+  return (
+    <div className="grid gap-5 lg:grid-cols-3">
+      <div className="lg:col-span-3"><ErrorMsg error={error} /></div>
+      <Card title="Sucursales">
+        {lista(suc, 'sucursales')}
+        {editar && <form className="mt-3 flex gap-2" onSubmit={e => { const fd = new FormData(e.currentTarget); alta('sucursales', { nombre: fd.get('n'), direccion: fd.get('d') || null })(e) }}>
+          <input name="n" className="input" required placeholder="Nombre" /><input name="d" className="input" placeholder="Dirección" /><button className="btn btn-primary"><Plus className="h-4 w-4" /></button></form>}
+      </Card>
+      <Card title="Motivos de retraso">
+        {lista(mot, 'motivos_retraso')}
+        {editar && <form className="mt-3 flex gap-2" onSubmit={e => { const fd = new FormData(e.currentTarget); alta('motivos_retraso', { nombre: fd.get('n') })(e) }}>
+          <input name="n" className="input" required placeholder="Nuevo motivo" /><button className="btn btn-primary"><Plus className="h-4 w-4" /></button></form>}
+        <p className="mt-2 text-xs text-slate-400">Se eligen en el expediente de la orden y alimentan el reporte de retrasos y sus causas.</p>
+      </Card>
+      <Card title="Áreas del taller">
+        <ul className="divide-y text-sm">{Object.values(AREAS).map(a => <li key={a} className="py-2 font-medium">{a}</li>)}</ul>
+        <p className="mt-2 text-xs text-slate-400">Las áreas clasifican daños, presupuestos, trabajos y tarifas de destajo. Agregar un área nueva requiere un ajuste en la base de datos.</p>
+      </Card>
+    </div>
+  )
+}
+
 export default function Configuracion() {
   const { puede } = useAuth()
   const tab = useTab(puede('usuarios.gestionar') ? 'usuarios' : 'parametros')
-  if (!puede('usuarios.gestionar') && !puede('config.gestionar') && !puede('auditoria.ver')) return <SinPermiso que="la configuración" />
+  if (!puede('usuarios.gestionar') && !puede('config.gestionar') && !puede('auditoria.ver')) return <SinPermiso que="la administración" />
   return (
     <div>
-      <PageHeader title="Configuración" subtitle="Usuarios, permisos, plazos y auditoría" />
+      <PageHeader title="Administración" subtitle="Usuarios, permisos, catálogos, parámetros de operación y auditoría" />
       <Tabs tabs={[
         { id: 'usuarios', label: 'Usuarios', icon: Users, hidden: !puede('usuarios.gestionar') },
         { id: 'permisos', label: 'Permisos por rol', icon: KeyRound, hidden: !puede('usuarios.gestionar') },
-        { id: 'parametros', label: 'Plazos y parámetros', icon: Settings2, hidden: !puede('config.gestionar') },
+        { id: 'catalogos', label: 'Catálogos', icon: FolderTree, hidden: !puede('config.gestionar') },
+        { id: 'tecnicos', label: 'Técnicos y tarifas', icon: HardHat, hidden: !puede('config.gestionar') },
+        { id: 'proveedores', label: 'Proveedores', icon: Truck, hidden: !puede('config.gestionar') && !puede('compras.gestionar') },
+        { id: 'parametros', label: 'Parámetros e indicadores', icon: Settings2, hidden: !puede('config.gestionar') },
         { id: 'auditoria', label: 'Auditoría', icon: History, hidden: !puede('auditoria.ver') },
       ]} />
       {tab === 'usuarios' && puede('usuarios.gestionar') && <Usuarios />}
       {tab === 'permisos' && puede('usuarios.gestionar') && <Permisos />}
+      {tab === 'catalogos' && puede('config.gestionar') && <Catalogos />}
+      {tab === 'tecnicos' && puede('config.gestionar') && <TecnicosTarifas />}
+      {tab === 'proveedores' && <TabProveedores />}
       {tab === 'parametros' && puede('config.gestionar') && <Parametros />}
       {tab === 'auditoria' && puede('auditoria.ver') && <Auditoria />}
     </div>

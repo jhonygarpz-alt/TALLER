@@ -132,8 +132,8 @@ function DetalleAsignacion({ id, onClose, onCambio }: { id: number; onClose: () 
           {a.motivo_no_cita && <div className="text-slate-600">Motivo sin cita: {a.motivo_no_cita}</div>}
           {a.notas && <div className="text-slate-600">{a.notas}</div>}
           <div className="flex flex-wrap gap-2 pt-2">
-            {orden && <Link to={`/vehiculos/orden/${orden.id}`} className="btn btn-secondary btn-sm">Ver orden {orden.folio}</Link>}
-            {!cerrada && puede('ordenes.gestionar') && <Link to={`/vehiculos/recepcion?asignacion=${a.id}`} className="btn btn-success btn-sm"><Car className="h-4 w-4" /> Recibir vehículo</Link>}
+            {orden && <Link to={`/ordenes/${orden.id}`} className="btn btn-secondary btn-sm">Ver orden {orden.folio}</Link>}
+            {!cerrada && puede('ordenes.gestionar') && <Link to={`/ordenes/nueva?asignacion=${a.id}`} className="btn btn-success btn-sm"><Car className="h-4 w-4" /> Recibir vehículo</Link>}
             {!cerrada && puede('asignaciones.gestionar') && <button className="btn btn-ghost btn-sm text-red-600" onClick={() => setCancelar(!cancelar)}>Cancelar asignación</button>}
           </div>
           {cancelar && (
