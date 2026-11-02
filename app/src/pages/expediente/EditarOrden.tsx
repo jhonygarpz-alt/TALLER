@@ -20,7 +20,7 @@ export default function EditarOrden({ o, onClose, onGuardado }: { o: VOrden; onC
   const [orden, setOrden] = useState({
     siniestro: o.siniestro ?? '', tipo_reparacion_id: o.tipo_reparacion_id ? String(o.tipo_reparacion_id) : '', fecha_compromiso: o.fecha_compromiso ?? '',
     asesor_id: o.asesor_id ?? '', kilometraje: o.kilometraje != null ? String(o.kilometraje) : '', danos_reportados: o.danos_reportados ?? '',
-    objetos: o.objetos ?? '', sucursal_id: '',
+    objetos: o.objetos ?? '', sucursal_id: '', prioridad: o.prioridad ?? 'normal',
   })
   const [veh, setVeh] = useState({ marca: o.marca, modelo: o.modelo, anio: o.anio ? String(o.anio) : '', placas: o.placas ?? '', color: o.color ?? '', vin: '' })
   const [cli, setCli] = useState({ nombre: o.cliente_nombre, telefono: o.cliente_telefono ?? '', email: '' })
@@ -60,7 +60,7 @@ export default function EditarOrden({ o, onClose, onGuardado }: { o: VOrden; onC
       tipo_reparacion_id: orden.tipo_reparacion_id ? Number(orden.tipo_reparacion_id) : null,
       fecha_compromiso: orden.fecha_compromiso, asesor_id: orden.asesor_id || null,
       kilometraje: orden.kilometraje ? Number(orden.kilometraje) : null, danos_reportados: orden.danos_reportados.trim(),
-      objetos: orden.objetos.trim() || null, sucursal_id: orden.sucursal_id ? Number(orden.sucursal_id) : null,
+      objetos: orden.objetos.trim() || null, prioridad: orden.prioridad, sucursal_id: orden.sucursal_id ? Number(orden.sucursal_id) : null,
     }).eq('id', o.id)
     if (r1.error) { setGuardando(false); return setError(errorTexto(r1.error)) }
     const r2 = await supabase.from('vehiculos').update({
@@ -88,6 +88,7 @@ export default function EditarOrden({ o, onClose, onGuardado }: { o: VOrden; onC
           <Field label="Fecha compromiso *"><input className="input" type="date" required value={orden.fecha_compromiso} onChange={setO('fecha_compromiso')} /></Field>
           <Field label="Asesor responsable"><select className="input" value={orden.asesor_id} onChange={setO('asesor_id')}><option value="">Sin asignar</option>{asesores.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Field>
           <Field label="Kilometraje"><input className="input" type="number" min={0} value={orden.kilometraje} onChange={setO('kilometraje')} /></Field>
+          <Field label="Prioridad"><select className="input" value={orden.prioridad} onChange={setO('prioridad')}><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></Field>
           <Field label="Sucursal"><select className="input" value={orden.sucursal_id} onChange={setO('sucursal_id')}>{sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}</select></Field>
           <Field label="Daños reportados *" className="sm:col-span-3"><textarea className="input" rows={2} required value={orden.danos_reportados} onChange={setO('danos_reportados')} /></Field>
           <Field label="Objetos y accesorios" className="sm:col-span-3"><input className="input" value={orden.objetos} onChange={setO('objetos')} /></Field>

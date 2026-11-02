@@ -12,6 +12,7 @@ export interface VOrden {
   placas: string | null; color: string | null; aseguradora_nombre: string | null; asesor_nombre: string | null
   tipo_reparacion_nombre: string | null; dias_en_taller: number; retrasado: boolean; entregado_a_tiempo: boolean
   foto_portada: string | null; actividades_pendientes: number; tecnicos_activos: string | null
+  prioridad: 'normal' | 'alta' | 'urgente'; sucursal_id: number | null; sucursal_nombre: string | null; dias_en_etapa: number
 }
 
 export interface Rentabilidad {

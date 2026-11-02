@@ -1,28 +1,12 @@
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { BarChart3, Bell, CalendarDays, Car, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, ClipboardList, Coins, FileText, HardHat, LayoutDashboard, LogOut, Menu, Package, Search, Settings, ShoppingCart, Users, Wrench, X } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Bell, Car, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, LogOut, Menu, Search, Settings, Wrench, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useAlertas } from '../lib/alertas'
 import { ROLES } from '../lib/format'
 import { useEmpresa } from '../lib/empresa'
-
-// Menú de 12 módulos. "permiso" oculta el módulo a quien no puede consultarlo (la base de datos también lo impide)
-const NAV: { to: string; label: string; icon: LucideIcon; permiso?: string[] }[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/clientes', label: 'Clientes y aseguradoras', icon: Users },
-  { to: '/ordenes', label: 'Órdenes de trabajo', icon: ClipboardList },
-  { to: '/procesos', label: 'Procesos del taller', icon: Wrench },
-  { to: '/inventario', label: 'Inventario', icon: Package },
-  { to: '/compras', label: 'Compras', icon: ShoppingCart },
-  { to: '/mano-obra', label: 'Mano de obra y destajos', icon: HardHat },
-  { to: '/calendario', label: 'Calendario', icon: CalendarDays },
-  { to: '/costos', label: 'Costos y rentabilidad', icon: Coins, permiso: ['finanzas.ver'] },
-  { to: '/facturacion', label: 'Facturación y cobranza', icon: FileText, permiso: ['finanzas.ver'] },
-  { to: '/reportes', label: 'Reportes y KPIs', icon: BarChart3, permiso: ['reportes.ver', 'finanzas.ver'] },
-  { to: '/administracion', label: 'Administración', icon: Settings, permiso: ['usuarios.gestionar', 'config.gestionar', 'auditoria.ver'] },
-]
+import { NAV } from '../lib/navegacion'
 
 /** Logotipo: usa el logo cargado por la empresa (Administración → Empresa y logo) o el ícono por defecto */
 export function Logo({ compacto = false, claro = true }: { compacto?: boolean; claro?: boolean }) {

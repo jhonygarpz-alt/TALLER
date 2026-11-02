@@ -1,16 +1,26 @@
 import { useEffect, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { iconoDeRuta } from '../lib/navegacion'
 import { X, Clock, AlertTriangle, ChevronRight, Inbox } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-export function PageHeader({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children?: ReactNode }) {
+/** Encabezado corporativo de cada módulo: ícono, título, subtítulo, acciones e imagen del taller en tonos verdes */
+export function PageHeader({ title, subtitle, children, icon }: { title: string; subtitle?: ReactNode; children?: ReactNode; icon?: LucideIcon }) {
+  const { pathname } = useLocation()
+  const Icono = icon ?? iconoDeRuta(pathname)
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
+    <div className="relative mb-6 overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(16,24,20,.04),0_8px_24px_-12px_rgba(16,24,20,.12)]">
+      <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[58%] object-cover object-[60%_50%] md:block [mask-image:linear-gradient(to_right,transparent,black_38%)]" />
+      <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-white via-white/70 to-transparent md:block" />
+      <div className="relative flex flex-wrap items-center gap-4 px-5 py-5 md:px-7 md:py-6">
+        {Icono && <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100 text-brand-700 shadow-inner ring-1 ring-brand-200/60"><Icono className="h-7 w-7" /></div>}
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 md:text-[28px]">{title}</h1>
+          {subtitle && <p className="mt-0.5 text-sm text-slate-600 md:text-base">{subtitle}</p>}
+        </div>
+        {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
       </div>
-      {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
     </div>
   )
 }
@@ -45,8 +55,8 @@ export function Field({ label, children, className = '', hint }: { label: string
 
 export function Empty({ children, icon: Icon = Inbox }: { children: ReactNode; icon?: LucideIcon }) {
   return (
-    <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-slate-400">
-      <Icon className="h-8 w-8" strokeWidth={1.5} />
+    <div className="flex flex-col items-center gap-3 py-10 text-center text-sm text-slate-400">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 ring-1 ring-slate-100"><Icon className="h-7 w-7 text-slate-300" strokeWidth={1.5} /></span>
       <div>{children}</div>
     </div>
   )
@@ -101,16 +111,19 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
 }
 
 /** Pestañas internas sincronizadas con la URL (?tab=) para poder compartir enlaces directos */
+/** Pestañas internas sincronizadas con la URL (?tab=) para poder compartir enlaces directos */
 export function Tabs({ tabs, param = 'tab' }: { tabs: { id: string; label: string; icon?: LucideIcon; count?: number; hidden?: boolean }[]; param?: string }) {
   const [sp, setSp] = useSearchParams()
   const visibles = tabs.filter(t => !t.hidden)
   const actual = sp.get(param) ?? visibles[0]?.id
   return (
     <div className="no-print -mx-4 mb-5 overflow-x-auto px-4 md:mx-0 md:px-0">
-      <div className="inline-flex min-w-full gap-1 border-b border-slate-200">
+      <div className="inline-flex min-w-full gap-1 border-b border-slate-200 md:min-w-0 md:rounded-2xl md:border md:border-slate-200/70 md:bg-white md:p-1.5 md:shadow-sm">
         {visibles.map(t => (
           <button key={t.id} onClick={() => { const n = new URLSearchParams(); n.set(param, t.id); setSp(n) }}
-            className={`-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition ${actual === t.id ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+            className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition md:mb-0 md:rounded-xl md:border-b-0 ${actual === t.id
+              ? 'border-brand-600 text-brand-700 md:bg-gradient-to-r md:from-brand-600 md:to-brand-500 md:text-white md:shadow-md md:shadow-brand-900/20'
+              : 'border-transparent text-slate-500 hover:text-slate-800 md:hover:bg-slate-50'}`}>
             {t.icon && <t.icon className="h-4 w-4" />}{t.label}
             {!!t.count && <span className="rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">{t.count}</span>}
           </button>

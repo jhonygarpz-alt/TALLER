@@ -10,14 +10,14 @@ import { useAlertas } from '../lib/alertas'
 import { usePeriodo } from '../lib/periodo'
 import { ETAPAS, fecha, hoyISO, money, pct, type Etapa } from '../lib/format'
 import { vehiculoTxt, type Rentabilidad, type VOrden } from '../lib/tipos'
-import { Badge, Card, Empty, KpiCard, TableWrap } from '../components/ui'
+import { Badge, Card, Empty, KpiCard, PageHeader, TableWrap } from '../components/ui'
 import { Barras, Dona, type Dato } from '../components/Graficas'
 import { Miniatura } from '../components/Fotos'
 import PeriodoSelect from '../components/PeriodoSelect'
 
 const GRUPOS: { label: string; etapas: Etapa[]; color: string; filtro: string }[] = [
   { label: 'Recepción / diagnóstico', etapas: ['recepcion', 'diagnostico', 'esperando_autorizacion'], color: '#ca8a04', filtro: 'etapa:recepcion,diagnostico,esperando_autorizacion' },
-  { label: 'En reparación', etapas: ['en_reparacion'], color: '#15a050', filtro: 'etapa:en_reparacion' },
+  { label: 'En reparación', etapas: ['en_reparacion'], color: '#2563eb', filtro: 'etapa:en_reparacion' },
   { label: 'Hojalatería', etapas: ['hojalateria'], color: '#0891b2', filtro: 'etapa:hojalateria' },
   { label: 'Preparación / pintura', etapas: ['preparacion', 'pintura'], color: '#9333ea', filtro: 'etapa:preparacion,pintura' },
   { label: 'Detallado / calidad', etapas: ['detallado', 'control_calidad'], color: '#ea580c', filtro: 'etapa:detallado,control_calidad' },
@@ -93,13 +93,9 @@ export default function Inicio() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Bienvenido, {perfil?.nombre.split(' ')[0]}</h1>
-          <p className="text-sm text-slate-500">Resumen general del taller • {hoy}</p>
-        </div>
-        <PeriodoSelect periodo={per.periodo} setPeriodo={per.setPeriodo} texto={per.texto} />
-      </div>
+      <PageHeader title={`Bienvenido, ${perfil?.nombre.split(' ')[0] ?? ''}`} subtitle={`Resumen general del taller • ${hoy}`}>
+          <PeriodoSelect periodo={per.periodo} setPeriodo={per.setPeriodo} texto={per.texto} />
+      </PageHeader>
 
       {/* INDICADORES PRINCIPALES */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
