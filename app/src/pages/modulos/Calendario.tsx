@@ -127,7 +127,7 @@ export default function Calendario() {
         <button className="btn btn-secondary btn-sm" onClick={() => mover(-1)} aria-label="Anterior"><ChevronLeft className="h-4 w-4" /></button>
         <button className="btn btn-secondary btn-sm" onClick={() => setRef(new Date())}>Hoy</button>
         <button className="btn btn-secondary btn-sm" onClick={() => mover(1)} aria-label="Siguiente"><ChevronRight className="h-4 w-4" /></button>
-        <span className="text-lg font-bold capitalize">{titulo}</span>
+        <span className="text-lg font-bold">{titulo.charAt(0).toUpperCase() + titulo.slice(1)}</span>
       </div>
       <div className="flex flex-wrap gap-2">
         {Object.entries(TIPOS).map(([k, t]) => (

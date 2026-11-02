@@ -2,17 +2,22 @@
 
 Sistema web para administrar un taller de hojalatería, pintura y mecánica que trabaja con **MAPFRE** y con clientes **particulares**. Todo gira alrededor de la **orden de trabajo**: cada costo, destajo, material, fotografía y cobro está ligado a una orden (o a un centro de costo general autorizado).
 
-## Módulos
+## Módulos (menú lateral)
 
 | Módulo | Qué hace |
 |---|---|
-| **Inicio** | Panel ejecutivo: 12 indicadores (cada uno abre su listado), estado de vehículos, productividad, resumen financiero, alertas automáticas y accesos rápidos. |
-| **Vehículos** | Asignaciones MAPFRE con historial de contacto y citas · Recepción en 4 pasos (reutiliza vehículos por placas, checklist, fotos) · Expediente con 7 pestañas: general, diagnóstico y fotos, presupuesto y autorizaciones (con ampliaciones), trabajos, materiales (pintura presupuestada vs real, piezas retiradas), costos y destajos (facturas y cobros), entrega y encuesta. |
-| **Taller** | Tablero de producción por etapa · Trabajos por técnico · Destajos (autorizar / pagar por lote, separado aseguradora vs particular) · Productividad · Técnicos y tarifas. |
-| **Compras** | Solicitudes de material (solicita → autoriza → entrega → se descuenta y se carga a la orden) · Catálogo e inventario con ajustes · Control de pintura · Requisiciones con cotizaciones comparativas, autorización y recepción · Proveedores · Movimientos e historial de precios con alertas de aumento. |
-| **Resultados** | Rentabilidad por vehículo (autorizado, facturado, cobrado, costos directos, utilidad bruta y después de indirectos) · KPIs de aseguradora contra objetivos configurables · Indicadores financieros (MAPFRE vs particulares, gastos fijos, punto de equilibrio, comparativo mensual, cuentas por cobrar) · Reportes descargables en Excel (CSV). |
-
-Configuración (menú del usuario): usuarios y roles, matriz de permisos por rol, plazos por tipo de reparación, parámetros/objetivos, aseguradoras y bitácora de auditoría.
+| **Dashboard** | 12 indicadores interactivos (asignados, en taller, diagnóstico, reparación, hojalatería, pintura, listos, entregas programadas, retrasados, trabajos pendientes…), estado de vehículos, órdenes por aseguradora, resumen financiero, alertas y accesos rápidos. |
+| **Clientes y aseguradoras** | Clientes con datos fiscales (preparados para CFDI 4.0) y días de crédito · Aseguradoras con convenio, crédito, plazo de contacto y plazos de reparación configurables (solo MAPFRE habilitada) · Padrón de vehículos con historial · Llamadas, mensajes y citas · Encuestas de satisfacción · Estado de cuenta por cliente. |
+| **Órdenes de trabajo** | Asignaciones de aseguradora con historial de contacto · Recepción en 4 pasos (folio automático, fotos, checklist, fecha compromiso) · Expediente con 7 pestañas: general, diagnóstico y fotos, presupuesto y autorizaciones (ampliaciones), trabajos, materiales, costos y destajos, entrega y cierre. |
+| **Procesos del taller** | Tablero Kanban de 11 etapas (Recepción → Entregado, incluye Preparación); desde cada tarjeta se cambia la etapa y se suben evidencias. |
+| **Inventario** | Existencias, mínimos y costo promedio · Solicitudes y salidas ligadas a orden o centro de costo · Control de pintura · Movimientos. |
+| **Compras** | Requisiciones, cotizaciones comparativas, autorización, recepción (entra al inventario), factura del proveedor con documento · Historial de precios con alertas de aumento. |
+| **Mano de obra y destajos** | Trabajos por técnico con evidencia y validación · Destajos (autorizar / pagar, separados aseguradora vs particular) · Productividad · Técnicos (especialidad) y tarifas. |
+| **Calendario** | Vista día / semana / mes con citas, fechas compromiso, entregas, trabajos programados y asignaciones · Carga por técnico · Trabajos vencidos y vehículos detenidos por material. |
+| **Costos y rentabilidad** | Utilidad por orden (bruta y después de indirectos) · Presupuesto vs costo real con alertas de margen negativo y consumo excesivo · Indicadores financieros y punto de equilibrio. |
+| **Facturación y cobranza** | Pendientes de facturar · Facturas con PDF/XML y vencimiento automático · Pagos · Antigüedad de saldos · Estados de cuenta. **CFDI 4.0: estructura preparada, timbrado pendiente.** |
+| **Reportes y KPIs** | 15 reportes descargables a Excel (CSV) e impresión a PDF · KPIs de aseguradora contra objetivos. |
+| **Administración** | Usuarios (alta y contraseñas), permisos por rol, catálogos (sucursales, motivos de retraso, áreas), técnicos y tarifas, proveedores, parámetros e indicadores, auditoría. |
 
 ## Reglas que se validan en la base de datos (no solo en pantalla)
 
