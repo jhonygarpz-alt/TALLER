@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { AlertTriangle, Camera, ClipboardList, DollarSign, FileText, Package, Printer, Truck, Wrench } from 'lucide-react'
+import { AlertTriangle, Camera, ClipboardList, DollarSign, FileText, Package, Printer, Trash2, Truck, Wrench } from 'lucide-react'
+import { useAuth } from '../../lib/auth'
+import EliminarOrden from './EliminarOrden'
 import { supabase } from '../../lib/supabase'
 import { useAlertas } from '../../lib/alertas'
 import { fecha } from '../../lib/format'
@@ -24,6 +26,8 @@ export default function Expediente() {
   const al = useAlertas()
   const [o, setO] = useState<VOrden | null>(null)
   const [noExiste, setNoExiste] = useState(false)
+  const [eliminar, setEliminar] = useState(false)
+  const { puede } = useAuth()
 
   const recargar = useCallback(async () => {
     const { data } = await supabase.from('v_ordenes').select('*').eq('id', id).maybeSingle()
@@ -57,7 +61,10 @@ export default function Expediente() {
           <div className={`rounded-xl p-2 ${o.retrasado ? 'bg-red-50' : 'bg-slate-50'}`}><div className="text-[11px] text-slate-500">Compromiso</div><div className={`text-sm font-bold ${o.retrasado ? 'text-red-600' : ''}`}>{fecha(o.fecha_compromiso)}</div></div>
           <div className="rounded-xl bg-slate-50 p-2"><div className="text-[11px] text-slate-500">Días</div><div className="text-sm font-bold">{o.dias_en_taller}</div></div>
         </div>
-        <button className="btn btn-secondary btn-sm no-print self-start" onClick={() => window.print()} title="Imprimir o guardar como PDF"><Printer className="h-4 w-4" /></button>
+        <div className="no-print flex gap-2 self-start md:flex-col">
+          <button className="btn btn-secondary btn-sm" onClick={() => window.print()} title="Imprimir o guardar como PDF"><Printer className="h-4 w-4" /></button>
+          {puede('excepciones.autorizar') && <button className="btn btn-sm border border-red-200 bg-white text-red-600 hover:bg-red-50" onClick={() => setEliminar(true)} title="Eliminar orden"><Trash2 className="h-4 w-4" /> Eliminar</button>}
+        </div>
       </div>
 
       <Tabs tabs={[
@@ -76,6 +83,7 @@ export default function Expediente() {
       {tab === 'materiales' && <Materiales {...props} />}
       {tab === 'costos' && <Costos {...props} />}
       {tab === 'entrega' && <Entrega {...props} />}
+      {eliminar && <EliminarOrden o={o} onClose={() => setEliminar(false)} />}
     </div>
   )
 }
