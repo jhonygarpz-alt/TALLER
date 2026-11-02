@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { Link, useSearchParams } from 'react-router-dom'
 import { Download, Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { revertir } from '../../lib/revertir'
 import { useAuth } from '../../lib/auth'
 
 import { usePeriodo } from '../../lib/periodo'
@@ -123,7 +124,11 @@ export function Destajos() {
                   <td>{r.actividades?.actividad}<div className="text-xs text-slate-500">{AREAS[r.actividades?.area ?? '']}{r.actividades?.pieza && ` · ${r.actividades.pieza}`}</div></td>
                   <td><Badge cls={ESTADO_DESTAJO[r.estado].badge}>{ESTADO_DESTAJO[r.estado].label}</Badge>{r.referencia_pago && <div className="text-[11px] text-slate-500">Ref. {r.referencia_pago}</div>}</td>
                   <td className="text-xs text-slate-500">Gen. {fecha(r.generado_at)}{r.autorizado_at && <><br />Aut. {fecha(r.autorizado_at)}</>}{r.pagado_at && <><br />Pag. {fecha(r.pagado_at)}</>}</td>
-                  <td className="text-right font-semibold">{money2(r.importe)}</td>
+                  <td className="text-right font-semibold">{money2(r.importe)}
+                    {r.estado !== 'cancelado' && puede('excepciones.autorizar') && <button className="ml-2 text-xs font-normal text-red-600 hover:underline" onClick={async () => {
+                      const x = await revertir('destajo_cancelar', { p_id: r.id }, `¿Cancelar el destajo de ${r.tecnicos?.nombre} por ${money2(r.importe)}${r.estado === 'pagado' ? ' (YA PAGADO)' : ''}?`)
+                      if (x !== undefined) { setError(x); cargar() }
+                    }}>Cancelar</button>}</td>
                 </tr>))}
               </tbody>
             </table></div>

@@ -7,6 +7,15 @@ import { errorTexto } from '../../lib/format'
 import type { VOrden } from '../../lib/tipos'
 import { ErrorMsg, Field, Modal } from '../../components/ui'
 
+const DONDE: Record<string, { tab: string; como: string }> = {
+  'destajos generados': { tab: 'costos', como: 'Costos y destajos → “Cancelar” en cada destajo (o anula el trabajo)' },
+  'trabajos terminados o validados': { tab: 'trabajos', como: 'Trabajos y avance → “Anular” en cada trabajo (cancela también su destajo)' },
+  'material entregado del almacén': { tab: 'materiales', como: 'Materiales y compras → “Devolver” en cada entrega (regresa la existencia)' },
+  'facturas vigentes': { tab: 'costos', como: 'Costos y destajos → Facturas → “Cancelar”' },
+  'cobros': { tab: 'costos', como: 'Costos y destajos → Cobros → “Eliminar”' },
+  'otros costos registrados': { tab: 'costos', como: 'Costos y destajos → Otros costos → “Eliminar”' },
+}
+
 /** Eliminación controlada: solo órdenes sin movimientos económicos, con motivo y confirmación por folio */
 export default function EliminarOrden({ o, onClose }: { o: VOrden; onClose: () => void }) {
   const nav = useNavigate()
@@ -41,9 +50,14 @@ export default function EliminarOrden({ o, onClose }: { o: VOrden; onClose: () =
       {bloqueos === null ? <p className="text-sm text-slate-400">Revisando movimientos de la orden…</p> : bloqueos.length > 0 ? (
         <div className="space-y-3 text-sm">
           <p>Esta orden <b>no se puede eliminar</b> porque ya tiene movimientos que forman parte de los costos y la contabilidad del taller:</p>
-          <ul className="list-disc space-y-1 pl-5 text-red-700">{bloqueos.map(b => <li key={b}>{b}</li>)}</ul>
-          <p className="text-slate-600">Si la orden no procede, <b>cancélala</b> desde <i>Información general → Avance de etapa → Cancelado</i>. Así se conserva su historial y no se pierden costos.</p>
-          <div className="flex justify-end"><button className="btn btn-secondary" onClick={onClose}>Entendido</button></div>
+          <ul className="space-y-2">{bloqueos.map(b => { const d = DONDE[b]; return (
+            <li key={b} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2">
+              <span><b className="text-red-700">{b}</b>{d && <span className="block text-xs text-slate-600">{d.como}</span>}</span>
+              {d && <button type="button" className="btn btn-secondary btn-sm" onClick={() => { onClose(); nav(`/ordenes/${o.id}?tab=${d.tab}`) }}>Ir a revertir</button>}
+            </li>) })}
+          </ul>
+          <p className="text-slate-600">Cuando reviertas esos movimientos podrás eliminar la orden. Si prefieres conservar su historial, <b>cancélala</b> desde <i>Información general → Avance de etapa → Cancelado</i>.</p>
+          <div className="flex justify-end"><button className="btn btn-secondary" onClick={onClose}>Cerrar</button></div>
         </div>
       ) : (
         <form onSubmit={eliminar} className="space-y-3">

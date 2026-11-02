@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, PackageCheck, Plus, XCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { revertir } from '../lib/revertir'
 import { useAuth } from '../lib/auth'
 import { useAlertas } from '../lib/alertas'
 import { ESTADO_SOLICITUD, TIPOS_MATERIAL, errorTexto, fechaHora, money2, num } from '../lib/format'
@@ -143,6 +144,10 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
                     <button className="btn btn-ghost btn-sm text-red-600" onClick={() => rechazar(s)} title="Rechazar"><XCircle className="h-4 w-4" /></button>
                   </>}
                   {s.estado === 'autorizada' && puede('almacen.gestionar') && <button className="btn btn-primary btn-sm" onClick={() => entregar(s)}><PackageCheck className="h-3.5 w-3.5" /> Entregar</button>}
+                  {s.estado === 'entregada' && (puede('almacen.gestionar') || puede('excepciones.autorizar')) && <button className="btn btn-ghost btn-sm text-red-600" title="Devolver al almacén" onClick={async () => {
+                    const r = await revertir('solicitud_devolver', { p_id: s.id }, `¿Devolver ${num(s.cantidad_entregada, 3)} ${s.materiales?.unidad} de ${s.materiales?.descripcion} al almacén? Se regresa la existencia y se retira el costo de ${s.ordenes?.folio ?? 'la orden'}.`)
+                    if (r !== undefined) { setError(r); cargar(); al.recargar(); onCambio?.() }
+                  }}>Devolver</button>}
                 </td>
               </tr>))}
             </tbody>

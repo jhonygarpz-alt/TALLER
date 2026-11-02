@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Play, Plus, RotateCcw, Square, XCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { revertir } from '../lib/revertir'
 import { useAuth } from '../lib/auth'
 import { AREAS, ESTADO_ACTIVIDAD, errorTexto, fechaHora, money2, num } from '../lib/format'
 import type { Tarifa, Tecnico } from '../lib/tipos'
@@ -183,7 +184,11 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
                     <button className="btn btn-warning btn-sm" onClick={() => accion(a, 'rechazar')}><RotateCcw className="h-3.5 w-3.5" /> Retrabajo</button>
                   </>}
                   {a.estado === 'asignada' && puede('actividades.asignar') && <button className="btn btn-ghost btn-sm text-red-600" onClick={() => eliminar(a)}>Eliminar</button>}
-                  {['en_proceso', 'terminada'].includes(a.estado) && puede('actividades.asignar') && <button className="btn btn-ghost btn-sm text-red-600" onClick={() => accion(a, 'cancelar')}><XCircle className="h-3.5 w-3.5" /></button>}
+                  {a.estado === 'en_proceso' && puede('actividades.asignar') && <button className="btn btn-ghost btn-sm text-red-600" title="Cancelar trabajo" onClick={() => accion(a, 'cancelar')}><XCircle className="h-3.5 w-3.5" /></button>}
+                  {['terminada', 'validada'].includes(a.estado) && puede('excepciones.autorizar') && <button className="btn btn-ghost btn-sm text-red-600" title="Anular trabajo y su destajo" onClick={async () => {
+                    const r = await revertir('actividad_anular', { p_id: a.id }, `¿Anular "${a.actividad}" de ${a.tecnicos?.nombre}? ${a.estado === 'validada' ? 'Su destajo también se cancelará.' : ''}`)
+                    if (r !== undefined) { setError(r); cargar(); onCambio?.() }
+                  }}><XCircle className="h-3.5 w-3.5" /> Anular</button>}
                 </div>
               </div>
             )

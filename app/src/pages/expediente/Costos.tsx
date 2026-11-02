@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { revertir } from '../../lib/revertir'
 import { useAuth } from '../../lib/auth'
 import { ESTADO_DESTAJO, errorTexto, fecha, hoyISO, money2, pct } from '../../lib/format'
 import type { Rentabilidad } from '../../lib/tipos'
@@ -78,6 +79,11 @@ export default function Costos({ o, recargar }: TabProps) {
     if (error) return setError(errorTexto(error))
     setError(null); reset(); cargar(); recargar()
   }
+  async function borrar(tabla: 'orden_costos' | 'cobros', id: number, desc: string) {
+    if (!confirm(`¿Eliminar ${desc}? Quedará registrado en auditoría.`)) return
+    const { error } = await supabase.from(tabla).delete().eq('id', id)
+    setError(error ? errorTexto(error) : null); cargar(); recargar()
+  }
   async function cancelarFactura(fa: Factura) {
     if (!confirm(`¿Marcar la factura ${fa.folio} como cancelada? Quedará registrada en auditoría.`)) return
     const { error } = await supabase.from('facturas').update({ cancelada: true }).eq('id', fa.id)
@@ -97,7 +103,11 @@ export default function Costos({ o, recargar }: TabProps) {
               <thead><tr><th>Técnico</th><th>Actividad</th><th>Estado</th><th>Referencia de pago</th><th className="text-right">Importe</th></tr></thead>
               <tbody>{destajos.map(d => (
                 <tr key={d.id}><td>{d.tecnicos?.nombre}</td><td>{d.actividades?.actividad} {d.actividades?.pieza && <span className="text-slate-500">· {d.actividades.pieza}</span>}</td>
-                  <td><Badge cls={ESTADO_DESTAJO[d.estado].badge}>{ESTADO_DESTAJO[d.estado].label}</Badge></td><td>{d.referencia_pago ?? '—'}</td><td className="text-right font-semibold">{money2(d.importe)}</td></tr>))}
+                  <td><Badge cls={ESTADO_DESTAJO[d.estado].badge}>{ESTADO_DESTAJO[d.estado].label}</Badge></td><td>{d.referencia_pago ?? '—'}</td><td className="text-right font-semibold">{money2(d.importe)}
+                  {d.estado !== 'cancelado' && puede('excepciones.autorizar') && <button className="ml-2 text-xs font-normal text-red-600 hover:underline" onClick={async () => {
+                    const x = await revertir('destajo_cancelar', { p_id: d.id }, `¿Cancelar el destajo de ${d.tecnicos?.nombre} por ${money2(d.importe)}${d.estado === 'pagado' ? ' (YA PAGADO)' : ''}?`)
+                    if (x !== undefined) { setError(x); cargar(); recargar() }
+                  }}>Cancelar</button>}</td></tr>))}
               </tbody>
             </table></TableWrap>
           )}
@@ -108,7 +118,7 @@ export default function Costos({ o, recargar }: TabProps) {
         <Card title="Otros costos directos (mano de obra adicional, servicios externos, otros)">
           {costos.length === 0 ? <Empty>Sin costos adicionales</Empty> : (
             <TableWrap><table className="tbl"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Proveedor</th><th className="text-right">Monto</th></tr></thead>
-              <tbody>{costos.map(c => <tr key={c.id}><td>{fecha(c.fecha)}</td><td>{TIPOS_COSTO[c.tipo]}</td><td>{c.concepto}</td><td>{c.proveedor ?? '—'}</td><td className="text-right">{money2(c.monto)}</td></tr>)}</tbody>
+              <tbody>{costos.map(c => <tr key={c.id}><td>{fecha(c.fecha)}</td><td>{TIPOS_COSTO[c.tipo]}</td><td>{c.concepto}</td><td>{c.proveedor ?? '—'}</td><td className="text-right">{money2(c.monto)}{gestFin && <button className="ml-2 text-xs text-red-600 hover:underline" onClick={() => borrar('orden_costos', c.id, `${c.concepto} por ${money2(c.monto)}`)}>Eliminar</button>}</td></tr>)}</tbody>
             </table></TableWrap>
           )}
           {gestFin && o.etapa !== 'cancelado' && (
@@ -146,7 +156,7 @@ export default function Costos({ o, recargar }: TabProps) {
           <Card title="Cobros">
             {cobros.length === 0 ? <Empty>Sin cobros registrados</Empty> : (
               <ul className="divide-y text-sm">{cobros.map(c => (
-                <li key={c.id} className="flex justify-between py-2"><span>{fecha(c.fecha)} · <span className="capitalize">{c.metodo}</span>{c.referencia && ` · ${c.referencia}`}</span><b>{money2(c.monto)}</b></li>))}
+                <li key={c.id} className="flex justify-between py-2"><span>{fecha(c.fecha)} · <span className="capitalize">{c.metodo}</span>{c.referencia && ` · ${c.referencia}`}</span><span className="flex items-center gap-2"><b>{money2(c.monto)}</b>{gestFin && <button className="text-xs text-red-600 hover:underline" onClick={() => borrar('cobros', c.id, `el cobro de ${money2(c.monto)}`)}>Eliminar</button>}</span></li>))}
               </ul>
             )}
             {gestFin && o.etapa !== 'cancelado' && (
