@@ -58,7 +58,7 @@ export default function Presupuesto({ o, recargar }: TabProps) {
       <div className="flex flex-wrap items-center gap-2">
         {pres.map(x => (
           <button key={x.id} onClick={() => setSel(x.id)}
-            className={`rounded-xl border-2 px-4 py-2 text-left text-sm ${sel === x.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white'}`}>
+            className={`rounded-xl border-2 px-4 py-2 text-left text-sm ${sel === x.id ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white'}`}>
             <div className="font-bold">{x.es_ampliacion ? 'Ampliación' : 'Presupuesto'} #{x.numero}</div>
             <div className="flex items-center gap-2"><Badge cls={ESTADO_PRESUPUESTO[x.estado].badge}>{ESTADO_PRESUPUESTO[x.estado].label}</Badge><span className="text-xs">{money(total(x))}</span></div>
           </button>

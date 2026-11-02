@@ -87,7 +87,7 @@ export function ListaOrdenes() {
           <ul className="divide-y text-sm">{asigs.map(a => (
             <li key={a.id} className="flex items-center justify-between gap-2 py-2">
               <span><b>{a.siniestro}</b> · {a.asegurado} {a.placas && <span className="text-slate-500">· {a.placas}</span>}</span>
-              <Link className="text-blue-600 hover:underline" to={`/ordenes?tab=asignaciones&ver=${a.id}`}><Badge cls={ESTATUS_CONTACTO[a.estatus].badge}>{ESTATUS_CONTACTO[a.estatus].label}</Badge></Link>
+              <Link className="text-brand-700 hover:underline" to={`/ordenes?tab=asignaciones&ver=${a.id}`}><Badge cls={ESTATUS_CONTACTO[a.estatus].badge}>{ESTATUS_CONTACTO[a.estatus].label}</Badge></Link>
             </li>))}
           </ul>
         </Card>

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { FolderTree, HardHat, History, KeyRound, Plus, Settings2, Truck, Users } from 'lucide-react'
+import { Building2, FolderTree, HardHat, History, KeyRound, Plus, Settings2, Truck, Upload, Users } from 'lucide-react'
+import { cambiarNombreEmpresa, quitarLogo, subirLogo, useEmpresa } from '../lib/empresa'
+import { Logo } from '../components/Layout'
 import { TecnicosTarifas } from './taller/produccion'
 import { TabProveedores } from './compras/inventario'
 import { supabase } from '../lib/supabase'
@@ -311,6 +313,50 @@ function Catalogos() {
   )
 }
 
+/** Identidad de la empresa: nombre comercial y logo (se muestra en el menú, el inicio de sesión y las impresiones) */
+function EmpresaLogo() {
+  const emp = useEmpresa()
+  const [nombre, setNombre] = useState(emp.nombre)
+  const [error, setError] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const [subiendo, setSubiendo] = useState(false)
+  useEffect(() => setNombre(emp.nombre), [emp.nombre])
+  async function hacer(fn: () => Promise<void>, msg: string) {
+    setError(null); setOk(null); setSubiendo(true)
+    try { await fn(); setOk(msg) } catch (e) { setError(errorTexto(e)) }
+    setSubiendo(false)
+  }
+  return (
+    <div className="grid gap-5 lg:grid-cols-2">
+      <Card title="Logo de la empresa">
+        <ErrorMsg error={error} />
+        {ok && <p className="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">{ok}</p>}
+        <div className="flex flex-wrap items-center gap-5">
+          <div className="flex h-28 w-28 items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-2">
+            {emp.logoUrl ? <img src={emp.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" /> : <span className="text-center text-xs text-slate-400">Sin logo</span>}
+          </div>
+          <div className="space-y-2">
+            <label className={`btn btn-primary cursor-pointer ${subiendo ? 'pointer-events-none opacity-50' : ''}`}>
+              <Upload className="h-4 w-4" /> {emp.logoUrl ? 'Cambiar logo' : 'Subir logo'}
+              <input type="file" hidden accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => { const f = e.target.files?.[0]; if (f) hacer(() => subirLogo(f), 'Logo actualizado'); e.target.value = '' }} />
+            </label>
+            {emp.logoUrl && <button className="btn btn-ghost block text-red-600" disabled={subiendo} onClick={() => confirm('¿Quitar el logo?') && hacer(quitarLogo, 'Logo eliminado')}>Quitar logo</button>}
+            <p className="text-xs text-slate-500">PNG, JPG, WEBP o SVG de hasta 2 MB. De preferencia cuadrado y con fondo transparente.</p>
+          </div>
+        </div>
+      </Card>
+      <Card title="Nombre comercial">
+        <form className="space-y-3" onSubmit={e => { e.preventDefault(); hacer(() => cambiarNombreEmpresa(nombre), 'Nombre actualizado') }}>
+          <Field label="Nombre que aparece bajo “Admin Taller”"><input className="input" value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej. Hojalatería y Pintura García" /></Field>
+          <button className="btn btn-primary" disabled={subiendo}>Guardar</button>
+        </form>
+        <div className="mt-5 rounded-2xl bg-gradient-to-br from-navy-800 to-navy-950 p-4"><Logo /></div>
+        <p className="mt-2 text-xs text-slate-500">Vista previa del menú lateral.</p>
+      </Card>
+    </div>
+  )
+}
+
 export default function Configuracion() {
   const { puede } = useAuth()
   const tab = useTab(puede('usuarios.gestionar') ? 'usuarios' : 'parametros')
@@ -321,6 +367,7 @@ export default function Configuracion() {
       <Tabs tabs={[
         { id: 'usuarios', label: 'Usuarios', icon: Users, hidden: !puede('usuarios.gestionar') },
         { id: 'permisos', label: 'Permisos por rol', icon: KeyRound, hidden: !puede('usuarios.gestionar') },
+        { id: 'empresa', label: 'Empresa y logo', icon: Building2, hidden: !puede('config.gestionar') },
         { id: 'catalogos', label: 'Catálogos', icon: FolderTree, hidden: !puede('config.gestionar') },
         { id: 'tecnicos', label: 'Técnicos y tarifas', icon: HardHat, hidden: !puede('config.gestionar') },
         { id: 'proveedores', label: 'Proveedores', icon: Truck, hidden: !puede('config.gestionar') && !puede('compras.gestionar') },
@@ -329,6 +376,7 @@ export default function Configuracion() {
       ]} />
       {tab === 'usuarios' && puede('usuarios.gestionar') && <Usuarios />}
       {tab === 'permisos' && puede('usuarios.gestionar') && <Permisos />}
+      {tab === 'empresa' && puede('config.gestionar') && <EmpresaLogo />}
       {tab === 'catalogos' && puede('config.gestionar') && <Catalogos />}
       {tab === 'tecnicos' && puede('config.gestionar') && <TecnicosTarifas />}
       {tab === 'proveedores' && <TabProveedores />}

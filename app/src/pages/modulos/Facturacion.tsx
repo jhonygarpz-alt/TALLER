@@ -95,7 +95,7 @@ function PorFacturar({ onCambio }: { onCambio: () => void }) {
         <div className="-mx-5 overflow-x-auto px-5"><table className="tbl">
           <thead><tr><th>Orden</th><th>Tipo</th><th>Etapa</th><th className="text-right">Ingreso autorizado</th><th className="text-right">Facturado</th><th className="text-right">Por facturar</th><th></th></tr></thead>
           <tbody>{rows.map(r => (
-            <tr key={r.orden_id}><td><Link className="font-bold text-blue-600" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.folio}</Link></td>
+            <tr key={r.orden_id}><td><Link className="font-bold text-brand-700" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.folio}</Link></td>
               <td className="text-xs">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</td><td><Badge cls={ETAPAS[r.etapa].badge}>{ETAPAS[r.etapa].label}</Badge></td>
               <td className="text-right">{money2(r.ingreso_reconocido)}</td><td className="text-right">{money2(r.facturado)}</td><td className="text-right font-bold text-amber-700">{money2(r.saldo_facturar)}</td>
               <td className="text-right">{puede('finanzas.gestionar') && <button className="btn btn-primary btn-sm" onClick={() => setSel(r)}><FilePlus2 className="h-4 w-4" /> Facturar</button>}</td></tr>))}
@@ -145,8 +145,8 @@ function Facturas({ version, onCambio }: { version: number; onCambio: () => void
               const vencida = c.saldo > 0.005 && c.dias_vencido > 0
               return (
                 <tr key={c.id}>
-                  <td className="font-semibold">{c.folio}{c.archivo_path && <button className="ml-1 text-blue-600" title="Ver documento" onClick={() => verDoc(c.archivo_path!)}><Paperclip className="inline h-3.5 w-3.5" /></button>}</td>
-                  <td><Link className="text-blue-600" to={`/ordenes/${c.orden_id}?tab=costos`}>{c.orden_folio}</Link></td>
+                  <td className="font-semibold">{c.folio}{c.archivo_path && <button className="ml-1 text-brand-700" title="Ver documento" onClick={() => verDoc(c.archivo_path!)}><Paperclip className="inline h-3.5 w-3.5" /></button>}</td>
+                  <td><Link className="text-brand-700" to={`/ordenes/${c.orden_id}?tab=costos`}>{c.orden_folio}</Link></td>
                   <td>{c.deudor}<div className="text-xs text-slate-500">{c.receptor === 'aseguradora' ? 'Aseguradora' : 'Cliente'}</div></td>
                   <td>{fecha(c.fecha)}</td>
                   <td className={vencida ? 'font-semibold text-red-600' : ''}>{fecha(c.fecha_vencimiento)}{vencida && <div className="text-[11px]">Vencida hace {c.dias_vencido} d</div>}</td>
@@ -217,7 +217,7 @@ function Pagos({ version }: { version: number }) {
         {rows.length === 0 ? <Empty icon={Banknote}>Sin pagos en el periodo</Empty> : (
           <div className="overflow-x-auto"><table className="tbl">
             <thead><tr><th>Fecha</th><th>Orden</th><th>Factura</th><th>Método</th><th>Referencia</th><th className="text-right">Monto</th></tr></thead>
-            <tbody>{rows.map(r => <tr key={r.id}><td>{fecha(r.fecha)}</td><td><Link className="text-blue-600" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.ordenes.folio}</Link></td><td>{r.facturas?.folio ?? '—'}</td><td className="capitalize">{r.metodo}</td><td>{r.referencia ?? '—'}</td><td className="text-right font-semibold">{money2(r.monto)}</td></tr>)}</tbody>
+            <tbody>{rows.map(r => <tr key={r.id}><td>{fecha(r.fecha)}</td><td><Link className="text-brand-700" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.ordenes.folio}</Link></td><td>{r.facturas?.folio ?? '—'}</td><td className="capitalize">{r.metodo}</td><td>{r.referencia ?? '—'}</td><td className="text-right font-semibold">{money2(r.monto)}</td></tr>)}</tbody>
           </table></div>
         )}
       </Card>

@@ -46,7 +46,7 @@ function HistorialPrecios() {
                   <td className="text-right text-slate-500">{r.costo_anterior ? money2(r.costo_anterior) : '—'}</td>
                   <td className="text-right font-semibold">{money2(r.costo_unit)}</td>
                   <td className="text-right">{v === null ? '—' : <Badge cls={v > umbral ? 'bg-red-100 text-red-700' : v > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-700'}>{v > 0 ? '+' : ''}{v.toFixed(1)}%</Badge>}</td>
-                  <td>{r.compra_id && <Link className="text-blue-600 hover:underline" to={`/compras/${r.compra_id}`}>REQ-{String(r.compra_id).padStart(4, '0')}</Link>}</td>
+                  <td>{r.compra_id && <Link className="text-brand-700 hover:underline" to={`/compras/${r.compra_id}`}>REQ-{String(r.compra_id).padStart(4, '0')}</Link>}</td>
                 </tr>)
             })}</tbody>
           </table></div>

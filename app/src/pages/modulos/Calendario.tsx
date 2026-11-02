@@ -145,9 +145,9 @@ export default function Calendario() {
             const fuera = d.getMonth() !== ref.getMonth()
             return (
               <div key={iso(d)} className={`min-h-28 bg-white p-1.5 ${fuera ? 'opacity-40' : ''}`}>
-                <button onClick={() => { setRef(d); setVista('dia') }} className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${iso(d) === hoy ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>{d.getDate()}</button>
+                <button onClick={() => { setRef(d); setVista('dia') }} className={`mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${iso(d) === hoy ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>{d.getDate()}</button>
                 <div className="space-y-1">{evs.slice(0, 3).map(e => <Chip key={e.id} e={e} compacto />)}
-                  {evs.length > 3 && <button onClick={() => { setRef(d); setVista('dia') }} className="text-[11px] font-semibold text-blue-600">+{evs.length - 3} más</button>}</div>
+                  {evs.length > 3 && <button onClick={() => { setRef(d); setVista('dia') }} className="text-[11px] font-semibold text-brand-700">+{evs.length - 3} más</button>}</div>
               </div>
             )
           })}
@@ -157,10 +157,10 @@ export default function Calendario() {
       {vista === 'semana' && (
         <div className="overflow-x-auto"><div className="grid min-w-[900px] grid-cols-7 gap-2">
           {dias.map(d => (
-            <div key={iso(d)} className={`min-h-64 rounded-xl border bg-white p-2 ${iso(d) === hoy ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'}`}>
+            <div key={iso(d)} className={`min-h-64 rounded-xl border bg-white p-2 ${iso(d) === hoy ? 'border-brand-400 ring-2 ring-brand-100' : 'border-slate-200'}`}>
               <button onClick={() => { setRef(d); setVista('dia') }} className="mb-2 block w-full text-left">
                 <div className="text-xs font-semibold text-slate-500 capitalize">{d.toLocaleDateString('es-MX', { weekday: 'short' })}</div>
-                <div className={`text-lg font-extrabold ${iso(d) === hoy ? 'text-blue-600' : ''}`}>{d.getDate()}</div>
+                <div className={`text-lg font-extrabold ${iso(d) === hoy ? 'text-brand-700' : ''}`}>{d.getDate()}</div>
               </button>
               <div className="space-y-1">{delDia(d).map(e => <Chip key={e.id} e={e} />)}</div>
             </div>
@@ -200,7 +200,7 @@ export default function Calendario() {
           </Card>
           <Card title={<span className="flex items-center gap-2"><PackageX className="h-4 w-4 text-orange-500" /> Pendientes de materiales</span>}>
             {al.detenidas.length === 0 ? <p className="text-sm text-slate-400">Ningún vehículo detenido por material</p> : (
-              <ul className="divide-y text-sm">{al.detenidas.map(o => <li key={o.id} className="py-1.5"><Link className="font-semibold text-blue-600" to={`/ordenes/${o.id}?tab=materiales`}>{o.folio}</Link> · {o.marca} {o.modelo}{o.motivo_retraso && <div className="text-xs text-slate-500">{o.motivo_retraso}</div>}</li>)}</ul>
+              <ul className="divide-y text-sm">{al.detenidas.map(o => <li key={o.id} className="py-1.5"><Link className="font-semibold text-brand-700" to={`/ordenes/${o.id}?tab=materiales`}>{o.folio}</Link> · {o.marca} {o.modelo}{o.motivo_retraso && <div className="text-xs text-slate-500">{o.motivo_retraso}</div>}</li>)}</ul>
             )}
           </Card>
         </div>

@@ -48,7 +48,7 @@ function FacturaProveedor({ c, total, editable, onCambio }: { c: Compra; total: 
         <span>Total recibido: <b>{money2(total)}</b></span>
         {dif !== null && Math.abs(dif) > 0.5 && <Badge cls="bg-red-100 text-red-700">La factura difiere en {money2(dif)}</Badge>}
         {dif !== null && Math.abs(dif) <= 0.5 && <Badge cls="bg-green-100 text-green-700">Coincide con lo recibido</Badge>}
-        {c.archivo_path && <button className="text-blue-600 hover:underline" onClick={ver}>Ver documento</button>}
+        {c.archivo_path && <button className="text-brand-700 hover:underline" onClick={ver}>Ver documento</button>}
         {editable && <label className="btn btn-secondary btn-sm cursor-pointer">Adjuntar PDF/XML<input type="file" hidden accept="application/pdf,image/*" onChange={e => adjuntar(e.target.files?.[0])} /></label>}
       </div>
     </Card>
@@ -109,7 +109,7 @@ export default function CompraDetalle() {
 
   return (
     <div className="space-y-5">
-      <Link to="/compras?tab=compras" className="text-sm font-medium text-blue-600 hover:underline">← Compras</Link>
+      <Link to="/compras?tab=compras" className="text-sm font-medium text-brand-700 hover:underline">← Compras</Link>
       <PageHeader title={`Requisición REQ-${String(c.id).padStart(4, '0')}`} subtitle={<>Creada {fechaHora(c.created_at)} · <Badge cls={ESTADO_COMPRA[c.estado].badge}>{ESTADO_COMPRA[c.estado].label}</Badge></>}>
         {c.estado === 'requisicion' && puede('compras.gestionar') && <>
           <button className="btn btn-ghost text-red-600" onClick={() => confirm('¿Eliminar requisición?') && run(supabase.from('compras').delete().eq('id', id), () => nav('/compras?tab=compras'))}><Trash2 className="h-4 w-4" /></button>
@@ -177,7 +177,7 @@ export default function CompraDetalle() {
             <li key={x.id} className={`flex flex-wrap items-center justify-between gap-2 py-2 ${x.elegida ? 'font-semibold' : ''}`}>
               <span>{i === 0 && <Badge cls="bg-green-100 text-green-700">Menor precio</Badge>} {x.proveedores?.nombre} {x.dias_entrega != null && <span className="text-slate-500">· {x.dias_entrega} días</span>} {x.notas && <span className="text-slate-500">· {x.notas}</span>}</span>
               <span className="flex items-center gap-2">{money2(x.importe)}
-                {x.elegida ? <Badge cls="bg-blue-600 text-white">Elegida</Badge> : editable && <button className="btn btn-secondary btn-sm" onClick={() => run(Promise.all([
+                {x.elegida ? <Badge cls="bg-brand-600 text-white">Elegida</Badge> : editable && <button className="btn btn-secondary btn-sm" onClick={() => run(Promise.all([
                   supabase.from('cotizaciones').update({ elegida: false }).eq('compra_id', id),
                 ]).then(() => supabase.from('cotizaciones').update({ elegida: true }).eq('id', x.id)).then(() => supabase.from('compras').update({ proveedor_id: x.proveedor_id }).eq('id', id)))}>Elegir</button>}
               </span>

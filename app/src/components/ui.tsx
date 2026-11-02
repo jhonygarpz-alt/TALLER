@@ -110,7 +110,7 @@ export function Tabs({ tabs, param = 'tab' }: { tabs: { id: string; label: strin
       <div className="inline-flex min-w-full gap-1 border-b border-slate-200">
         {visibles.map(t => (
           <button key={t.id} onClick={() => { const n = new URLSearchParams(); n.set(param, t.id); setSp(n) }}
-            className={`-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition ${actual === t.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+            className={`-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition ${actual === t.id ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
             {t.icon && <t.icon className="h-4 w-4" />}{t.label}
             {!!t.count && <span className="rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">{t.count}</span>}
           </button>
@@ -129,7 +129,7 @@ export function KpiCard({ icon: Icon, value, label, tone, to, hint }: {
   tone: 'blue' | 'amber' | 'purple' | 'sky' | 'green' | 'red' | 'slate' | 'orange' | 'cyan' | 'indigo'
 }) {
   const tones = {
-    blue: 'bg-blue-100 text-blue-600', amber: 'bg-amber-100 text-amber-600', purple: 'bg-purple-100 text-purple-600',
+    blue: 'bg-brand-100 text-brand-700', amber: 'bg-amber-100 text-amber-600', purple: 'bg-purple-100 text-purple-600',
     sky: 'bg-sky-100 text-sky-600', green: 'bg-green-100 text-green-600', red: 'bg-red-100 text-red-600',
     slate: 'bg-slate-100 text-slate-600', orange: 'bg-orange-100 text-orange-600', cyan: 'bg-cyan-100 text-cyan-700', indigo: 'bg-indigo-100 text-indigo-600',
   }
@@ -145,7 +145,7 @@ export function KpiCard({ icon: Icon, value, label, tone, to, hint }: {
     </div>
   )
   return to
-    ? <Link to={to} className="card !p-4 transition hover:border-blue-300 hover:shadow-md">{body}</Link>
+    ? <Link to={to} className="card !p-4 transition hover:border-brand-300 hover:shadow-md">{body}</Link>
     : <div className="card !p-4">{body}</div>
 }
 

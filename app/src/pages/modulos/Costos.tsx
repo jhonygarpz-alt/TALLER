@@ -75,7 +75,7 @@ function PresupuestoVsReal() {
           {lista.map(d => (
             <Card key={d.r.orden_id} className={d.motivos.length ? 'border-red-200' : ''}>
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Link to={`/ordenes/${d.r.orden_id}?tab=costos`} className="text-lg font-bold text-blue-600 hover:underline">{d.r.folio}</Link>
+                <Link to={`/ordenes/${d.r.orden_id}?tab=costos`} className="text-lg font-bold text-brand-700 hover:underline">{d.r.folio}</Link>
                 <Badge cls={ETAPAS[d.r.etapa].badge}>{ETAPAS[d.r.etapa].label}</Badge>
                 <span className="text-xs text-slate-500">{d.r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</span>
                 {d.motivos.map(m => <Badge key={m} cls="bg-red-100 text-red-700"><AlertTriangle className="h-3 w-3" /> {m}</Badge>)}

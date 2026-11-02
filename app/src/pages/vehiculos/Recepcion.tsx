@@ -144,13 +144,13 @@ export default function Recepcion() {
   const pasos = ['Origen', 'Propietario y vehículo', 'Condiciones de ingreso', 'Fotografías']
   return (
     <div className="mx-auto max-w-3xl">
-      <Link to="/ordenes" className="text-sm font-medium text-blue-600 hover:underline">← Órdenes de trabajo</Link>
+      <Link to="/ordenes" className="text-sm font-medium text-brand-700 hover:underline">← Órdenes de trabajo</Link>
       <PageHeader title="Recepción de vehículo" subtitle={asignacionId ? `Desde asignación · siniestro ${f.siniestro}` : 'Genera una nueva orden de trabajo'} />
 
       <ol className="mb-6 grid grid-cols-4 gap-2">
         {pasos.map((p, i) => (
           <li key={p} className="flex flex-col items-center gap-1 text-center">
-            <span className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${paso > i + 1 ? 'bg-green-600 text-white' : paso === i + 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+            <span className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${paso > i + 1 ? 'bg-green-600 text-white' : paso === i + 1 ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
               {paso > i + 1 ? <Check className="h-5 w-5" /> : i + 1}
             </span>
             <span className={`text-[11px] leading-tight sm:text-xs ${paso === i + 1 ? 'font-semibold text-slate-900' : 'text-slate-500'}`}>{p}</span>
@@ -165,7 +165,7 @@ export default function Recepcion() {
           <div className="grid grid-cols-2 gap-3">
             {(['aseguradora', 'particular'] as const).map(t => (
               <button key={t} type="button" disabled={!!asignacionId && t === 'particular'} onClick={() => setF(p => ({ ...p, tipo: t, tipo_reparacion_id: '' }))}
-                className={`rounded-xl border-2 p-4 text-left transition disabled:opacity-40 ${f.tipo === t ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                className={`rounded-xl border-2 p-4 text-left transition disabled:opacity-40 ${f.tipo === t ? 'border-brand-600 bg-brand-50' : 'border-slate-200 hover:border-slate-300'}`}>
                 <div className="text-lg font-bold">{t === 'aseguradora' ? 'Aseguradora' : 'Particular'}</div>
                 <div className="text-xs text-slate-500">{t === 'aseguradora' ? 'Siniestro asignado (MAPFRE)' : 'Cliente directo'}</div>
               </button>
@@ -240,7 +240,7 @@ export default function Recepcion() {
         </>)}
 
         {paso === 4 && (<>
-          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-8 text-center hover:border-blue-400">
+          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-8 text-center hover:border-brand-400">
             <Camera className="h-10 w-10 text-slate-400" />
             <span className="font-semibold">Tomar o seleccionar fotografías de recepción</span>
             <span className="text-xs text-slate-500">Frente, costados, posterior, daños, tablero (kilometraje)</span>

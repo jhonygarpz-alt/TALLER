@@ -124,7 +124,7 @@ function DetalleAsignacion({ id, onClose, onCambio }: { id: number; onClose: () 
         <div className="space-y-1.5 text-sm">
           <div className="flex items-center gap-2"><Badge cls={ESTATUS_CONTACTO[a.estatus].badge}>{ESTATUS_CONTACTO[a.estatus].label}</Badge><span className="text-slate-500">{a.aseguradoras?.nombre}</span></div>
           <div className="text-lg font-bold">{a.asegurado}</div>
-          {a.telefono && <a href={`tel:${a.telefono}`} className="inline-flex items-center gap-1 text-blue-600"><Phone className="h-4 w-4" /> {a.telefono}</a>}
+          {a.telefono && <a href={`tel:${a.telefono}`} className="inline-flex items-center gap-1 text-brand-700"><Phone className="h-4 w-4" /> {a.telefono}</a>}
           <div className="text-slate-600"><Car className="mr-1 inline h-4 w-4" />{[a.marca, a.modelo, a.anio].filter(Boolean).join(' ') || 'Sin datos del vehículo'} {a.placas && `· ${a.placas}`}</div>
           <div className="text-slate-500">Asignada {fecha(a.fecha_asignacion)} · Asesor: {a.perfiles?.nombre ?? 'sin asignar'}</div>
           <div className="text-slate-500">Intentos: {a.intentos} · Primer contacto: {fechaHora(a.primer_contacto)}</div>

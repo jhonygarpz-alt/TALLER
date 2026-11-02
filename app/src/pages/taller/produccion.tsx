@@ -120,7 +120,7 @@ export function Destajos() {
                 <tr key={r.id}>
                   <td>{['pendiente', 'autorizado'].includes(r.estado) && <input type="checkbox" checked={sel.has(r.id)} onChange={e => { const s = new Set(sel); if (e.target.checked) s.add(r.id); else s.delete(r.id); setSel(s) }} />}</td>
                   <td className="font-medium">{r.tecnicos?.nombre}</td>
-                  <td><Link className="text-blue-600 hover:underline" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.ordenes?.folio}</Link></td>
+                  <td><Link className="text-brand-700 hover:underline" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.ordenes?.folio}</Link></td>
                   <td>{r.actividades?.actividad}<div className="text-xs text-slate-500">{AREAS[r.actividades?.area ?? '']}{r.actividades?.pieza && ` · ${r.actividades.pieza}`}</div></td>
                   <td><Badge cls={ESTADO_DESTAJO[r.estado].badge}>{ESTADO_DESTAJO[r.estado].label}</Badge>{r.referencia_pago && <div className="text-[11px] text-slate-500">Ref. {r.referencia_pago}</div>}</td>
                   <td className="text-xs text-slate-500">Gen. {fecha(r.generado_at)}{r.autorizado_at && <><br />Aut. {fecha(r.autorizado_at)}</>}{r.pagado_at && <><br />Pag. {fecha(r.pagado_at)}</>}</td>
@@ -252,7 +252,7 @@ export function TecnicosTarifas() {
               <span><span className="text-xs text-slate-500">{AREAS[t.area]}</span> · <b>{t.actividad}</b></span>
               <span className="flex items-center gap-3">
                 <b>{money2(t.importe)}</b>
-                {editar && <><button className="text-xs text-blue-600 hover:underline" onClick={() => cambiarImporte(t)}>Cambiar</button>
+                {editar && <><button className="text-xs text-brand-700 hover:underline" onClick={() => cambiarImporte(t)}>Cambiar</button>
                   <button className="text-xs text-slate-500 hover:underline" onClick={() => run(supabase.from('tarifas_destajo').update({ activo: !t.activo }).eq('id', t.id))}>{t.activo ? 'Desactivar' : 'Activar'}</button></>}
               </span>
             </li>))}

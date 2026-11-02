@@ -66,7 +66,7 @@ export function Galeria({ ordenId, categoria, refId, puedeSubir = true, titulo, 
         {fotos.map(f => <Miniatura key={f.id} path={f.path} className={compacta ? 'h-14 w-14' : 'h-24 w-32'} onClick={() => setVer(f)} />)}
         {puedeSubir && (
           <button type="button" onClick={() => input.current?.click()} disabled={subiendo}
-            className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-xs font-medium text-slate-500 hover:border-blue-400 hover:text-blue-600 ${compacta ? 'h-14 w-14' : 'h-24 w-32'}`}>
+            className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 text-xs font-medium text-slate-500 hover:border-brand-400 hover:text-brand-700 ${compacta ? 'h-14 w-14' : 'h-24 w-32'}`}>
             {subiendo ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
             {!compacta && (subiendo ? 'Subiendo…' : 'Agregar foto')}
           </button>

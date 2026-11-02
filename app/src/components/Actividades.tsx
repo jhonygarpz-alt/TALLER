@@ -169,7 +169,7 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
                     {a.rechazos > 0 && <Badge cls="bg-red-100 text-red-700">Retrabajo ×{a.rechazos}</Badge>}
                   </div>
                   <div className="mt-0.5 text-xs text-slate-500">
-                    {mostrarOrden && a.ordenes && <><Link className="font-semibold text-blue-600 hover:underline" to={`/ordenes/${a.orden_id}?tab=trabajos`}>{a.ordenes.folio}</Link> · {a.ordenes.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'} · </>}
+                    {mostrarOrden && a.ordenes && <><Link className="font-semibold text-brand-700 hover:underline" to={`/ordenes/${a.orden_id}?tab=trabajos`}>{a.ordenes.folio}</Link> · {a.ordenes.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'} · </>}
                     {AREAS[a.area]} · <b>{a.tecnicos?.nombre}</b> · Destajo {a.importe_destajo > 0 ? money2(a.importe_destajo) : 'sin tarifa'}
                     {a.fecha_inicio && ` · Inicio ${fechaHora(a.fecha_inicio)}`}{a.fecha_fin && ` · Fin ${fechaHora(a.fecha_fin)}`}{a.horas != null && ` · ${num(a.horas)} h`}
                   </div>

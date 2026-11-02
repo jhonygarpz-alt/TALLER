@@ -27,8 +27,10 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-navy-800 p-4">
-      <div className="w-full max-w-sm">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-navy-950 p-4">
+      <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-navy-950 via-navy-900/90 to-navy-800/40" />
+      <div className="relative w-full max-w-sm animate-aparecer">
         <div className="mb-6 flex justify-center"><Logo /></div>
         <form onSubmit={submit} className="space-y-4 rounded-2xl bg-white p-6 shadow-2xl">
           <h1 className="text-xl font-bold">{modo === 'login' ? 'Iniciar sesión' : 'Solicitar acceso'}</h1>
@@ -38,7 +40,7 @@ export default function Login() {
           <Field label="Correo"><input className="input" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></Field>
           <Field label="Contraseña"><input className="input" type="password" autoComplete={modo === 'login' ? 'current-password' : 'new-password'} required minLength={8} value={password} onChange={e => setPassword(e.target.value)} /></Field>
           <button className="btn btn-primary w-full" disabled={cargando}>{cargando ? 'Procesando…' : modo === 'login' ? 'Entrar' : 'Crear cuenta'}</button>
-          <button type="button" className="w-full text-center text-sm font-medium text-blue-600 hover:underline" onClick={() => setModo(modo === 'login' ? 'registro' : 'login')}>
+          <button type="button" className="w-full text-center text-sm font-medium text-brand-700 hover:underline" onClick={() => setModo(modo === 'login' ? 'registro' : 'login')}>
             {modo === 'login' ? '¿Eres nuevo? Solicita acceso' : 'Ya tengo cuenta'}
           </button>
         </form>

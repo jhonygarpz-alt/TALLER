@@ -45,7 +45,7 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
       {!ordenId && (<>
         <div className="flex gap-2 sm:col-span-2">
           {(['orden', 'general'] as const).map(d => (
-            <button key={d} type="button" onClick={() => setDestino(d)} className={`flex-1 rounded-lg border-2 px-3 py-2 text-sm font-semibold ${destino === d ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200'}`}>
+            <button key={d} type="button" onClick={() => setDestino(d)} className={`flex-1 rounded-lg border-2 px-3 py-2 text-sm font-semibold ${destino === d ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200'}`}>
               {d === 'orden' ? 'Para una orden de trabajo' : 'Consumo general autorizado'}
             </button>
           ))}
@@ -132,7 +132,7 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
               <tr key={s.id}>
                 <td className="text-xs whitespace-nowrap">{fechaHora(s.solicitado_at)}<div className="text-slate-400">{s.solicitante?.nombre}</div></td>
                 <td><div className="font-medium">{s.materiales?.descripcion}</div><div className="text-xs text-slate-500">{TIPOS_MATERIAL[s.materiales?.tipo ?? '']}{s.notas && ` · ${s.notas}`}</div></td>
-                {!ordenId && <td>{s.orden_id ? <Link className="font-semibold text-blue-600 hover:underline" to={`/ordenes/${s.orden_id}?tab=materiales`}>{s.ordenes?.folio}</Link> : <span className="text-xs">General: {s.centro_costo}</span>}</td>}
+                {!ordenId && <td>{s.orden_id ? <Link className="font-semibold text-brand-700 hover:underline" to={`/ordenes/${s.orden_id}?tab=materiales`}>{s.ordenes?.folio}</Link> : <span className="text-xs">General: {s.centro_costo}</span>}</td>}
                 <td className="text-right">{num(s.cantidad_solicitada, 3)} {s.materiales?.unidad}</td>
                 <td className="text-right">{s.cantidad_aprobada != null ? num(s.cantidad_aprobada, 3) : '—'}</td>
                 <td className="text-right">{s.cantidad_entregada != null ? num(s.cantidad_entregada, 3) : '—'}{s.entrego && <div className="text-[11px] text-slate-400">{s.entrego.nombre}</div>}</td>

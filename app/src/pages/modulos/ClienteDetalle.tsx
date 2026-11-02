@@ -37,7 +37,7 @@ function Seguimiento({ clienteId, ordenes }: { clienteId: number; ordenes: VOrde
             <li key={s.id}>
               <div className="flex flex-wrap items-center gap-2"><Badge cls="bg-slate-100 text-slate-700">{TIPOS_SEGUIMIENTO[s.tipo]}</Badge>
                 <span className="text-xs text-slate-500">{fechaHora(s.fecha)} · {s.perfiles?.nombre ?? ''}</span>
-                {s.orden_id && <Link className="text-xs text-blue-600" to={`/ordenes/${s.orden_id}`}>{ordenes.find(o => o.id === s.orden_id)?.folio ?? 'orden'}</Link>}</div>
+                {s.orden_id && <Link className="text-xs text-brand-700" to={`/ordenes/${s.orden_id}`}>{ordenes.find(o => o.id === s.orden_id)?.folio ?? 'orden'}</Link>}</div>
               {s.fecha_cita && <div className="font-semibold text-purple-700">Cita: {fechaHora(s.fecha_cita)}</div>}
               <div className="whitespace-pre-wrap text-slate-700">{s.notas}</div>
             </li>))}
@@ -74,7 +74,7 @@ function EstadoCuenta({ clienteId }: { clienteId: number }) {
         <div className="-mx-5 overflow-x-auto px-5"><table className="tbl">
           <thead><tr><th>Factura</th><th>Orden</th><th>Fecha</th><th>Vence</th><th className="text-right">Importe</th><th className="text-right">Pagado</th><th className="text-right">Saldo</th></tr></thead>
           <tbody>{rows.map(r => (
-            <tr key={r.id}><td className="font-semibold">{r.folio}</td><td><Link className="text-blue-600" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.orden_folio}</Link></td>
+            <tr key={r.id}><td className="font-semibold">{r.folio}</td><td><Link className="text-brand-700" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.orden_folio}</Link></td>
               <td>{fecha(r.fecha)}</td><td className={r.saldo > 0 && r.dias_vencido > 0 ? 'font-semibold text-red-600' : ''}>{fecha(r.fecha_vencimiento)}{r.saldo > 0 && r.dias_vencido > 0 && ` (${r.dias_vencido} d)`}</td>
               <td className="text-right">{money2(r.monto)}</td><td className="text-right">{money2(r.pagado)}</td><td className="text-right font-semibold">{money2(r.saldo)}</td></tr>))}
           </tbody>
@@ -107,15 +107,15 @@ export default function ClienteDetalle() {
 
   return (
     <div>
-      <Link to="/clientes" className="text-sm font-medium text-blue-600 hover:underline">← Clientes y aseguradoras</Link>
+      <Link to="/clientes" className="text-sm font-medium text-brand-700 hover:underline">← Clientes y aseguradoras</Link>
       <div className="card mt-2 mb-5 grid gap-4 md:grid-cols-3">
         <div className="flex items-start gap-3 md:col-span-2">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600"><User className="h-7 w-7" /></div>
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700"><User className="h-7 w-7" /></div>
           <div className="min-w-0">
             <h1 className="text-2xl font-extrabold">{c.nombre}</h1>
             <div className="text-sm text-slate-500">{c.tipo === 'empresa' ? 'Empresa' : 'Persona física'}{c.dias_credito ? ` · Crédito ${c.dias_credito} días` : ' · Contado'}</div>
             <div className="mt-1 flex flex-wrap gap-3 text-sm">
-              {c.telefono && <a className="inline-flex items-center gap-1 text-blue-600" href={`tel:${c.telefono}`}><Phone className="h-4 w-4" />{c.telefono}</a>}
+              {c.telefono && <a className="inline-flex items-center gap-1 text-brand-700" href={`tel:${c.telefono}`}><Phone className="h-4 w-4" />{c.telefono}</a>}
               {c.email && <span className="text-slate-600">{c.email}</span>}
               {c.direccion && <span className="text-slate-600">{c.direccion}</span>}
             </div>
@@ -144,7 +144,7 @@ export default function ClienteDetalle() {
             <div className="overflow-x-auto"><table className="tbl">
               <thead><tr><th>Orden</th><th>Vehículo</th><th>Tipo</th><th>Estado</th><th>Ingreso</th><th>Entrega</th><th>Satisfacción</th></tr></thead>
               <tbody>{ordenes.map(o => (
-                <tr key={o.id}><td><Link className="font-bold text-blue-600" to={`/ordenes/${o.id}`}>{o.folio}</Link></td>
+                <tr key={o.id}><td><Link className="font-bold text-brand-700" to={`/ordenes/${o.id}`}>{o.folio}</Link></td>
                   <td>{o.marca} {o.modelo} <span className="text-xs text-slate-500">{o.placas}</span></td>
                   <td className="text-xs">{o.aseguradora_nombre ? `${o.aseguradora_nombre} · ${o.siniestro}` : 'Particular'}</td>
                   <td><EtapaBadge o={o} /></td><td>{fecha(o.fecha_ingreso)}</td><td>{fecha(o.fecha_entrega)}</td>

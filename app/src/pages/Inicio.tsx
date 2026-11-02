@@ -17,7 +17,7 @@ import PeriodoSelect from '../components/PeriodoSelect'
 
 const GRUPOS: { label: string; etapas: Etapa[]; color: string; filtro: string }[] = [
   { label: 'Recepción / diagnóstico', etapas: ['recepcion', 'diagnostico', 'esperando_autorizacion'], color: '#ca8a04', filtro: 'etapa:recepcion,diagnostico,esperando_autorizacion' },
-  { label: 'En reparación', etapas: ['en_reparacion'], color: '#2563eb', filtro: 'etapa:en_reparacion' },
+  { label: 'En reparación', etapas: ['en_reparacion'], color: '#15a050', filtro: 'etapa:en_reparacion' },
   { label: 'Hojalatería', etapas: ['hojalateria'], color: '#0891b2', filtro: 'etapa:hojalateria' },
   { label: 'Preparación / pintura', etapas: ['preparacion', 'pintura'], color: '#9333ea', filtro: 'etapa:preparacion,pintura' },
   { label: 'Detallado / calidad', etapas: ['detallado', 'control_calidad'], color: '#ea580c', filtro: 'etapa:detallado,control_calidad' },
@@ -51,7 +51,7 @@ export default function Inicio() {
     supabase.from('v_ordenes').select('aseguradora_nombre').gte('fecha_ingreso', desde).lt('fecha_ingreso', hasta).neq('etapa', 'cancelado').then(({ data }) => {
       const c: Record<string, number> = {}
       for (const r of data ?? []) { const k = r.aseguradora_nombre ?? 'Particular'; c[k] = (c[k] ?? 0) + 1 }
-      setPorAseg(Object.entries(c).sort((x, y) => y[1] - x[1]).map(([label, value]) => ({ label, value, color: '#2563eb' })))
+      setPorAseg(Object.entries(c).sort((x, y) => y[1] - x[1]).map(([label, value]) => ({ label, value, color: '#15a050' })))
     })
     if (verFin) {
       supabase.from('v_rentabilidad').select('*').eq('etapa', 'entregado').gte('fecha_entrega', desde).lt('fecha_entrega', hasta)
@@ -85,7 +85,7 @@ export default function Inicio() {
     { n: a.proximas.length, t: 'Vehículos próximos a vencer su fecha de entrega', to: '/ordenes?filtro=proximos', icon: CalendarClock, c: 'text-amber-600 bg-amber-50' },
     { n: a.retrasadas.length, t: 'Vehículos retrasados', to: '/ordenes?filtro=retrasados', icon: AlertTriangle, c: 'text-red-600 bg-red-50' },
     { n: a.detenidas.length, t: 'Vehículos detenidos por falta de materiales', to: '/ordenes?filtro=detenidos', icon: PackageX, c: 'text-orange-600 bg-orange-50' },
-    { n: a.comprasPorAutorizar, t: 'Compras pendientes de autorización', to: '/compras?tab=compras&estado=por_autorizar', icon: ShoppingCart, c: 'text-blue-600 bg-blue-50' },
+    { n: a.comprasPorAutorizar, t: 'Compras pendientes de autorización', to: '/compras?tab=compras&estado=por_autorizar', icon: ShoppingCart, c: 'text-brand-700 bg-blue-50' },
     { n: a.sinActualizar.length, t: `Vehículos sin actualización de avance (+${a.config.dias_sin_actualizacion ?? 2} días)`, to: '/ordenes?filtro=sin_actualizar', icon: Clock, c: 'text-slate-600 bg-slate-100' },
     { n: a.sinContactar, t: 'Clientes sin contactar (asignaciones)', to: '/ordenes?tab=asignaciones&estatus=sin_contactar', icon: PhoneOff, c: 'text-purple-600 bg-purple-50' },
     { n: a.listas.length, t: 'Trabajos terminados pendientes de entrega', to: '/ordenes?filtro=etapa:listo_entrega', icon: CheckCircle2, c: 'text-green-600 bg-green-50' },
@@ -158,7 +158,7 @@ export default function Inicio() {
             ['Costos de mano de obra', fin.manoObra, 'Destajos y mano de obra adicional'], ['Otros costos', fin.otros + fin.indirectos, 'Externos, otros e indirectos'],
             ['Utilidad estimada', fin.utilidad, ''], ['Margen de rentabilidad', null, ''],
           ].map(([l, v, h]) => (
-            <Link key={l as string} to="/costos" className="card !p-4 hover:border-blue-300">
+            <Link key={l as string} to="/costos" className="card !p-4 hover:border-brand-300">
               <div className="text-xs font-medium text-slate-500">{l}</div>
               <div className={`mt-1 text-lg font-extrabold ${(l as string).startsWith('Utilidad') || (l as string).startsWith('Margen') ? (fin.utilidad >= 0 ? 'text-green-600' : 'text-red-600') : ''}`}>
                 {v === null ? pct(fin.margen) : money(v)}
@@ -182,7 +182,7 @@ export default function Inicio() {
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-5">
-        <Card title="Últimos vehículos en taller" className="xl:col-span-3" action={<Link to="/ordenes?filtro=activos" className="text-sm font-semibold text-blue-600 hover:underline">Ver todos</Link>}>
+        <Card title="Últimos vehículos en taller" className="xl:col-span-3" action={<Link to="/ordenes?filtro=activos" className="text-sm font-semibold text-brand-700 hover:underline">Ver todos</Link>}>
           {ultimas.length === 0 ? <Empty icon={Car}>Aún no hay órdenes. Registra la primera recepción.</Empty> : (
             <TableWrap>
               <table className="tbl">
@@ -201,7 +201,7 @@ export default function Inicio() {
             </TableWrap>
           )}
         </Card>
-        <Card title="Vehículos próximos a entregar" className="xl:col-span-2" action={<Link to="/ordenes?filtro=etapa:listo_entrega" className="text-sm font-semibold text-blue-600 hover:underline">Ver todos</Link>}>
+        <Card title="Vehículos próximos a entregar" className="xl:col-span-2" action={<Link to="/ordenes?filtro=etapa:listo_entrega" className="text-sm font-semibold text-brand-700 hover:underline">Ver todos</Link>}>
           {a.listas.length === 0 ? <Empty icon={CheckCircle2}>No hay vehículos listos para entrega</Empty> : (
             <ul className="divide-y">
               {a.listas.slice(0, 5).map(o => (
@@ -226,7 +226,7 @@ export default function Inicio() {
       {/* ACCESOS RÁPIDOS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {[
-          { t: 'Nuevo vehículo', s: 'Crear orden de trabajo', to: '/ordenes/nueva', icon: Car, g: 'from-blue-700 to-blue-500', p: 'ordenes.gestionar', plus: true },
+          { t: 'Nuevo vehículo', s: 'Crear orden de trabajo', to: '/ordenes/nueva', icon: Car, g: 'from-brand-800 to-brand-600', p: 'ordenes.gestionar', plus: true },
           { t: 'Cotización', s: 'Órdenes por presupuestar', to: '/ordenes?filtro=etapa:diagnostico', icon: FileText, g: 'from-emerald-700 to-emerald-500', p: 'presupuestos.gestionar' },
           { t: 'Asignar trabajos', s: 'A técnicos y áreas', to: '/mano-obra?tab=trabajos', icon: Wrench, g: 'from-violet-700 to-purple-500', p: 'actividades.asignar' },
           { t: 'Solicitar material', s: 'Pintura y refacciones', to: '/inventario?tab=solicitudes&nueva=1', icon: ShoppingCart, g: 'from-orange-600 to-amber-500', p: 'materiales.solicitar' },

@@ -115,7 +115,7 @@ function ListaClientes() {
             <thead><tr><th>Nombre</th><th>Contacto</th><th>RFC</th><th className="text-right">Vehículos</th><th className="text-right">Órdenes</th><th className="text-right">Crédito</th></tr></thead>
             <tbody>{rows.map(c => (
               <tr key={c.id} className="cursor-pointer" onClick={() => nav(`/clientes/${c.id}`)}>
-                <td className="font-medium text-blue-600">{c.nombre}<div className="text-xs font-normal text-slate-500">{c.tipo === 'empresa' ? 'Empresa' : 'Persona física'}</div></td>
+                <td className="font-medium text-brand-700">{c.nombre}<div className="text-xs font-normal text-slate-500">{c.tipo === 'empresa' ? 'Empresa' : 'Persona física'}</div></td>
                 <td>{c.telefono ?? '—'}<div className="text-xs text-slate-500">{c.email}</div></td>
                 <td className="font-mono text-xs">{c.rfc ?? '—'}</td>
                 <td className="text-right">{c.vehiculos?.[0]?.count ?? 0}</td><td className="text-right">{c.ordenes?.[0]?.count ?? 0}</td>
@@ -197,7 +197,7 @@ function Aseguradoras() {
       <ErrorMsg error={error} />
       {config && <div className="flex justify-end"><button className="btn btn-primary btn-sm" onClick={() => setEdit('nueva')}><Plus className="h-4 w-4" /> Nueva aseguradora</button></div>}
       {rows.map(a => (
-        <Card key={a.id} title={<span className="flex items-center gap-2"><Shield className="h-5 w-5 text-blue-600" /> {a.nombre} <Badge cls={a.activo ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}>{a.activo ? 'Habilitada' : 'Deshabilitada'}</Badge></span>}
+        <Card key={a.id} title={<span className="flex items-center gap-2"><Shield className="h-5 w-5 text-brand-700" /> {a.nombre} <Badge cls={a.activo ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}>{a.activo ? 'Habilitada' : 'Deshabilitada'}</Badge></span>}
           action={config && <div className="flex gap-2"><button className="btn btn-secondary btn-sm" onClick={() => setEdit(a)}>Editar</button><button className="btn btn-ghost btn-sm" onClick={() => alternar(a)}>{a.activo ? 'Deshabilitar' : 'Habilitar'}</button></div>}>
           <div className="grid gap-4 text-sm md:grid-cols-3">
             <dl className="space-y-1">
@@ -267,9 +267,9 @@ function Vehiculos() {
                 <tr key={v.id}>
                   <td className="font-mono font-semibold">{v.placas ?? '—'}</td>
                   <td>{v.marca} {v.modelo} {v.anio}<div className="text-xs text-slate-500">{v.color}{v.vin && ` · ${v.vin}`}</div></td>
-                  <td>{v.cliente_id ? <Link className="text-blue-600 hover:underline" to={`/clientes/${v.cliente_id}`}>{v.clientes?.nombre}</Link> : '—'}</td>
+                  <td>{v.cliente_id ? <Link className="text-brand-700 hover:underline" to={`/clientes/${v.cliente_id}`}>{v.clientes?.nombre}</Link> : '—'}</td>
                   <td className="text-right">{v.ordenes?.length ?? 0}</td>
-                  <td>{ult ? <Link className="text-blue-600 hover:underline" to={`/ordenes/${ult.id}`}>{ult.folio}</Link> : '—'} {ult && <span className="text-xs text-slate-500">{fecha(ult.fecha_ingreso)}</span>}</td>
+                  <td>{ult ? <Link className="text-brand-700 hover:underline" to={`/ordenes/${ult.id}`}>{ult.folio}</Link> : '—'} {ult && <span className="text-xs text-slate-500">{fecha(ult.fecha_ingreso)}</span>}</td>
                   <td className="whitespace-nowrap text-right">
                     <button className="btn btn-secondary btn-sm" onClick={() => setHist(v)}>Historial</button>{' '}
                     {editar && <button className="btn btn-secondary btn-sm" onClick={() => setEdit(v)}>Editar</button>}
@@ -283,7 +283,7 @@ function Vehiculos() {
       {hist && <Modal title={`Historial · ${hist.marca} ${hist.modelo} ${hist.placas ?? ''}`} onClose={() => setHist(null)}>
         {!hist.ordenes?.length ? <p className="text-sm text-slate-500">Sin servicios registrados</p> : (
           <ul className="divide-y text-sm">{[...hist.ordenes].sort((a, b) => b.fecha_ingreso.localeCompare(a.fecha_ingreso)).map(o => (
-            <li key={o.id} className="flex justify-between py-2"><Link className="font-semibold text-blue-600" to={`/ordenes/${o.id}`}>{o.folio}</Link><span className="text-slate-500">{fecha(o.fecha_ingreso)}</span></li>))}
+            <li key={o.id} className="flex justify-between py-2"><Link className="font-semibold text-brand-700" to={`/ordenes/${o.id}`}>{o.folio}</Link><span className="text-slate-500">{fecha(o.fecha_ingreso)}</span></li>))}
           </ul>
         )}
       </Modal>}
@@ -304,7 +304,7 @@ function Seguimiento() {
   const fila = (s: Seg, cita?: boolean) => (
     <li key={s.id} className="py-2 text-sm">
       <div className="flex flex-wrap items-center gap-2"><Badge cls="bg-slate-100 text-slate-700">{TIPOS_SEGUIMIENTO[s.tipo]}</Badge>
-        <Link to={`/clientes/${s.cliente_id}?tab=seguimiento`} className="font-semibold text-blue-600 hover:underline">{s.clientes?.nombre}</Link>
+        <Link to={`/clientes/${s.cliente_id}?tab=seguimiento`} className="font-semibold text-brand-700 hover:underline">{s.clientes?.nombre}</Link>
         <span className="text-xs text-slate-500">{cita ? `Cita ${fechaHora(s.fecha_cita)}` : fechaHora(s.fecha)} · {s.perfiles?.nombre ?? ''}</span></div>
       <div className="text-slate-600">{s.notas}</div>
     </li>
@@ -340,7 +340,7 @@ function Encuestas() {
             <thead><tr><th>Orden</th><th>Cliente</th><th>Entrega</th><th>Calificación</th><th>Comentario</th></tr></thead>
             <tbody>{rows.map(r => (
               <tr key={r.id}>
-                <td><Link className="font-semibold text-blue-600" to={`/ordenes/${r.id}?tab=entrega`}>{r.folio}</Link><div className="text-xs text-slate-500">{r.aseguradora_nombre ?? 'Particular'}</div></td>
+                <td><Link className="font-semibold text-brand-700" to={`/ordenes/${r.id}?tab=entrega`}>{r.folio}</Link><div className="text-xs text-slate-500">{r.aseguradora_nombre ?? 'Particular'}</div></td>
                 <td><Link className="hover:underline" to={`/clientes/${r.cliente_id}`}>{r.cliente_nombre}</Link></td>
                 <td>{fecha(r.fecha_entrega)}</td>
                 <td>{r.satisfaccion ? '★'.repeat(r.satisfaccion) + '☆'.repeat(5 - r.satisfaccion) : <Link className="text-xs font-semibold text-amber-700 hover:underline" to={`/ordenes/${r.id}?tab=entrega`}>Registrar encuesta</Link>}</td>

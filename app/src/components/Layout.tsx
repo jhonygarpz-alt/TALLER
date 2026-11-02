@@ -1,11 +1,12 @@
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { BarChart3, Bell, CalendarDays, Car, ChevronDown, ChevronRight, ClipboardList, Coins, FileText, HardHat, LayoutDashboard, LogOut, Menu, Package, Search, Settings, ShoppingCart, Users, Wrench, X } from 'lucide-react'
+import { BarChart3, Bell, CalendarDays, Car, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, ClipboardList, Coins, FileText, HardHat, LayoutDashboard, LogOut, Menu, Package, Search, Settings, ShoppingCart, Users, Wrench, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useAlertas } from '../lib/alertas'
 import { ROLES } from '../lib/format'
+import { useEmpresa } from '../lib/empresa'
 
 // Menú de 12 módulos. "permiso" oculta el módulo a quien no puede consultarlo (la base de datos también lo impide)
 const NAV: { to: string; label: string; icon: LucideIcon; permiso?: string[] }[] = [
@@ -23,17 +24,27 @@ const NAV: { to: string; label: string; icon: LucideIcon; permiso?: string[] }[]
   { to: '/administracion', label: 'Administración', icon: Settings, permiso: ['usuarios.gestionar', 'config.gestionar', 'auditoria.ver'] },
 ]
 
-export function Logo() {
+/** Logotipo: usa el logo cargado por la empresa (Administración → Empresa y logo) o el ícono por defecto */
+export function Logo({ compacto = false, claro = true }: { compacto?: boolean; claro?: boolean }) {
+  const emp = useEmpresa()
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-white/10">
-        <Car className="h-6 w-6 text-blue-400" />
-        <Wrench className="absolute -top-1 -left-1 h-4 w-4 rotate-[-30deg] text-white" />
-      </div>
-      <div className="leading-tight">
-        <div className="text-xl font-extrabold tracking-tight text-white">Admin Taller</div>
-        <div className="text-xs text-slate-400">Control de Taller</div>
-      </div>
+    <div className="flex min-w-0 items-center gap-3">
+      {emp.logoUrl ? (
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-md">
+          <img src={emp.logoUrl} alt={emp.nombre} className="max-h-full max-w-full object-contain" />
+        </div>
+      ) : (
+        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 shadow-lg shadow-brand-900/40">
+          <Car className="h-6 w-6 text-white" />
+          <Wrench className="absolute -top-1.5 -left-1.5 h-4 w-4 rotate-[-30deg] text-brand-200" />
+        </div>
+      )}
+      {!compacto && (
+        <div className="min-w-0 leading-tight">
+          <div className={`truncate text-xl font-extrabold tracking-tight ${claro ? 'text-white' : 'text-slate-900'}`}>Admin Taller</div>
+          <div className={`truncate text-xs ${claro ? 'text-emerald-200/70' : 'text-slate-500'}`}>{emp.nombre && emp.nombre !== 'Admin Taller' ? emp.nombre : 'Control de Taller'}</div>
+        </div>
+      )}
     </div>
   )
 }
@@ -87,7 +98,7 @@ function MenuUsuario() {
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(!open)} className="flex items-center gap-3 rounded-xl py-1 pr-2 pl-1 hover:bg-slate-100">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-navy-800 text-sm font-bold text-white">{ini}</span>
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-navy-700 to-navy-900 text-sm font-bold text-white ring-2 ring-brand-500/30">{ini}</span>
         <span className="hidden text-left leading-tight md:block">
           <span className="block text-sm font-bold text-slate-900">{perfil?.nombre}</span>
           <span className="block text-xs text-slate-500">{ROLES[perfil?.rol ?? '']}</span>
@@ -106,13 +117,18 @@ function MenuUsuario() {
   )
 }
 
+const leerContraido = () => { try { return localStorage.getItem('menu-contraido') === '1' } catch { return false } }
+
 export default function Layout() {
   const { puede } = useAuth()
   const [menu, setMenu] = useState(false)
+  const [contraido, setContraido] = useState(leerContraido)
   const [q, setQ] = useState('')
   const nav = useNavigate()
   const loc = useLocation()
   useEffect(() => setMenu(false), [loc.pathname])
+  const alternar = () => setContraido(c => { try { localStorage.setItem('menu-contraido', c ? '0' : '1') } catch { /* sin almacenamiento */ } return !c })
+  const chico = contraido && !menu   // en celular el menú siempre se muestra completo
 
   function buscar(e: FormEvent) {
     e.preventDefault()
@@ -121,31 +137,45 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen md:flex">
-      {menu && <div className="fixed inset-0 z-30 bg-slate-900/50 md:hidden" onClick={() => setMenu(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-navy-800 transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 ${menu ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center justify-between px-5 py-5">
-          <Logo />
-          <button className="text-slate-400 md:hidden" onClick={() => setMenu(false)} aria-label="Cerrar menú"><X className="h-6 w-6" /></button>
+      {menu && <div className="fixed inset-0 z-30 bg-navy-950/60 backdrop-blur-sm md:hidden" onClick={() => setMenu(false)} />}
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col overflow-hidden text-white shadow-2xl transition-all duration-300 md:sticky md:top-0 md:h-screen md:translate-x-0 md:shadow-none ${menu ? 'translate-x-0' : '-translate-x-full'} ${contraido ? 'md:w-[78px]' : 'md:w-64'}`}>
+        {/* Fondo: degradado esmeralda con el auto y un destello diagonal */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-navy-800 via-navy-900 to-navy-950" />
+        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-brand-500/15 blur-3xl" />
+        <img src={`${import.meta.env.BASE_URL}img/menu-auto.webp`} alt="" aria-hidden
+          className="pointer-events-none absolute bottom-0 left-0 h-[46%] w-full object-cover object-[20%_center] opacity-70 [mask-image:linear-gradient(to_top,black_35%,transparent)]" />
+
+        <div className={`relative flex items-center justify-between py-5 ${chico ? 'justify-center px-3' : 'px-5'}`}>
+          <Logo compacto={chico} />
+          <button className="rounded-lg p-1 text-emerald-100/70 hover:bg-white/10 md:hidden" onClick={() => setMenu(false)} aria-label="Cerrar menú"><X className="h-6 w-6" /></button>
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
+        <nav className="relative flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           {NAV.filter(n => !n.permiso || n.permiso.some(p => puede(p))).map(n => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/'}
-              className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30' : 'text-slate-300 hover:bg-navy-700 hover:text-white'}`}>
-              <n.icon className="h-5 w-5 shrink-0" />
-              <span className="flex-1 leading-tight">{n.label}</span>
+            <NavLink key={n.to} to={n.to} end={n.to === '/'} title={chico ? n.label : undefined}
+              className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${chico ? 'justify-center' : ''} ${isActive
+                ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg shadow-brand-900/40'
+                : 'text-emerald-50/80 hover:bg-white/10 hover:text-white'}`}>
+              <n.icon className="h-5 w-5 shrink-0 transition-transform group-hover:scale-110" />
+              {!chico && <span className="flex-1 truncate leading-tight">{n.label}</span>}
             </NavLink>
           ))}
         </nav>
-        <div className="px-5 py-4 text-[11px] text-slate-500">Admin Taller · v0.2</div>
+        <div className={`relative flex items-center gap-2 px-4 py-4 ${chico ? 'justify-center' : 'justify-between'}`}>
+          {!chico && <span className="text-[11px] text-emerald-100/50">Admin Taller · v0.3</span>}
+          <button onClick={alternar} className="hidden rounded-lg bg-white/10 p-1.5 text-emerald-50 backdrop-blur transition hover:bg-white/20 md:block"
+            title={contraido ? 'Expandir menú' : 'Contraer menú'} aria-label={contraido ? 'Expandir menú' : 'Contraer menú'}>
+            {contraido ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+          </button>
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200/70 bg-white/90 px-4 py-3 backdrop-blur-md md:px-6">
           <button className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden" onClick={() => setMenu(true)} aria-label="Menú"><Menu className="h-6 w-6" /></button>
           <form onSubmit={buscar} className="relative max-w-2xl flex-1">
             <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-slate-400" />
-            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar vehículo, siniestro, cliente o placa…"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-10 text-sm focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar vehículo, OT, siniestro, cliente o placa…"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-10 text-sm transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:outline-none" />
           </form>
           <div className="ml-auto flex items-center gap-1 md:gap-3">
             <Campana />
@@ -153,8 +183,20 @@ export default function Layout() {
             <MenuUsuario />
           </div>
         </header>
-        <main className="min-w-0 flex-1 p-4 md:p-6 lg:p-8"><Suspense fallback={<div className="p-10 text-center text-slate-400">Cargando…</div>}><Outlet /></Suspense></main>
+        <main key={loc.pathname} className="min-w-0 flex-1 animate-aparecer p-4 md:p-6 lg:p-8">
+          <Suspense fallback={<Cargando />}><Outlet /></Suspense>
+        </main>
       </div>
+    </div>
+  )
+}
+
+function Cargando() {
+  return (
+    <div className="space-y-4">
+      <div className="esqueleto h-28" />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[0, 1, 2, 3].map(i => <div key={i} className="esqueleto h-20" />)}</div>
+      <div className="esqueleto h-64" />
     </div>
   )
 }

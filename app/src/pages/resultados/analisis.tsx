@@ -63,7 +63,7 @@ export function TabRentabilidad() {
                 <Fragment key={r.orden_id}>
                   <tr className="cursor-pointer" onClick={() => setAbierta(abierta === r.orden_id ? null : r.orden_id)}>
                     <td>{abierta === r.orden_id ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
-                    <td><Link className="font-bold text-blue-600 hover:underline" to={`/ordenes/${r.orden_id}?tab=costos`} onClick={e => e.stopPropagation()}>{r.folio}</Link></td>
+                    <td><Link className="font-bold text-brand-700 hover:underline" to={`/ordenes/${r.orden_id}?tab=costos`} onClick={e => e.stopPropagation()}>{r.folio}</Link></td>
                     <td className="text-xs">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</td>
                     <td><Badge cls={ETAPAS[r.etapa].badge}>{ETAPAS[r.etapa].label}</Badge></td>
                     <td className="text-right">{money(r.ingreso_reconocido)}</td><td className="text-right text-slate-500">{money(r.facturado)}</td><td className="text-right text-slate-500">{money(r.cobrado)}</td>
@@ -115,7 +115,7 @@ export function TabKpis() {
       for (let i = 0; i < 6; i++) {
         const d = new Date(ini.getFullYear(), ini.getMonth() + i, 1)
         const n = (data ?? []).filter(o => { const f = new Date(o.fecha_entrega!); return f.getFullYear() === d.getFullYear() && f.getMonth() === d.getMonth() }).length
-        meses.push({ label: d.toLocaleDateString('es-MX', { month: 'short' }), value: n, color: '#2563eb' })
+        meses.push({ label: d.toLocaleDateString('es-MX', { month: 'short' }), value: n, color: '#15a050' })
       }
       setMensual(meses)
     })
@@ -285,7 +285,7 @@ export function TabFinanciero() {
           <div className="-mx-5 overflow-x-auto px-5"><table className="tbl">
             <thead><tr><th>Orden</th><th>Tipo</th><th>Entrega</th><th className="text-right">Ingreso reconocido</th><th className="text-right">Facturado</th><th className="text-right">Cobrado</th><th className="text-right">Pendiente</th></tr></thead>
             <tbody>{pendientes.map(r => (
-              <tr key={r.orden_id}><td><Link className="font-bold text-blue-600" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.folio}</Link></td><td className="text-xs">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</td>
+              <tr key={r.orden_id}><td><Link className="font-bold text-brand-700" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.folio}</Link></td><td className="text-xs">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</td>
                 <td>{fecha(r.fecha_entrega)}</td><td className="text-right">{money(r.ingreso_reconocido)}</td><td className="text-right">{money(r.facturado)}</td><td className="text-right">{money(r.cobrado)}</td><td className="text-right font-bold text-red-600">{money(r.por_cobrar)}</td></tr>))}
             </tbody>
           </table></div>

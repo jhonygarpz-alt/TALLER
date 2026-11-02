@@ -164,7 +164,7 @@ export function TabPintura() {
             <thead><tr><th>Orden</th><th>Tipo</th><th className="text-right">Consumo pres.</th><th className="text-right">Consumo real</th><th className="text-right">Costo pres.</th><th className="text-right">Costo real</th><th className="text-right">Diferencia</th><th>Entregó</th></tr></thead>
             <tbody>{rows.map(r => { const d = desv(r); return (
               <tr key={r.orden_id}>
-                <td><Link className="font-semibold text-blue-600 hover:underline" to={`/ordenes/${r.orden_id}?tab=materiales`}>{r.folio}</Link></td>
+                <td><Link className="font-semibold text-brand-700 hover:underline" to={`/ordenes/${r.orden_id}?tab=materiales`}>{r.folio}</Link></td>
                 <td className="text-xs">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</td>
                 <td className="text-right">{num(r.cantidad_presupuestada, 3)}</td><td className="text-right">{num(r.cantidad_real, 3)}</td>
                 <td className="text-right">{money2(r.costo_presupuestado)}</td><td className="text-right">{money2(r.costo_real)}</td>
@@ -303,7 +303,7 @@ export function TabMovimientos() {
                 <td className="text-xs whitespace-nowrap">{fechaHora(m.fecha)}</td><td>{m.materiales?.descripcion}</td>
                 <td><span className={m.tipo === 'entrada' ? 'text-green-700' : m.tipo === 'salida' ? 'text-red-600' : 'text-amber-700'}>{m.tipo}</span></td>
                 <td className="text-right">{num(m.cantidad, 3)} {m.materiales?.unidad}</td><td className="text-right">{money2(m.costo_unit)}</td><td className="text-right">{num(m.existencia_resultante, 3)}</td>
-                <td className="text-xs">{m.motivo}{m.orden_id && <> · <Link className="text-blue-600" to={`/ordenes/${m.orden_id}?tab=materiales`}>{m.ordenes?.folio}</Link></>}{m.compra_id && <> · <Link className="text-blue-600" to={`/compras/${m.compra_id}`}>REQ-{String(m.compra_id).padStart(4, '0')}</Link></>}</td>
+                <td className="text-xs">{m.motivo}{m.orden_id && <> · <Link className="text-brand-700" to={`/ordenes/${m.orden_id}?tab=materiales`}>{m.ordenes?.folio}</Link></>}{m.compra_id && <> · <Link className="text-brand-700" to={`/compras/${m.compra_id}`}>REQ-{String(m.compra_id).padStart(4, '0')}</Link></>}</td>
                 <td className="text-xs">{m.perfiles?.nombre ?? '—'}</td>
               </tr>))}</tbody>
           </table></div>
