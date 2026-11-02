@@ -14,8 +14,8 @@ export function Logo({ compacto = false, claro = true }: { compacto?: boolean; c
   return (
     <div className="flex min-w-0 items-center gap-3">
       {emp.logoUrl ? (
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-md">
-          <img src={emp.logoUrl} alt={emp.nombre} className="max-h-full max-w-full object-contain" />
+        <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-[0_0_10px_rgba(61,220,132,.45),0_0_24px_rgba(29,180,100,.3)] ring-2 ring-brand-400/60 ${compacto ? 'h-12 w-12' : 'h-20 w-20'}`}>
+          <img src={emp.logoUrl} alt={emp.nombre} className="h-full w-full object-cover" />
         </div>
       ) : (
         <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 shadow-lg shadow-brand-900/40">
@@ -137,10 +137,12 @@ export default function Layout() {
           {NAV.filter(n => !n.permiso || n.permiso.some(p => puede(p))).map(n => (
             <NavLink key={n.to} to={n.to} end={n.to === '/'} title={chico ? n.label : undefined}
               className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${chico ? 'justify-center' : ''} ${isActive
-                ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg shadow-brand-900/40'
-                : 'text-emerald-50/80 hover:bg-white/10 hover:text-white'}`}>
-              <n.icon className="h-5 w-5 shrink-0 transition-transform group-hover:scale-110" />
-              {!chico && <span className="flex-1 truncate leading-tight">{n.label}</span>}
+                ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white ring-1 ring-brand-300/70 shadow-[0_0_8px_rgba(61,220,132,.6),0_0_22px_rgba(29,180,100,.5)]'
+                : 'text-emerald-50/80 hover:bg-white/10 hover:text-white hover:ring-1 hover:ring-brand-400/60 hover:shadow-[0_0_10px_rgba(61,220,132,.45),0_0_20px_rgba(29,180,100,.25)]'}`}>
+              {({ isActive }) => (<>
+                <n.icon className={`h-5 w-5 shrink-0 transition duration-200 group-hover:scale-110 ${isActive ? 'drop-shadow-[0_0_6px_rgba(255,255,255,.85)]' : 'group-hover:text-brand-300 group-hover:drop-shadow-[0_0_6px_rgba(74,222,128,.9)]'}`} />
+                {!chico && <span className={`flex-1 truncate leading-tight ${isActive ? 'drop-shadow-[0_0_6px_rgba(255,255,255,.45)]' : ''}`}>{n.label}</span>}
+              </>)}
             </NavLink>
           ))}
         </nav>
