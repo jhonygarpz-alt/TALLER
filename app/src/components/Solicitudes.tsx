@@ -24,8 +24,22 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
   const [destino, setDestino] = useState<'orden' | 'general'>('orden')
   const [f, setF] = useState({ orden_id: ordenId ? String(ordenId) : '', centro_costo: '', material_id: '', cantidad: '', notas: '' })
   const [error, setError] = useState<string | null>(null)
+  const { puede } = useAuth()
+  const [alta, setAlta] = useState(false)
+  const [nm, setNm] = useState({ descripcion: '', tipo: 'material', unidad: 'pza', categoria: '', codigo: '' })
+  const cargarMateriales = () => supabase.from('materiales').select('*').eq('activo', true).order('descripcion').then(({ data }) => { setMateriales((data ?? []) as Material[]); return (data ?? []) as Material[] })
+  async function registrarMaterial() {
+    if (!nm.descripcion.trim()) return setError('Escribe la descripción del material')
+    const { data, error } = await supabase.from('materiales').insert({
+      descripcion: nm.descripcion.trim(), tipo: nm.tipo, unidad: nm.unidad.trim() || 'pza', categoria: nm.categoria.trim() || null, codigo: nm.codigo.trim() || null,
+    }).select('id').single()
+    if (error) return setError(errorTexto(error))
+    await cargarMateriales()
+    setF(p => ({ ...p, material_id: String(data.id) }))
+    setNm({ descripcion: '', tipo: 'material', unidad: 'pza', categoria: '', codigo: '' }); setAlta(false); setError(null)
+  }
   useEffect(() => {
-    supabase.from('materiales').select('*').eq('activo', true).order('descripcion').then(({ data }) => setMateriales((data ?? []) as Material[]))
+    cargarMateriales()
     if (!ordenId) supabase.from('v_ordenes').select('id,folio,marca,modelo').not('etapa', 'in', '(entregado,cancelado)').order('folio').then(({ data }) => setOrdenes(data ?? []))
   }, [ordenId])
   const mat = materiales.find(m => String(m.id) === f.material_id)
@@ -54,14 +68,41 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
           ? <Field label="Orden *" className="sm:col-span-2"><select className="input" required value={f.orden_id} onChange={e => setF({ ...f, orden_id: e.target.value })}><option value="">Selecciona…</option>{ordenes.map(o => <option key={o.id} value={o.id}>{o.folio} · {o.marca} {o.modelo}</option>)}</select></Field>
           : <Field label="Centro de costo *" className="sm:col-span-2" hint="Ej. Limpieza de cabina, mantenimiento de equipo"><input className="input" required value={f.centro_costo} onChange={e => setF({ ...f, centro_costo: e.target.value })} /></Field>}
       </>)}
-      <Field label="Material *" className="sm:col-span-2">
+      <div className="sm:col-span-2">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="label !mb-0">Material *</span>
+          {puede('almacen.gestionar') && !alta && <button type="button" className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => setAlta(true)}>+ Nuevo material</button>}
+        </div>
         <select className="input" required value={f.material_id} onChange={e => setF({ ...f, material_id: e.target.value })}>
-          <option value="">Selecciona…</option>
-          {Object.entries(TIPOS_MATERIAL).map(([k, v]) => (
-            <optgroup key={k} label={v}>{materiales.filter(m => m.tipo === k).map(m => <option key={m.id} value={m.id}>{m.codigo ? `[${m.codigo}] ` : ''}{m.descripcion} — exist. {num(m.existencia, 3)} {m.unidad}</option>)}</optgroup>
-          ))}
+          <option value="">{materiales.length ? 'Selecciona…' : 'No hay materiales en el catálogo'}</option>
+          {Object.entries(TIPOS_MATERIAL).map(([k, v]) => {
+            const lista = materiales.filter(m => m.tipo === k)
+            return lista.length ? <optgroup key={k} label={v}>{lista.map(m => <option key={m.id} value={m.id}>{m.codigo ? `[${m.codigo}] ` : ''}{m.descripcion} — exist. {num(m.existencia, 3)} {m.unidad}</option>)}</optgroup> : null
+          })}
         </select>
-      </Field>
+        {materiales.length === 0 && !alta && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Aún no hay materiales registrados en el catálogo de inventario.{' '}
+            {puede('almacen.gestionar') ? <button type="button" className="font-semibold underline" onClick={() => setAlta(true)}>Registrar el primero aquí</button> : 'Pide a Compras y almacén que los registre en Inventario → Existencias.'}
+          </p>
+        )}
+        {alta && (
+          <div className="mt-2 grid gap-2 rounded-xl border border-brand-200 bg-brand-50/50 p-3 sm:grid-cols-2">
+            <div className="text-sm font-semibold sm:col-span-2">Nuevo material del catálogo</div>
+            <Field label="Descripción *" className="sm:col-span-2"><input className="input" value={nm.descripcion} onChange={e => setNm({ ...nm, descripcion: e.target.value })} placeholder="Ej. Lija grano 320" /></Field>
+            <Field label="Tipo"><select className="input" value={nm.tipo} onChange={e => setNm({ ...nm, tipo: e.target.value })}>{Object.entries(TIPOS_MATERIAL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+            <Field label="Unidad"><input className="input" list="unidades-sol" value={nm.unidad} onChange={e => setNm({ ...nm, unidad: e.target.value })} /></Field>
+            <Field label="Categoría"><input className="input" value={nm.categoria} onChange={e => setNm({ ...nm, categoria: e.target.value })} placeholder="Ej. Lijas y abrasivos" /></Field>
+            <Field label="Código"><input className="input" value={nm.codigo} onChange={e => setNm({ ...nm, codigo: e.target.value })} /></Field>
+            <datalist id="unidades-sol">{['pza', 'lt', 'ml', 'kg', 'g', 'galón', 'hoja', 'rollo', 'juego', 'm'].map(u => <option key={u} value={u} />)}</datalist>
+            <p className="text-[11px] text-slate-500 sm:col-span-2">Se crea con existencia 0. Para poder entregarlo, registra su existencia en Inventario → Existencias → Ajustar, o recibe una compra.</p>
+            <div className="flex justify-end gap-2 sm:col-span-2">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAlta(false)}>Cancelar</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={registrarMaterial}>Guardar material</button>
+            </div>
+          </div>
+        )}
+      </div>
       <Field label={`Cantidad *${mat ? ` (${mat.unidad})` : ''}`}><input className="input" type="number" step="0.001" min="0.001" required value={f.cantidad} onChange={e => setF({ ...f, cantidad: e.target.value })} /></Field>
       <Field label="Notas"><input className="input" value={f.notas} onChange={e => setF({ ...f, notas: e.target.value })} /></Field>
       {mat && Number(f.cantidad) > Number(mat.existencia) && <p className="text-xs text-amber-700 sm:col-span-2">La existencia actual ({num(mat.existencia, 3)} {mat.unidad}) es menor a lo solicitado; almacén no podrá entregar hasta recibir compra.</p>}
