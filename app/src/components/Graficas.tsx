@@ -10,7 +10,7 @@ export function Dona({ datos, centro = 'Total', onClick }: { datos: Dato[]; cent
   let acc = 0
   const gap = total > 0 && datos.filter(d => d.value > 0).length > 1 ? 2 : 0
   return (
-    <div className="flex flex-col items-center gap-5 sm:flex-row">
+    <div className="flex flex-col items-center gap-5 sm:flex-row xl:flex-col 2xl:flex-row">
       <svg viewBox="0 0 140 140" className="h-40 w-40 shrink-0 -rotate-90" role="img" aria-label="Distribución">
         <circle cx="70" cy="70" r={(R + r) / 2} fill="none" stroke="#eef2f7" strokeWidth={R - r} />
         {total > 0 && datos.map((d, i) => {
