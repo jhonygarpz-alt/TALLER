@@ -114,14 +114,14 @@ export default function Inicio() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <Card title="Estado de los vehículos">
+        <Card className="neon-hover" title="Estado de los vehículos">
           {a.activas.length === 0 ? <Empty icon={Car}>No hay vehículos en el taller</Empty>
             : <Dona datos={dona} centro="En taller" onClick={d => d.to && nav(d.to)} />}
         </Card>
-        <Card title={<>Órdenes por aseguradora <span className="text-sm font-medium text-slate-500">(ingresadas en el periodo)</span></>}>
+        <Card className="neon-hover" title={<>Órdenes por aseguradora <span className="text-sm font-medium text-slate-500">(ingresadas en el periodo)</span></>}>
           {porAseg.length === 0 ? <Empty icon={Car}>Sin órdenes ingresadas en el periodo</Empty> : <Barras datos={porAseg} />}
         </Card>
-        <Card title={<>Resumen financiero <span className="text-sm font-medium text-slate-500">(órdenes entregadas)</span></>}>
+        <Card className="neon-hover" title={<>Resumen financiero <span className="text-sm font-medium text-slate-500">(órdenes entregadas)</span></>}>
           {!verFin ? <p className="text-sm text-slate-500">Tu rol no tiene acceso a indicadores económicos.</p> : (
             <div className="space-y-4">
               <div className="flex items-center gap-4">
@@ -154,7 +154,7 @@ export default function Inicio() {
             ['Costos de mano de obra', fin.manoObra, 'Destajos y mano de obra adicional'], ['Otros costos', fin.otros + fin.indirectos, 'Externos, otros e indirectos'],
             ['Utilidad estimada', fin.utilidad, ''], ['Margen de rentabilidad', null, ''],
           ].map(([l, v, h]) => (
-            <Link key={l as string} to="/costos" className="card !p-4 hover:border-brand-300">
+            <Link key={l as string} to="/costos" className="card !p-4 hover:-translate-y-0.5">
               <div className="text-xs font-medium text-slate-500">{l}</div>
               <div className={`mt-1 text-lg font-extrabold ${(l as string).startsWith('Utilidad') || (l as string).startsWith('Margen') ? (fin.utilidad >= 0 ? 'text-green-600' : 'text-red-600') : ''}`}>
                 {v === null ? pct(fin.margen) : money(v)}
@@ -165,7 +165,7 @@ export default function Inicio() {
         </div>
       )}
 
-      <Card title="Alertas automáticas" action={<span className="text-xs text-slate-400">Se actualizan cada minuto</span>}>
+      <Card className="neon-hover" title="Alertas automáticas" action={<span className="text-xs text-slate-400">Se actualizan cada minuto</span>}>
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           {alertas.map(al => (
             <Link key={al.t} to={al.to} className={`flex items-center gap-3 rounded-xl border p-3 transition hover:shadow-sm ${al.n > 0 ? 'border-slate-200' : 'border-slate-100 opacity-60'}`}>
@@ -178,7 +178,7 @@ export default function Inicio() {
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-5">
-        <Card title="Últimos vehículos en taller" className="xl:col-span-3" action={<Link to="/ordenes?filtro=activos" className="text-sm font-semibold text-brand-700 hover:underline">Ver todos</Link>}>
+        <Card className="neon-hover xl:col-span-3" title="Últimos vehículos en taller" action={<Link to="/ordenes?filtro=activos" className="text-sm font-semibold text-brand-700 hover:underline">Ver todos</Link>}>
           {ultimas.length === 0 ? <Empty icon={Car}>Aún no hay órdenes. Registra la primera recepción.</Empty> : (
             <TableWrap>
               <table className="tbl">
@@ -197,7 +197,7 @@ export default function Inicio() {
             </TableWrap>
           )}
         </Card>
-        <Card title="Vehículos próximos a entregar" className="xl:col-span-2" action={<Link to="/ordenes?filtro=etapa:listo_entrega" className="text-sm font-semibold text-brand-700 hover:underline">Ver todos</Link>}>
+        <Card className="neon-hover xl:col-span-2" title="Vehículos próximos a entregar" action={<Link to="/ordenes?filtro=etapa:listo_entrega" className="text-sm font-semibold text-brand-700 hover:underline">Ver todos</Link>}>
           {a.listas.length === 0 ? <Empty icon={CheckCircle2}>No hay vehículos listos para entrega</Empty> : (
             <ul className="divide-y">
               {a.listas.slice(0, 5).map(o => (

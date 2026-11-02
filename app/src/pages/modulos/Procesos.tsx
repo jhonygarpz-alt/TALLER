@@ -64,7 +64,7 @@ function Kpi({ icon: Icon, valor, label, tono, pie, to }: { icon: LucideIcon; va
       {pie && <div className="mt-3">{pie}</div>}
     </>
   )
-  const cls = 'card !p-4 transition hover:-translate-y-0.5 hover:shadow-lg'
+  const cls = 'card neon-hover !p-4 hover:-translate-y-0.5'
   return to ? <Link to={to} className={cls}>{body}</Link> : <div className={cls}>{body}</div>
 }
 
@@ -179,7 +179,7 @@ function PanelVehiculo({ id, onClose }: { id: number; onClose: () => void }) {
 function Tarjeta({ o, onClick }: { o: VOrden; onClick: () => void }) {
   const est = o.retrasado ? { t: 'Retrasado', c: 'bg-red-100 text-red-700' } : o.detenido_material ? { t: 'Detenido', c: 'bg-orange-100 text-orange-700' } : { t: ETAPAS[o.etapa].label, c: ETAPAS[o.etapa].badge }
   return (
-    <button onClick={onClick} className={`group w-full rounded-xl border bg-white p-3 text-left shadow-[0_1px_2px_rgba(16,24,20,.06)] transition hover:-translate-y-0.5 hover:shadow-md ${o.retrasado ? 'border-red-200' : 'border-slate-200/70'}`}>
+    <button onClick={onClick} className={`group w-full rounded-xl border bg-white p-3 text-left transition duration-200 [box-shadow:var(--neon-suave)] hover:-translate-y-0.5 hover:border-brand-400 hover:[box-shadow:var(--neon-fuerte)] ${o.retrasado ? 'border-red-300' : 'border-brand-300/70'}`}>
       <div className="flex gap-3">
         <Miniatura path={o.foto_portada} className="h-14 w-[72px]" />
         <div className="min-w-0 flex-1">
@@ -332,7 +332,7 @@ export default function Procesos() {
         <Kpi icon={Clock} tono="bg-amber-50 text-amber-600" valor={al.activas.filter(o => EN_ESPERA.includes(o.etapa)).length} label="En espera" pie={<span className="text-[11px] text-slate-400">{al.detenidas.length} detenido(s) por material</span>} />
         <Kpi icon={CheckCircle2} tono="bg-green-50 text-green-700" valor={ind.ent} label="Entregadas (mes)" to="/ordenes?filtro=etapa:entregado" pie={<Tendencia valor={ind.varEnt} />} />
         <Kpi icon={Target} tono="bg-teal-50 text-teal-700" valor={ind.cump === null ? '—' : `${Math.round(ind.cump)}%`} label="Cumplimiento" pie={<Tendencia valor={ind.varCump} sufijo=" pp" />} />
-        <div className="card flex items-center justify-between gap-2 !p-4">
+        <div className="card neon-hover flex items-center justify-between gap-2 !p-4">
           <div><div className="text-sm leading-tight font-bold text-slate-800">Avance general<br />del taller</div><div className="mt-1 text-[11px] text-slate-400">Posición promedio en el flujo</div></div>
           <Anillo pct={ind.avance} />
         </div>

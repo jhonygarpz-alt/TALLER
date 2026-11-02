@@ -9,7 +9,7 @@ export function PageHeader({ title, subtitle, children, icon }: { title: string;
   const { pathname } = useLocation()
   const Icono = icon ?? iconoDeRuta(pathname)
   return (
-    <div className="relative mb-6 overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(16,24,20,.04),0_8px_24px_-12px_rgba(16,24,20,.12)]">
+    <div className="card neon-hover relative mb-6 overflow-hidden !p-0">
       <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden
         className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[58%] object-cover object-[60%_50%] md:block [mask-image:linear-gradient(to_right,transparent,black_38%)]" />
       <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-white via-white/70 to-transparent md:block" />
@@ -158,7 +158,7 @@ export function KpiCard({ icon: Icon, value, label, tone, to, hint }: {
     </div>
   )
   return to
-    ? <Link to={to} className="card !p-4 transition hover:border-brand-300 hover:shadow-md">{body}</Link>
+    ? <Link to={to} className="card !p-4 hover:-translate-y-0.5">{body}</Link>
     : <div className="card !p-4">{body}</div>
 }
 
