@@ -3,14 +3,96 @@ import { History, KeyRound, Plus, Settings2, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { ROLES, errorTexto, fechaHora } from '../lib/format'
-import { Badge, Card, Empty, ErrorMsg, PageHeader, SinPermiso, Tabs, useTab } from '../components/ui'
+import { Badge, Card, Empty, ErrorMsg, Field, Modal, PageHeader, SinPermiso, Tabs, useTab } from '../components/ui'
 
 interface Perfil { id: string; email: string; nombre: string; rol: string; activo: boolean; created_at: string }
+
+/** Llama a la función segura del servidor que administra cuentas (requiere permiso usuarios.gestionar) */
+async function adminUsuarios(body: Record<string, unknown>): Promise<string | null> {
+  const { error } = await supabase.functions.invoke('admin-usuarios', { body })
+  if (!error) return null
+  const ctx = (error as { context?: Response }).context
+  if (ctx && typeof ctx.json === 'function') {
+    try { const j = await ctx.json(); if (j?.error) return j.error } catch { /* sin cuerpo JSON */ }
+  }
+  return errorTexto(error)
+}
+
+function generarPassword() {
+  const c = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  const a = new Uint32Array(10); crypto.getRandomValues(a)
+  return Array.from(a, n => c[n % c.length]).join('')
+}
+
+function CampoPassword({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <Field label="Contraseña temporal *" hint="Mínimo 8 caracteres. Compártela con el usuario de forma privada.">
+      <div className="flex gap-2">
+        <input className="input font-mono" required minLength={8} value={value} onChange={e => onChange(e.target.value)} />
+        <button type="button" className="btn btn-secondary" onClick={() => onChange(generarPassword())}>Generar</button>
+      </div>
+    </Field>
+  )
+}
+
+function NuevoUsuario({ onDone }: { onDone: (msg: string) => void }) {
+  const [f, setF] = useState({ nombre: '', email: '', rol: 'tecnico', password: generarPassword() })
+  const [error, setError] = useState<string | null>(null)
+  const [enviando, setEnviando] = useState(false)
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    setEnviando(true); setError(null)
+    const err = await adminUsuarios({ accion: 'crear', ...f })
+    setEnviando(false)
+    if (err) return setError(err)
+    onDone(`Usuario creado. Comparte con ${f.nombre} su acceso: correo ${f.email.trim().toLowerCase()} · contraseña ${f.password}`)
+  }
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <ErrorMsg error={error} />
+      <Field label="Nombre completo *"><input className="input" required value={f.nombre} onChange={e => setF({ ...f, nombre: e.target.value })} /></Field>
+      <Field label="Correo *"><input className="input" type="email" required value={f.email} onChange={e => setF({ ...f, email: e.target.value })} /></Field>
+      <Field label="Rol *">
+        <select className="input" value={f.rol} onChange={e => setF({ ...f, rol: e.target.value })}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+      </Field>
+      <CampoPassword value={f.password} onChange={password => setF({ ...f, password })} />
+      <p className="text-xs text-slate-500">La cuenta queda activa y confirmada de inmediato; no se envía correo.</p>
+      <div className="flex justify-end gap-2">
+        <button type="submit" className="btn btn-primary" disabled={enviando}>{enviando ? 'Creando…' : 'Crear usuario'}</button>
+      </div>
+    </form>
+  )
+}
+
+function CambiarPassword({ p, onDone }: { p: Perfil; onDone: (msg: string) => void }) {
+  const [password, setPassword] = useState(generarPassword())
+  const [error, setError] = useState<string | null>(null)
+  const [enviando, setEnviando] = useState(false)
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!confirm(`¿Cambiar la contraseña de ${p.nombre}?`)) return
+    setEnviando(true); setError(null)
+    const err = await adminUsuarios({ accion: 'password', id: p.id, password })
+    setEnviando(false)
+    if (err) return setError(err)
+    onDone(`Contraseña de ${p.nombre} actualizada: ${password}`)
+  }
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <ErrorMsg error={error} />
+      <p className="text-sm">Usuario: <b>{p.nombre}</b> · {p.email}</p>
+      <CampoPassword value={password} onChange={setPassword} />
+      <div className="flex justify-end"><button className="btn btn-primary" disabled={enviando}>{enviando ? 'Guardando…' : 'Cambiar contraseña'}</button></div>
+    </form>
+  )
+}
 
 function Usuarios() {
   const { perfil: yo, recargar } = useAuth()
   const [rows, setRows] = useState<Perfil[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
+  const [modal, setModal] = useState<'nuevo' | Perfil | null>(null)
   const cargar = useCallback(() => supabase.from('perfiles').select('*').order('activo').order('nombre').then(({ data }) => setRows((data ?? []) as Perfil[])), [])
   useEffect(() => { cargar() }, [cargar])
   async function actualizar(p: Perfil, campos: Partial<Perfil>) {
@@ -18,21 +100,34 @@ function Usuarios() {
     const { error } = await supabase.from('perfiles').update(campos).eq('id', p.id)
     setError(error ? errorTexto(error) : null); cargar(); if (p.id === yo?.id) recargar()
   }
+  const terminado = (msg: string) => { setModal(null); setAviso(msg); cargar() }
   return (
-    <Card title="Usuarios">
+    <Card title="Usuarios" action={<button className="btn btn-primary btn-sm" onClick={() => { setAviso(null); setModal('nuevo') }}><Plus className="h-4 w-4" /> Agregar usuario</button>}>
       <ErrorMsg error={error} />
-      <p className="mb-3 text-sm text-slate-500">Los usuarios se registran desde la pantalla de acceso (“Solicitar acceso”). Aquí Dirección los activa y asigna su rol.</p>
+      {aviso && (
+        <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          <span>{aviso}</span>
+          <button className="text-xs font-semibold underline" onClick={() => setAviso(null)}>Cerrar</button>
+        </div>
+      )}
+      <p className="mb-3 text-sm text-slate-500">Agrega usuarios con su rol y una contraseña temporal. También pueden solicitar acceso desde la pantalla de inicio; en ese caso aparecen inactivos hasta que los actives aquí.</p>
       <div className="-mx-5 overflow-x-auto px-5"><table className="tbl">
-        <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Registro</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Registro</th><th></th></tr></thead>
         <tbody>{rows.map(p => (
           <tr key={p.id}>
             <td className="font-medium">{p.nombre}</td><td className="text-xs">{p.email}</td>
             <td><select className="input w-auto py-1.5" value={p.rol} onChange={e => actualizar(p, { rol: e.target.value })}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
             <td><button className={`btn btn-sm ${p.activo ? 'btn-success' : 'btn-secondary'}`} onClick={() => actualizar(p, { activo: !p.activo })}>{p.activo ? 'Activo' : 'Inactivo · activar'}</button></td>
             <td className="text-xs">{fechaHora(p.created_at)}</td>
+            <td className="text-right"><button className="btn btn-secondary btn-sm" onClick={() => { setAviso(null); setModal(p) }}><KeyRound className="h-3.5 w-3.5" /> Contraseña</button></td>
           </tr>))}
         </tbody>
       </table></div>
+      {modal && (
+        <Modal title={modal === 'nuevo' ? 'Agregar usuario' : 'Cambiar contraseña'} onClose={() => setModal(null)}>
+          {modal === 'nuevo' ? <NuevoUsuario onDone={terminado} /> : <CambiarPassword p={modal} onDone={terminado} />}
+        </Modal>
+      )}
     </Card>
   )
 }
