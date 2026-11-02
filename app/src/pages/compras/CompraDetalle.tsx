@@ -2,16 +2,58 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CheckCircle2, PackageCheck, Plus, Send, Trash2, XCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { urlFirmada } from '../../lib/storage'
 import { useAuth } from '../../lib/auth'
 import { useAlertas } from '../../lib/alertas'
 import { ESTADO_COMPRA, errorTexto, fecha, fechaHora, money2, num } from '../../lib/format'
 import type { Material, Proveedor } from '../../lib/tipos'
 import { Badge, Card, Empty, ErrorMsg, Field, PageHeader } from '../../components/ui'
 
-interface Compra { id: number; proveedor_id: number | null; estado: string; fecha: string; factura: string | null; notas: string | null; autorizado_at: string | null; recibido_at: string | null; created_at: string }
+interface Compra { id: number; proveedor_id: number | null; estado: string; fecha: string; factura: string | null; factura_monto: number | null; factura_fecha: string | null; archivo_path: string | null; notas: string | null; autorizado_at: string | null; recibido_at: string | null; created_at: string }
 interface Partida { id: number; material_id: number; orden_id: number | null; cantidad: number; costo_unit: number; materiales?: { descripcion: string; unidad: string; costo_promedio: number }; ordenes?: { folio: string } | null }
 interface Cotizacion { id: number; proveedor_id: number; importe: number; dias_entrega: number | null; notas: string | null; elegida: boolean; proveedores?: { nombre: string } }
 interface Precio { material_id: number; fecha: string; costo_unit: number; proveedores?: { nombre: string } | null }
+
+/** Factura del proveedor: se captura después de recibir; avisa si no coincide con lo recibido */
+function FacturaProveedor({ c, total, editable, onCambio }: { c: Compra; total: number; editable: boolean; onCambio: () => void }) {
+  const [f, setF] = useState({ factura: c.factura ?? '', factura_monto: c.factura_monto != null ? String(c.factura_monto) : '', factura_fecha: c.factura_fecha ?? '' })
+  const [error, setError] = useState<string | null>(null)
+  const [ok, setOk] = useState(false)
+  async function guardar(e: FormEvent) {
+    e.preventDefault()
+    const { error } = await supabase.from('compras').update({ factura: f.factura || null, factura_monto: f.factura_monto ? Number(f.factura_monto) : null, factura_fecha: f.factura_fecha || null }).eq('id', c.id)
+    setError(error ? errorTexto(error) : null); setOk(!error); onCambio()
+  }
+  async function adjuntar(file?: File) {
+    if (!file) return
+    const path = `compras/${c.id}/${Date.now()}.${file.name.split('.').pop()?.toLowerCase() ?? 'pdf'}`
+    const up = await supabase.storage.from('evidencias').upload(path, file, { contentType: file.type || 'application/pdf' })
+    if (up.error) return setError(errorTexto(up.error))
+    const { error } = await supabase.from('compras').update({ archivo_path: path }).eq('id', c.id)
+    setError(error ? errorTexto(error) : null); onCambio()
+  }
+  async function ver() { if (c.archivo_path) { const u = await urlFirmada(c.archivo_path); if (u) window.open(u, '_blank') } }
+  const dif = c.factura_monto != null ? Number(c.factura_monto) - total : null
+  return (
+    <Card title="Factura del proveedor">
+      <ErrorMsg error={error} />
+      {ok && <p className="mb-2 text-sm text-green-700">Datos de factura guardados</p>}
+      <form onSubmit={guardar} className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+        <Field label="Folio"><input className="input" disabled={!editable} value={f.factura} onChange={e => setF({ ...f, factura: e.target.value })} /></Field>
+        <Field label="Importe facturado"><input className="input" type="number" step="0.01" min="0" disabled={!editable} value={f.factura_monto} onChange={e => setF({ ...f, factura_monto: e.target.value })} /></Field>
+        <Field label="Fecha de factura"><input className="input" type="date" disabled={!editable} value={f.factura_fecha} onChange={e => setF({ ...f, factura_fecha: e.target.value })} /></Field>
+        {editable && <button className="btn btn-primary self-end">Guardar</button>}
+      </form>
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+        <span>Total recibido: <b>{money2(total)}</b></span>
+        {dif !== null && Math.abs(dif) > 0.5 && <Badge cls="bg-red-100 text-red-700">La factura difiere en {money2(dif)}</Badge>}
+        {dif !== null && Math.abs(dif) <= 0.5 && <Badge cls="bg-green-100 text-green-700">Coincide con lo recibido</Badge>}
+        {c.archivo_path && <button className="text-blue-600 hover:underline" onClick={ver}>Ver documento</button>}
+        {editable && <label className="btn btn-secondary btn-sm cursor-pointer">Adjuntar PDF/XML<input type="file" hidden accept="application/pdf,image/*" onChange={e => adjuntar(e.target.files?.[0])} /></label>}
+      </div>
+    </Card>
+  )
+}
 
 export default function CompraDetalle() {
   const id = Number(useParams().id)
@@ -93,6 +135,8 @@ export default function CompraDetalle() {
         {c.notas && <p className="mt-3 text-sm text-slate-600">{c.notas}</p>}
         {c.autorizado_at && <p className="mt-2 text-xs text-slate-500">Autorizada {fechaHora(c.autorizado_at)}{c.recibido_at && ` · Recibida ${fechaHora(c.recibido_at)}`}</p>}
       </Card>
+
+      {c.estado === 'recibida' && <FacturaProveedor c={c} total={total} editable={puede('compras.gestionar')} onCambio={cargar} />}
 
       <Card title="Partidas">
         {partidas.length === 0 ? <Empty>Agrega los materiales a comprar</Empty> : (

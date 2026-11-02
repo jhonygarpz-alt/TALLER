@@ -304,7 +304,7 @@ export function TabReportes() {
   const { desde, hasta } = per
 
   const reportes: { id: string; t: string; d: string; permiso?: string; run: () => Promise<void> }[] = [
-    { id: 'ordenes', t: 'Órdenes de trabajo', d: 'Ingresadas en el periodo con etapa, fechas y responsables', run: async () => {
+    { id: 'ordenes', t: 'Vehículos recibidos', d: 'Órdenes ingresadas en el periodo con etapa, fechas y responsables', run: async () => {
       const { data } = await supabase.from('v_ordenes').select('*').gte('fecha_ingreso', desde).lt('fecha_ingreso', hasta).order('folio')
       descargarCSV('reporte_ordenes', (data ?? []).map(o => ({ ...o, etapa: ETAPAS[o.etapa as keyof typeof ETAPAS].label })), [
         { key: 'folio', label: 'Folio' }, { key: 'tipo', label: 'Tipo' }, { key: 'aseguradora_nombre', label: 'Aseguradora' }, { key: 'siniestro', label: 'Siniestro' }, { key: 'cliente_nombre', label: 'Cliente' },
@@ -345,6 +345,57 @@ export function TabReportes() {
         { key: 'folio', label: 'Folio' }, { key: 'tipo', label: 'Tipo' }, { key: 'aseguradora_nombre', label: 'Aseguradora' }, { key: 'tipo_reparacion_nombre', label: 'Tipo reparación' },
         { key: 'fecha_ingreso', label: 'Ingreso' }, { key: 'fecha_compromiso', label: 'Compromiso' }, { key: 'fecha_terminacion', label: 'Terminación' }, { key: 'fecha_entrega', label: 'Entrega' },
         { key: 'dias_en_taller', label: 'Días' }, { key: 'a_tiempo', label: 'Dentro de plazo' }, { key: 'motivo_retraso', label: 'Motivo retraso' }, { key: 'satisfaccion', label: 'Satisfacción' }])
+    } },
+    { id: 'entregados', t: 'Vehículos entregados', d: 'Entregas del periodo con cliente, aseguradora, días y satisfacción', run: async () => {
+      const { data } = await supabase.from('v_ordenes').select('*').eq('etapa', 'entregado').gte('fecha_entrega', desde).lt('fecha_entrega', hasta).order('fecha_entrega')
+      descargarCSV('reporte_entregados', (data ?? []) as Record<string, unknown>[], [
+        { key: 'folio', label: 'Folio' }, { key: 'aseguradora_nombre', label: 'Aseguradora' }, { key: 'siniestro', label: 'Siniestro' }, { key: 'cliente_nombre', label: 'Cliente' },
+        { key: 'marca', label: 'Marca' }, { key: 'modelo', label: 'Modelo' }, { key: 'placas', label: 'Placas' }, { key: 'fecha_ingreso', label: 'Ingreso' },
+        { key: 'fecha_entrega', label: 'Entrega' }, { key: 'dias_en_taller', label: 'Días' }, { key: 'recibio_nombre', label: 'Recibió' }, { key: 'satisfaccion', label: 'Satisfacción' }])
+    } },
+    { id: 'abiertas', t: 'Órdenes abiertas y cerradas', d: 'Situación actual de todas las órdenes: abiertas por etapa y cerradas', run: async () => {
+      const { data } = await supabase.from('v_ordenes').select('*').order('folio')
+      descargarCSV('reporte_ordenes_abiertas_cerradas', (data ?? []).map(o => ({ ...o, estado: ['entregado', 'cancelado'].includes(o.etapa) ? 'Cerrada' : 'Abierta', etapa: ETAPAS[o.etapa as keyof typeof ETAPAS].label, retrasado: o.retrasado ? 'Sí' : 'No' })), [
+        { key: 'folio', label: 'Folio' }, { key: 'estado', label: 'Estado' }, { key: 'etapa', label: 'Etapa' }, { key: 'tipo', label: 'Tipo' }, { key: 'aseguradora_nombre', label: 'Aseguradora' },
+        { key: 'cliente_nombre', label: 'Cliente' }, { key: 'fecha_ingreso', label: 'Ingreso' }, { key: 'fecha_compromiso', label: 'Compromiso' }, { key: 'retrasado', label: 'Retrasado' }, { key: 'dias_en_taller', label: 'Días' }])
+    } },
+    { id: 'compras', t: 'Compras', d: 'Compras del periodo por proveedor, estado, factura y total', permiso: 'compras.gestionar', run: async () => {
+      const { data } = await supabase.from('compras').select('*, proveedores(nombre), compra_partidas(cantidad, costo_unit)').gte('fecha', desde).lt('fecha', hasta).order('fecha')
+      descargarCSV('reporte_compras', (data ?? []).map(c => ({ ...c, folio: 'REQ-' + String(c.id).padStart(4, '0'), proveedor: c.proveedores?.nombre, total: c.compra_partidas.reduce((t: number, p: { cantidad: number; costo_unit: number }) => t + p.cantidad * p.costo_unit, 0).toFixed(2) })), [
+        { key: 'folio', label: 'Folio' }, { key: 'fecha', label: 'Fecha' }, { key: 'proveedor', label: 'Proveedor' }, { key: 'estado', label: 'Estado' }, { key: 'total', label: 'Total recibido' },
+        { key: 'factura', label: 'Factura' }, { key: 'factura_monto', label: 'Importe factura' }, { key: 'factura_fecha', label: 'Fecha factura' }])
+    } },
+    { id: 'rent_mensual', t: 'Rentabilidad mensual', d: 'Ingresos, costos y utilidad por mes (órdenes entregadas), separado por tipo de servicio', permiso: 'finanzas.ver', run: async () => {
+      const { data } = await supabase.from('v_rentabilidad').select('*').eq('etapa', 'entregado').gte('fecha_entrega', desde).lt('fecha_entrega', hasta)
+      const g: Record<string, { mes: string; tipo: string; ordenes: number; ingresos: number; costos: number; utilidad_bruta: number; indirectos: number; utilidad_estimada: number }> = {}
+      for (const r of (data ?? []) as Rentabilidad[]) {
+        const k = `${r.fecha_entrega!.slice(0, 7)}|${r.tipo}`
+        g[k] ??= { mes: r.fecha_entrega!.slice(0, 7), tipo: r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular', ordenes: 0, ingresos: 0, costos: 0, utilidad_bruta: 0, indirectos: 0, utilidad_estimada: 0 }
+        g[k].ordenes++; g[k].ingresos += Number(r.ingreso_reconocido); g[k].costos += Number(r.costos_directos); g[k].utilidad_bruta += Number(r.utilidad_bruta); g[k].indirectos += Number(r.indirectos_asignados); g[k].utilidad_estimada += Number(r.utilidad_estimada)
+      }
+      descargarCSV('reporte_rentabilidad_mensual', Object.values(g).sort((a, b) => a.mes.localeCompare(b.mes)).map(x => ({ ...x, margen: x.ingresos ? ((x.utilidad_bruta / x.ingresos) * 100).toFixed(1) + '%' : '' })))
+    } },
+    { id: 'servicios', t: 'Servicios MAPFRE y particulares', d: 'Órdenes ingresadas en el periodo por tipo de servicio, con montos autorizados', permiso: 'finanzas.ver', run: async () => {
+      const { data } = await supabase.from('v_rentabilidad').select('*').gte('fecha_ingreso', desde).lt('fecha_ingreso', hasta).neq('etapa', 'cancelado').order('tipo').order('folio')
+      descargarCSV('reporte_servicios_por_tipo', ((data ?? []) as Rentabilidad[]).map(r => ({ ...r, tipo: r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular', etapa: ETAPAS[r.etapa].label })) as unknown as Record<string, unknown>[], [
+        { key: 'tipo', label: 'Tipo' }, { key: 'folio', label: 'Orden' }, { key: 'etapa', label: 'Etapa' }, { key: 'fecha_ingreso', label: 'Ingreso' }, { key: 'ingreso_reconocido', label: 'Autorizado' },
+        { key: 'facturado', label: 'Facturado' }, { key: 'cobrado', label: 'Cobrado' }, { key: 'costos_directos', label: 'Costos' }, { key: 'utilidad_bruta', label: 'Utilidad bruta' }])
+    } },
+    { id: 'retrasos', t: 'Retrasos y sus causas', d: 'Órdenes retrasadas activas y entregas fuera de plazo con su motivo', run: async () => {
+      const [act, ent] = await Promise.all([
+        supabase.from('v_ordenes').select('*').eq('retrasado', true),
+        supabase.from('v_ordenes').select('*').eq('etapa', 'entregado').eq('entregado_a_tiempo', false).not('fecha_compromiso', 'is', null).gte('fecha_entrega', desde).lt('fecha_entrega', hasta),
+      ])
+      const filas = [...(act.data ?? []).map(o => ({ ...o, situacion: 'Activa retrasada' })), ...(ent.data ?? []).map(o => ({ ...o, situacion: 'Entregada fuera de plazo' }))]
+      descargarCSV('reporte_retrasos', filas.map(o => ({ ...o, etapa: ETAPAS[o.etapa as keyof typeof ETAPAS].label, motivo: o.motivo_retraso ?? 'Sin motivo registrado', dias_retraso: Math.max(0, Math.floor(((o.fecha_entrega ? new Date(o.fecha_entrega).getTime() : Date.now()) - new Date(o.fecha_compromiso + 'T23:59:59').getTime()) / 86400000)) })), [
+        { key: 'folio', label: 'Folio' }, { key: 'situacion', label: 'Situación' }, { key: 'etapa', label: 'Etapa' }, { key: 'aseguradora_nombre', label: 'Aseguradora' }, { key: 'fecha_compromiso', label: 'Compromiso' },
+        { key: 'fecha_entrega', label: 'Entrega' }, { key: 'dias_retraso', label: 'Días de retraso' }, { key: 'motivo', label: 'Motivo' }, { key: 'detenido_material', label: 'Detenido por material' }])
+    } },
+    { id: 'encuestas', t: 'Encuestas y satisfacción', d: 'Entregas del periodo con calificación y comentarios del cliente', run: async () => {
+      const { data } = await supabase.from('v_ordenes').select('*').eq('etapa', 'entregado').gte('fecha_entrega', desde).lt('fecha_entrega', hasta).order('fecha_entrega')
+      descargarCSV('reporte_encuestas', (data ?? []).map(o => ({ ...o, respondida: o.satisfaccion ? 'Sí' : 'No' })), [
+        { key: 'folio', label: 'Folio' }, { key: 'cliente_nombre', label: 'Cliente' }, { key: 'aseguradora_nombre', label: 'Aseguradora' }, { key: 'fecha_entrega', label: 'Entrega' },
+        { key: 'respondida', label: 'Respondida' }, { key: 'satisfaccion', label: 'Calificación (1-5)' }, { key: 'encuesta_comentario', label: 'Comentario' }])
     } },
     { id: 'aseguradora', t: 'Indicadores por aseguradora', d: 'Asignaciones del periodo con estatus de contacto, citas e ingreso', run: async () => {
       const { data } = await supabase.from('asignaciones').select('*, aseguradoras(nombre), perfiles(nombre)').gte('fecha_asignacion', desde).lt('fecha_asignacion', hasta).order('fecha_asignacion')

@@ -27,7 +27,7 @@ export interface Material {
   id: number; codigo: string | null; descripcion: string; tipo: 'pintura' | 'material' | 'refaccion' | 'herramienta'; categoria: string | null
   unidad: string; existencia: number; costo_promedio: number; minimo: number; proveedor_id: number | null; activo: boolean
 }
-export interface Tecnico { id: number; nombre: string; area: string; perfil_id: string | null; activo: boolean }
+export interface Tecnico { id: number; nombre: string; area: string; perfil_id: string | null; activo: boolean; especialidad?: string | null; telefono?: string | null }
 export interface Tarifa { id: number; area: string; actividad: string; importe: number; activo: boolean }
 export interface Proveedor { id: number; nombre: string; contacto: string | null; telefono: string | null; email: string | null; rfc: string | null }
 

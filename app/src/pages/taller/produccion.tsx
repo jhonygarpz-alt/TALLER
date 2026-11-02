@@ -187,7 +187,7 @@ export function TecnicosTarifas() {
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
   const [tarifas, setTarifas] = useState<Tarifa[]>([])
   const [usuarios, setUsuarios] = useState<{ id: string; nombre: string }[]>([])
-  const [ft, setFt] = useState({ nombre: '', area: 'hojalateria', perfil_id: '' })
+  const [ft, setFt] = useState({ nombre: '', area: 'hojalateria', perfil_id: '', especialidad: '', telefono: '' })
   const [fa, setFa] = useState({ area: 'hojalateria', actividad: '', importe: '' })
   const [error, setError] = useState<string | null>(null)
   const editar = puede('config.gestionar')
@@ -207,7 +207,7 @@ export function TecnicosTarifas() {
     setError(error ? errorTexto(error) : null)
     if (!error) { reset?.(); cargar() }
   }
-  const altaTec = (e: FormEvent) => { e.preventDefault(); run(supabase.from('tecnicos').insert({ ...ft, perfil_id: ft.perfil_id || null }), () => setFt({ ...ft, nombre: '', perfil_id: '' })) }
+  const altaTec = (e: FormEvent) => { e.preventDefault(); run(supabase.from('tecnicos').insert({ ...ft, perfil_id: ft.perfil_id || null, especialidad: ft.especialidad || null, telefono: ft.telefono || null }), () => setFt({ ...ft, nombre: '', perfil_id: '', especialidad: '', telefono: '' })) }
   const altaTar = (e: FormEvent) => { e.preventDefault(); run(supabase.from('tarifas_destajo').insert(fa), () => setFa({ ...fa, actividad: '', importe: '' })) }
   async function cambiarImporte(t: Tarifa) {
     const v = prompt(`Nuevo importe para "${t.actividad}" (actual ${money2(t.importe)}). Aplica a trabajos que se asignen a partir de ahora:`, String(t.importe))
@@ -222,7 +222,7 @@ export function TecnicosTarifas() {
         {tecnicos.length === 0 ? <Empty>Sin técnicos</Empty> : (
           <ul className="divide-y text-sm">{tecnicos.map(t => (
             <li key={t.id} className={`flex items-center justify-between py-2 ${t.activo ? '' : 'opacity-50'}`}>
-              <span><b>{t.nombre}</b> · {AREAS[t.area]} {t.perfil_id && <Badge cls="bg-blue-50 text-blue-700">con usuario</Badge>}</span>
+              <span><b>{t.nombre}</b> · {AREAS[t.area]}{t.especialidad && ` · ${t.especialidad}`}{t.telefono && <span className="text-slate-500"> · {t.telefono}</span>} {t.perfil_id && <Badge cls="bg-blue-50 text-blue-700">con usuario</Badge>}</span>
               {editar && <button className="text-xs text-slate-500 hover:underline" onClick={() => run(supabase.from('tecnicos').update({ activo: !t.activo }).eq('id', t.id))}>{t.activo ? 'Desactivar' : 'Activar'}</button>}
             </li>))}
           </ul>
@@ -230,6 +230,8 @@ export function TecnicosTarifas() {
         {editar && (
           <form onSubmit={altaTec} className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3 sm:grid-cols-2">
             <Field label="Nombre *"><input className="input" required value={ft.nombre} onChange={e => setFt({ ...ft, nombre: e.target.value })} /></Field>
+            <Field label="Especialidad"><input className="input" value={ft.especialidad} onChange={e => setFt({ ...ft, especialidad: e.target.value })} placeholder="Ej. Pintor preparador, hojalatero" /></Field>
+            <Field label="Teléfono"><input className="input" type="tel" value={ft.telefono} onChange={e => setFt({ ...ft, telefono: e.target.value })} /></Field>
             <Field label="Área"><select className="input" value={ft.area} onChange={e => setFt({ ...ft, area: e.target.value })}>{Object.entries(AREAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
             <Field label="Usuario del sistema (opcional)" className="sm:col-span-2" hint="Vincúlalo para que el técnico vea y avance sus propios trabajos">
               <select className="input" value={ft.perfil_id} onChange={e => setFt({ ...ft, perfil_id: e.target.value })}><option value="">Sin usuario</option>{usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select>
