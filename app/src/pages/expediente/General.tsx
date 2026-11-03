@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, History } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { ArrowRight, History, Truck } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { ETAPAS, ETAPAS_TABLERO, errorTexto, fecha, fechaHora, type Etapa } from '../../lib/format'
@@ -11,16 +12,20 @@ interface Hist { id: number; fecha: string; etapa_anterior: Etapa | null; etapa_
 
 export function CambioEtapa({ o, recargar }: TabProps) {
   const { puede } = useAuth()
+  const [, setSp] = useSearchParams()
   const [etapa, setEtapa] = useState<Etapa | ''>('')
   const [just, setJust] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const cerrada = o.etapa === 'entregado' || o.etapa === 'cancelado'
   if (cerrada || !puede('ordenes.etapa')) return null
-  const opciones = [...ETAPAS_TABLERO.filter(e => e !== 'entregado' && e !== o.etapa), ...(puede('excepciones.autorizar') ? ['cancelado' as Etapa] : [])]
+  const opciones = [...ETAPAS_TABLERO.filter(e => e !== o.etapa), ...(puede('excepciones.autorizar') ? ['cancelado' as Etapa] : [])]
+  // La entrega se registra con checklist de calidad y nombre de quien recibe (pestaña Entrega y cierre)
+  const irAEntrega = () => { const n = new URLSearchParams(); n.set('tab', 'entrega'); setSp(n); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
   async function cambiar() {
     if (!etapa) return
+    if (etapa === 'entregado') return irAEntrega()
     if (!confirm(`¿Cambiar la orden ${o.folio} a "${ETAPAS[etapa].label}"?`)) return
     setEnviando(true); setError(null)
     const { error } = await supabase.rpc('orden_cambiar_etapa', { p_orden: o.id, p_etapa: etapa, p_justificacion: just || null })
@@ -37,16 +42,17 @@ export function CambioEtapa({ o, recargar }: TabProps) {
         <ArrowRight className="mb-1 h-4 w-4 text-slate-400" />
         <select className="input w-auto" value={etapa} onChange={e => setEtapa(e.target.value as Etapa)}>
           <option value="">Mover a…</option>
-          {opciones.map(e => <option key={e} value={e}>{ETAPAS[e].label}</option>)}
+          {opciones.map(e => <option key={e} value={e}>{e === 'entregado' ? 'Entregado (registrar entrega)' : ETAPAS[e].label}</option>)}
         </select>
-        <button className="btn btn-primary" disabled={!etapa || enviando} onClick={cambiar}>Cambiar etapa</button>
+        <button className="btn btn-primary" disabled={!etapa || enviando} onClick={cambiar}>{etapa === 'entregado' ? 'Ir a registrar entrega' : 'Cambiar etapa'}</button>
+        {o.etapa === 'listo_entrega' && puede('ordenes.gestionar') && <button className="btn btn-success" onClick={irAEntrega}><Truck className="h-4 w-4" /> Registrar entrega</button>}
       </div>
-      {etapa && (
+      {etapa && etapa !== 'entregado' && (
         <Field label="Justificación (obligatoria para excepciones y cancelaciones)" className="mt-3">
           <input className="input" value={just} onChange={e => setJust(e.target.value)} placeholder="Ej. Autorización verbal del ajustador, se formaliza mañana" />
         </Field>
       )}
-      <p className="mt-2 text-xs text-slate-500">Las etapas de reparación requieren presupuesto autorizado; “Listo para entrega” requiere todos los trabajos validados. Las excepciones quedan registradas con usuario y justificación.</p>
+      <p className="mt-2 text-xs text-slate-500">Las etapas de reparación requieren presupuesto autorizado; “Listo para entrega” requiere todos los trabajos validados; “Entregado” se registra con el checklist de calidad y el nombre de quien recibe. Las excepciones quedan registradas con usuario y justificación.</p>
     </Card>
   )
 }
