@@ -235,7 +235,7 @@ function Lista({ ordenes, onVer }: { ordenes: VOrden[]; onVer: (id: number) => v
   return (
     <Card pad={false}>
       {ordenes.length === 0 ? <Empty icon={Car}>Sin órdenes con estos filtros</Empty> : (
-        <div className="overflow-x-auto"><table className="tbl">
+        <div className="overflow-x-auto px-3 pb-3"><table className="tbl tbl-neon">
           <thead><tr><th>Orden</th><th>Vehículo</th><th>Cliente / Aseguradora</th><th>Etapa</th><th>Prioridad</th><th>Responsable</th><th>Ingreso</th><th>Compromiso</th><th className="text-right">Días en etapa</th></tr></thead>
           <tbody>{ordenes.map(o => (
             <tr key={o.id} className="cursor-pointer" onClick={() => onVer(o.id)}>

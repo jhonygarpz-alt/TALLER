@@ -95,8 +95,8 @@ export function ListaOrdenes() {
 
       <Card pad={false}>
         {cargando ? <div className="p-10 text-center text-slate-400">Cargando…</div> : rows.length === 0 ? <Empty icon={Car}>No hay órdenes con este filtro</Empty> : (
-          <div className="overflow-x-auto">
-            <table className="tbl">
+          <div className="overflow-x-auto px-3 pb-3">
+            <table className="tbl tbl-neon">
               <thead><tr><th>Orden</th><th>Vehículo</th><th>Cliente / Aseguradora</th><th>Estado</th><th>Responsable</th><th>Compromiso</th><th className="text-right">Días</th></tr></thead>
               <tbody>{rows.map(o => (
                 <tr key={o.id} className="cursor-pointer" onClick={() => nav(`/ordenes/${o.id}`)}>

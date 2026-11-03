@@ -58,6 +58,16 @@ body { background: var(--color-surface); color: #0f172a; -webkit-font-smoothing:
   .tbl th { @apply border-b border-slate-200 bg-slate-50/80 px-3 py-2.5 text-[11px] font-semibold tracking-wide text-slate-500 uppercase; }
   .tbl td { @apply border-b border-slate-100 px-3 py-2.5 align-middle; }
   .tbl tbody tr { @apply transition-colors hover:bg-brand-50/50; }
+  /* Listado de unidades: cada vehículo en su propio renglón con contorno neón */
+  .tbl-neon { border-collapse: separate; border-spacing: 0 10px; margin-top: -10px; }
+  .tbl-neon th { @apply border-b-0 bg-transparent; }
+  .tbl-neon tbody tr { filter: drop-shadow(0 0 5px rgba(29,180,100,.28)); transition: filter .2s, transform .2s; }
+  .tbl-neon tbody tr:hover { background: transparent; filter: drop-shadow(0 0 10px rgba(61,220,132,.6)); transform: translateY(-1px); }
+  .tbl-neon tbody td { @apply bg-white py-3; border-top: 1.5px solid rgba(61,220,132,.65); border-bottom: 1.5px solid rgba(61,220,132,.65); }
+  .tbl-neon tbody tr:hover td { @apply bg-brand-50/40; border-color: rgba(61,220,132,.95); }
+  .tbl-neon tbody td:first-child { border-left: 1.5px solid rgba(61,220,132,.65); border-radius: 14px 0 0 14px; }
+  .tbl-neon tbody td:last-child { border-right: 1.5px solid rgba(61,220,132,.65); border-radius: 0 14px 14px 0; }
+  .tbl-neon tbody tr:hover td:first-child, .tbl-neon tbody tr:hover td:last-child { border-color: rgba(61,220,132,.95); }
   .esqueleto { @apply animate-pulse rounded-lg bg-slate-200/70; }
   .badge { @apply inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold; }
 }
