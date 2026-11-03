@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Download, Pencil, Plus, Save } from 'lucide-react'
+import { Download, Pencil, Plus, Save, Smartphone } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { revertir } from '../../lib/revertir'
 import { useAuth } from '../../lib/auth'
@@ -238,7 +238,7 @@ export function TecnicosTarifas() {
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <ErrorMsg error={error} />
-      <Card title="Técnicos" className="lg:col-start-1">
+      <Card title="Técnicos" className="lg:col-start-1" action={<a href={`${import.meta.env.BASE_URL}tecnicos/`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm"><Smartphone className="h-4 w-4" /> App de técnicos</a>}>
         {tecnicos.length === 0 ? <Empty>Sin técnicos</Empty> : (
           <ul className="divide-y text-sm">{tecnicos.map(t => (
             <li key={t.id} className={`flex items-center justify-between gap-3 py-2 ${t.activo ? '' : 'opacity-50'} ${editando?.id === t.id ? 'rounded-lg bg-brand-50 px-2 ring-1 ring-brand-300' : ''}`}>

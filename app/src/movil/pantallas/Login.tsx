@@ -6,7 +6,7 @@ import { Aviso } from '../ui'
 
 const BASE = import.meta.env.BASE_URL
 
-export default function LoginMovil() {
+export default function LoginMovil({ titulo = 'Órdenes de trabajo', sub = 'Recepción, avance y fotos desde tu celular', icono = 'movil/icon-192.png' }: { titulo?: string; sub?: string; icono?: string }) {
   const emp = useEmpresa()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -32,9 +32,9 @@ export default function LoginMovil() {
       <div className="relative flex flex-1 flex-col items-center justify-end px-6 pt-[calc(env(safe-area-inset-top)+32px)] pb-6 text-center text-white">
         {emp.logoUrl
           ? <div className="mb-3 h-24 w-24 overflow-hidden rounded-3xl bg-white p-1 shadow-[0_0_24px_rgba(61,220,132,.45)] ring-2 ring-brand-400/60"><img src={emp.logoUrl} alt="" className="h-full w-full object-contain" /></div>
-          : <img src={`${BASE}movil/icon-192.png`} alt="" className="mb-3 h-24 w-24 rounded-3xl" />}
-        <h1 className="text-2xl font-extrabold tracking-tight">Órdenes de trabajo</h1>
-        <p className="text-sm text-emerald-100/75">Recepción, avance y fotos desde tu celular</p>
+          : <img src={`${BASE}${icono}`} alt="" className="mb-3 h-24 w-24 rounded-3xl" />}
+        <h1 className="text-2xl font-extrabold tracking-tight">{titulo}</h1>
+        <p className="text-sm text-emerald-100/75">{sub}</p>
       </div>
       <form onSubmit={entrar} className="relative space-y-4 rounded-t-[32px] bg-slate-50 px-6 pt-8 pb-[calc(env(safe-area-inset-bottom)+28px)]">
         <h2 className="text-xl font-bold text-slate-900">Iniciar sesión</h2>

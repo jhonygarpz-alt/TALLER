@@ -5,13 +5,13 @@ import tailwindcss from '@tailwindcss/vite'
 declare const process: { env: Record<string, string | undefined> }
 
 // BASE_PATH permite publicar en una subruta (p. ej. GitHub Pages: /TALLER/)
-// Dos entradas: el sistema web (index.html) y la app móvil instalable (movil/index.html)
+// Tres entradas: el sistema web, la app de órdenes (movil/) y la app de técnicos (tecnicos/)
 export default defineConfig({
   base: process.env.BASE_PATH || '/',
   plugins: [react(), tailwindcss()],
   build: {
     rollupOptions: {
-      input: { web: 'index.html', movil: 'movil/index.html' },
+      input: { web: 'index.html', movil: 'movil/index.html', tecnicos: 'tecnicos/index.html' },
     },
   },
 })

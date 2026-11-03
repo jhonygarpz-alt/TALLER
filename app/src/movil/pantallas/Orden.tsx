@@ -285,7 +285,7 @@ function HojaEntrega({ o, onClose, onListo }: { o: VOrden; onClose: () => void; 
   )
 }
 
-function HojaFotos({ ordenId, onClose, onListo, categoriaInicial = 'proceso', refId, titulo }: { ordenId: number; onClose: () => void; onListo: (n: number) => void; categoriaInicial?: CategoriaFoto; refId?: number; titulo?: string }) {
+export function HojaFotos({ ordenId, onClose, onListo, categoriaInicial = 'proceso', refId, titulo }: { ordenId: number; onClose: () => void; onListo: (n: number) => void; categoriaInicial?: CategoriaFoto; refId?: number; titulo?: string }) {
   const [cat, setCat] = useState<CategoriaFoto>(categoriaInicial)
   const [archivos, setArchivos] = useState<File[]>([])
   const [desc, setDesc] = useState('')
@@ -335,7 +335,7 @@ function HojaFotos({ ordenId, onClose, onListo, categoriaInicial = 'proceso', re
   )
 }
 
-function VisorFoto({ foto, onClose }: { foto: FotoRow; onClose: () => void }) {
+export function VisorFoto({ foto, onClose }: { foto: FotoRow; onClose: () => void }) {
   const url = useUrlFirmada(foto.path)
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black" onClick={onClose}>

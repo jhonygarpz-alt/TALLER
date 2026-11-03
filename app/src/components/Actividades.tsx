@@ -118,6 +118,7 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
   const [terminar, setTerminar] = useState<Actividad | null>(null)
   const [verEv, setVerEv] = useState<Actividad | null>(null)
   const [nueva, setNueva] = useState(false)
+  const [avances, setAvances] = useState<Record<number, { porcentaje: number; nota: string | null; created_at: string }>>({})
 
   const cargar = useCallback(async () => {
     let q = supabase.from('actividades').select('*, tecnicos(nombre, perfil_id), ordenes(folio, etapa, tipo)').order('fecha_asignacion', { ascending: false }).limit(500)
@@ -127,6 +128,11 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
     if (filtroTecnico) q = q.eq('tecnico_id', filtroTecnico)
     const { data } = await q
     setRows((data ?? []) as Actividad[])
+    const ids = (data ?? []).filter(a => a.estado !== 'cancelada').map(a => a.id)
+    if (ids.length) {
+      const { data: av } = await supabase.from('v_avance_actual').select('*').in('actividad_id', ids)
+      setAvances(Object.fromEntries((av ?? []).map(x => [x.actividad_id, x])))
+    } else setAvances({})
   }, [ordenId, filtroEstado, filtroTecnico])
   useEffect(() => { cargar() }, [cargar])
 
@@ -174,6 +180,20 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
                     {a.fecha_inicio && ` · Inicio ${fechaHora(a.fecha_inicio)}`}{a.fecha_fin && ` · Fin ${fechaHora(a.fecha_fin)}`}{a.horas != null && ` · ${num(a.horas)} h`}
                   </div>
                   {a.motivo_rechazo && a.estado !== 'validada' && <div className="mt-0.5 text-xs text-red-600">Motivo: {a.motivo_rechazo}</div>}
+                  {(() => {
+                    const av = avances[a.id]
+                    const pctv = a.estado === 'terminada' || a.estado === 'validada' ? 100 : av?.porcentaje ?? (a.estado === 'en_proceso' ? 0 : null)
+                    if (pctv == null) return null
+                    return (
+                      <div className="mt-2 max-w-md">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200"><div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-600 shadow-[0_0_6px_rgba(61,220,132,.6)] transition-all" style={{ width: `${pctv}%` }} /></div>
+                          <span className="w-10 text-right text-xs font-bold text-brand-700">{pctv}%</span>
+                        </div>
+                        {av && <div className="mt-0.5 text-[11px] text-slate-500">Avance reportado {fechaHora(av.created_at)}{av.nota && ` · “${av.nota}”`}</div>}
+                      </div>
+                    )
+                  })()}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {['terminada', 'validada'].includes(a.estado) && <button className="btn btn-secondary btn-sm" onClick={() => setVerEv(a)}>Evidencia</button>}

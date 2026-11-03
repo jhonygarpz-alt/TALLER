@@ -1,0 +1,18 @@
+{
+  "name": "Taller · Técnicos",
+  "short_name": "Técnicos",
+  "description": "Trabajos asignados a hojalateros y pintores: iniciar, reportar avance con fotos y terminar. Sincronizado con el sistema web.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#062b1e",
+  "theme_color": "#073626",
+  "lang": "es-MX",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

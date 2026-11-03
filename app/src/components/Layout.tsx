@@ -96,6 +96,7 @@ function MenuUsuario() {
             <Link to="/administracion" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><Settings className="h-4 w-4" /> Configuración</Link>
           )}
           <a href={`${import.meta.env.BASE_URL}movil/`} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><Smartphone className="h-4 w-4" /> App móvil (instalar)</a>
+          <a href={`${import.meta.env.BASE_URL}tecnicos/`} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><Wrench className="h-4 w-4" /> App de técnicos (instalar)</a>
           <button onClick={() => supabase.auth.signOut()} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"><LogOut className="h-4 w-4" /> Cerrar sesión</button>
         </div>
       )}
