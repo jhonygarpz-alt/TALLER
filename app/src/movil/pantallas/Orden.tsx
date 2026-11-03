@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ArrowLeftRight, ArrowRight, Camera, Check, CheckCircle2, ClipboardList, ExternalLink, FileText, Fuel, History, ImagePlus, Loader2, MessageCircle, MoreVertical, Phone, Play, RotateCcw, Share2, Shield, Truck, User, Users, Wrench } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, ArrowRight, Camera, Check, CheckCircle2, ClipboardList, ExternalLink, FileText, Fuel, History, ImagePlus, Loader2, MessageCircle, MoreVertical, Phone, Play, RotateCcw, Share2, Shield, Smartphone, Truck, User, Users, Wrench } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { subirFoto, useUrlFirmada, type CategoriaFoto } from '../../lib/storage'
 import { ESTADO_ACTIVIDAD, ETAPAS, ETAPAS_TABLERO, errorTexto, fecha, fechaHora, hoyISO, money2, type Etapa } from '../../lib/format'
 import type { VOrden } from '../../lib/tipos'
+import { ligaInvitacion } from '../../lib/invitacion'
 import { CHECKLIST_CALIDAD } from '../../pages/expediente/Entrega'
 import { Miniatura, type FotoRow } from '../../components/Fotos'
 import { Aviso, BadgeEtapa, Cargando, Campo, Hoja, Vacio, botonPrimario, botonSecundario, entrada } from '../ui'
@@ -183,6 +184,7 @@ export default function Orden() {
           <div className="space-y-2 pb-2">
             {!cerrada && puede('ordenes.etapa') && <button className={botonSecundario} onClick={() => setHoja('etapa')}><ArrowLeftRight className="h-5 w-5" /> Cambiar a otra etapa</button>}
             {tel && <a className={botonSecundario} href={`tel:${tel}`}><Phone className="h-5 w-5" /> Llamar al cliente</a>}
+            {ligaInvitacion(o) && <a className={botonSecundario} href={ligaInvitacion(o)!} target="_blank" rel="noreferrer"><Smartphone className="h-5 w-5" /> Invitar al cliente a «Mi Auto» (WhatsApp)</a>}
             <a className={botonSecundario} href={`${import.meta.env.BASE_URL}ordenes/${o.id}`} target="_blank" rel="noreferrer"><ExternalLink className="h-5 w-5" /> Expediente completo en el sistema web</a>
           </div>
         </Hoja>

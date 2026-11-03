@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { AlertTriangle, Camera, ClipboardList, DollarSign, FileText, Package, Pencil, Printer, Trash2, Truck, Wrench } from 'lucide-react'
+import { AlertTriangle, Camera, ClipboardList, DollarSign, FileText, Package, Pencil, Printer, Trash2, Truck, Wrench, Smartphone } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 import EliminarOrden from './EliminarOrden'
 import EditarOrden from './EditarOrden'
+import { ligaInvitacion } from '../../lib/invitacion'
 import { supabase } from '../../lib/supabase'
 import { useAlertas } from '../../lib/alertas'
 import { fecha } from '../../lib/format'
@@ -66,6 +67,7 @@ export default function Expediente() {
         <div className="no-print flex gap-2 self-start md:flex-col">
           {puede('ordenes.gestionar') && !['entregado', 'cancelado'].includes(o.etapa) && <button className="btn btn-primary btn-sm" onClick={() => setEditar(true)} title="Editar orden"><Pencil className="h-4 w-4" /> Editar</button>}
           <button className="btn btn-secondary btn-sm" onClick={() => window.print()} title="Imprimir o guardar como PDF"><Printer className="h-4 w-4" /> Imprimir</button>
+          {ligaInvitacion(o) && o.etapa !== 'cancelado' && <a className="btn btn-secondary btn-sm" href={ligaInvitacion(o)!} target="_blank" rel="noreferrer" data-ayuda="Envía al cliente por WhatsApp la liga de la app «Mi Auto» para seguir su reparación, recibir aviso cuando esté listo y contestar la encuesta."><Smartphone className="h-4 w-4" /> Invitar al cliente</a>}
           {puede('excepciones.autorizar') && <button className="btn btn-sm border border-red-200 bg-white text-red-600 hover:bg-red-50" onClick={() => setEliminar(true)} title="Eliminar orden"><Trash2 className="h-4 w-4" /> Eliminar</button>}
         </div>
       </div>
