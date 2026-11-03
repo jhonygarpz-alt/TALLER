@@ -58,7 +58,7 @@ const A: Record<string, string> = {
   'Volver a verificar': 'Vuelve a revisar la información.',
   'Sucursal': 'Sucursal del taller a la que pertenece la orden.',
   'Todas': 'Sin filtro: muestra todo.',
-  'Contraseña': 'Contraseña de acceso del usuario.',
+  'Contraseña': 'Contraseña de acceso. En la lista de usuarios, este botón asigna una contraseña nueva al usuario.',
 
   /* ---------- Dashboard / indicadores ---------- */
   'Vehículos en taller': 'Autos que están dentro del taller (órdenes abiertas sin entregar). Da clic para verlos.',

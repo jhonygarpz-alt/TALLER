@@ -1,4 +1,4 @@
-// Administración de usuarios de TallerPro (alta y cambio de contraseña).
+// Administración de usuarios de TallerPro (alta, cambio de contraseña y edición).
 // Corre en el servidor con la clave de servicio, que nunca llega al navegador.
 // Solo atiende a usuarios activos con el permiso "usuarios.gestionar".
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -63,6 +63,39 @@ Deno.serve(async (req) => {
       const { error } = await admin.auth.admin.updateUserById(id, { password })
       if (error) return json({ error: error.message }, 400)
       await auditar(id, 'cambio_contrasena', { por: quien.user.email })
+      return json({ ok: true })
+    }
+
+    if (body.accion === 'editar') {
+      const id = String(body.id ?? '')
+      const email = String(body.email ?? '').trim().toLowerCase()
+      const nombre = String(body.nombre ?? '').trim()
+      const rol = String(body.rol ?? '')
+      const activo = body.activo !== false
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Correo no válido' }, 400)
+      if (!nombre) return json({ error: 'Indica el nombre' }, 400)
+      if (!ROLES.includes(rol)) return json({ error: 'Rol no válido' }, 400)
+
+      const { data: antes, error: eA } = await admin.from('perfiles').select('email,nombre,rol,activo').eq('id', id).single()
+      if (eA || !antes) return json({ error: 'Usuario no encontrado' }, 404)
+
+      // Siempre debe quedar al menos un usuario de Dirección activo
+      if (antes.rol === 'direccion' && antes.activo && (rol !== 'direccion' || !activo)) {
+        const { count } = await admin.from('perfiles').select('id', { count: 'exact', head: true }).eq('rol', 'direccion').eq('activo', true).neq('id', id)
+        if (!count) return json({ error: 'Debe quedar al menos un usuario de Dirección activo' }, 400)
+      }
+
+      if (email !== (antes.email ?? '').toLowerCase()) {
+        const { error } = await admin.auth.admin.updateUserById(id, { email, email_confirm: true })
+        if (error) {
+          const dup = /already|registered|exists/i.test(error.message)
+          return json({ error: dup ? 'Ya existe un usuario con ese correo' : error.message }, 400)
+        }
+      }
+      await admin.auth.admin.updateUserById(id, { user_metadata: { nombre } })
+      const { error: eP } = await admin.from('perfiles').update({ nombre, email, rol, activo }).eq('id', id)
+      if (eP) return json({ error: eP.message }, 400)
+      await admin.from('auditoria').insert({ usuario_id: quien.user.id, tabla: 'usuarios', registro_id: id, accion: 'edicion_usuario', antes, despues: { email, nombre, rol, activo } })
       return json({ ok: true })
     }
 

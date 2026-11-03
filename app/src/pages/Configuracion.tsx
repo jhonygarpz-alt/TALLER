@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Building2, FolderTree, HardHat, History, KeyRound, Plus, Settings2, Truck, Upload, Users } from 'lucide-react'
+import { Building2, FolderTree, HardHat, History, KeyRound, Pencil, Plus, Settings2, Truck, Upload, Users } from 'lucide-react'
 import { cambiarNombreEmpresa, quitarLogo, subirLogo, useEmpresa } from '../lib/empresa'
 import { Logo } from '../components/Layout'
 import { TecnicosTarifas } from './taller/produccion'
@@ -91,12 +91,45 @@ function CambiarPassword({ p, onDone }: { p: Perfil; onDone: (msg: string) => vo
   )
 }
 
+function EditarUsuario({ p, esYo, onDone }: { p: Perfil; esYo: boolean; onDone: (msg: string) => void }) {
+  const [f, setF] = useState({ nombre: p.nombre, email: p.email ?? '', rol: p.rol as string, activo: p.activo })
+  const [error, setError] = useState<string | null>(null)
+  const [enviando, setEnviando] = useState(false)
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (esYo && (!f.activo || f.rol !== p.rol) && !confirm('Estás modificando tu propio acceso. ¿Continuar?')) return
+    setEnviando(true); setError(null)
+    const err = await adminUsuarios({ accion: 'editar', id: p.id, ...f })
+    setEnviando(false)
+    if (err) return setError(err)
+    const cambioCorreo = f.email.trim().toLowerCase() !== (p.email ?? '').toLowerCase()
+    onDone(`Usuario ${f.nombre.trim()} actualizado.${cambioCorreo ? ` Ahora entra con el correo ${f.email.trim().toLowerCase()} (la contraseña no cambia).` : ''}`)
+  }
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <ErrorMsg error={error} />
+      <Field label="Nombre completo *"><input className="input" required value={f.nombre} onChange={e => setF({ ...f, nombre: e.target.value })} /></Field>
+      <Field label="Correo *" hint="Es el usuario con el que entra al sistema."><input className="input" type="email" required value={f.email} onChange={e => setF({ ...f, email: e.target.value })} /></Field>
+      <Field label="Rol *">
+        <select className="input" value={f.rol} onChange={e => setF({ ...f, rol: e.target.value })}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+      </Field>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.activo} onChange={e => setF({ ...f, activo: e.target.checked })} /> Activo (puede entrar al sistema)</label>
+      <p className="text-xs text-slate-500">La contraseña se cambia con el botón “Contraseña”. Siempre debe quedar al menos un usuario de Dirección activo. El cambio queda en Auditoría.</p>
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn btn-secondary" onClick={() => onDone('')}>Cancelar</button>
+        <button type="submit" className="btn btn-primary" disabled={enviando}>{enviando ? 'Guardando…' : 'Guardar cambios'}</button>
+      </div>
+    </form>
+  )
+}
+
 function Usuarios() {
   const { perfil: yo, recargar } = useAuth()
   const [rows, setRows] = useState<Perfil[]>([])
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [modal, setModal] = useState<'nuevo' | Perfil | null>(null)
+  const [editar, setEditar] = useState<Perfil | null>(null)
   const cargar = useCallback(() => supabase.from('perfiles').select('*').order('activo').order('nombre').then(({ data }) => setRows((data ?? []) as Perfil[])), [])
   useEffect(() => { cargar() }, [cargar])
   async function actualizar(p: Perfil, campos: Partial<Perfil>) {
@@ -104,7 +137,7 @@ function Usuarios() {
     const { error } = await supabase.from('perfiles').update(campos).eq('id', p.id)
     setError(error ? errorTexto(error) : null); cargar(); if (p.id === yo?.id) recargar()
   }
-  const terminado = (msg: string) => { setModal(null); setAviso(msg); cargar() }
+  const terminado = (msg: string) => { setModal(null); setEditar(null); setAviso(msg || null); cargar(); recargar() }
   return (
     <Card title="Usuarios" action={<button className="btn btn-primary btn-sm" onClick={() => { setAviso(null); setModal('nuevo') }}><Plus className="h-4 w-4" /> Agregar usuario</button>}>
       <ErrorMsg error={error} />
@@ -123,10 +156,11 @@ function Usuarios() {
             <td><select className="input w-auto py-1.5" value={p.rol} onChange={e => actualizar(p, { rol: e.target.value })}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
             <td><button className={`btn btn-sm ${p.activo ? 'btn-success' : 'btn-secondary'}`} onClick={() => actualizar(p, { activo: !p.activo })}>{p.activo ? 'Activo' : 'Inactivo · activar'}</button></td>
             <td className="text-xs">{fechaHora(p.created_at)}</td>
-            <td className="text-right"><button className="btn btn-secondary btn-sm" onClick={() => { setAviso(null); setModal(p) }}><KeyRound className="h-3.5 w-3.5" /> Contraseña</button></td>
+            <td className="text-right whitespace-nowrap"><button className="btn btn-secondary btn-sm mr-1.5" onClick={() => { setAviso(null); setEditar(p) }}><Pencil className="h-3.5 w-3.5" /> Editar</button><button className="btn btn-secondary btn-sm" onClick={() => { setAviso(null); setModal(p) }}><KeyRound className="h-3.5 w-3.5" /> Contraseña</button></td>
           </tr>))}
         </tbody>
       </table></div>
+      {editar && <Modal title={`Editar usuario · ${editar.nombre}`} onClose={() => setEditar(null)}><EditarUsuario p={editar} esYo={editar.id === yo?.id} onDone={terminado} /></Modal>}
       {modal && (
         <Modal title={modal === 'nuevo' ? 'Agregar usuario' : 'Cambiar contraseña'} onClose={() => setModal(null)}>
           {modal === 'nuevo' ? <NuevoUsuario onDone={terminado} /> : <CambiarPassword p={modal} onDone={terminado} />}
