@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
-import { ClipboardList, Home, Plus, UserRound, Wrench } from 'lucide-react'
+import { CarFront, Home, Plus, UserRound, Wrench } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import { Cargando } from './ui'
@@ -9,33 +9,37 @@ import Inicio from './pantallas/Inicio'
 
 const Ordenes = lazy(() => import('./pantallas/Ordenes'))
 const Orden = lazy(() => import('./pantallas/Orden'))
+const EvidenciaFotos = lazy(() => import('./pantallas/EvidenciaFotos'))
 const NuevaOrden = lazy(() => import('./pantallas/NuevaOrden'))
 const Trabajos = lazy(() => import('./pantallas/Trabajos'))
 const Cuenta = lazy(() => import('./pantallas/Cuenta'))
 
-/** Barra inferior: los 5 destinos principales al alcance del pulgar */
+/** Barra inferior tipo píldora + botón flotante para nueva orden */
 function BarraInferior() {
   const { puede } = useAuth()
+  const loc = useLocation()
   const item = (to: string, Icono: typeof Home, label: string) => (
-    <NavLink to={to} end={to === '/'} className={({ isActive }) => `flex flex-1 flex-col items-center gap-0.5 pt-2 pb-1 text-[11px] font-semibold transition ${isActive ? 'text-brand-700' : 'text-slate-400'}`}>
-      {({ isActive }) => <><span className={`flex h-8 w-14 items-center justify-center rounded-full transition ${isActive ? 'bg-brand-100' : ''}`}><Icono className="h-[22px] w-[22px]" strokeWidth={isActive ? 2.4 : 2} /></span>{label}</>}
+    <NavLink to={to} end={to === '/'} className={({ isActive }) => `flex flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl py-2 text-[11px] font-semibold transition ${isActive ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-md shadow-brand-900/25' : 'text-slate-500 active:bg-slate-100'}`}>
+      <Icono className="h-[22px] w-[22px]" />{label}
     </NavLink>
   )
+  const conFab = puede('ordenes.gestionar') && (loc.pathname === '/' || loc.pathname === '/ordenes')
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
-      <div className="mx-auto flex max-w-lg items-end">
-        {item('/', Home, 'Inicio')}
-        {item('/ordenes', ClipboardList, 'Órdenes')}
-        {puede('ordenes.gestionar') ? (
-          <NavLink to="/nueva" className="flex flex-1 flex-col items-center pb-1 text-[11px] font-semibold text-brand-700" aria-label="Nueva orden">
-            <span className="-mt-6 mb-0.5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-800/40 ring-4 ring-white"><Plus className="h-7 w-7" strokeWidth={2.6} /></span>
-            Nueva
-          </NavLink>
-        ) : null}
-        {item('/trabajos', Wrench, 'Trabajos')}
-        {item('/cuenta', UserRound, 'Cuenta')}
-      </div>
-    </nav>
+    <>
+      {conFab && (
+        <NavLink to="/nueva" aria-label="Nueva orden" className="fixed right-4 bottom-[calc(84px+env(safe-area-inset-bottom))] z-40 flex h-14 items-center gap-2 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 pr-5 pl-4 font-bold text-white shadow-xl shadow-brand-900/35 active:scale-95">
+          <Plus className="h-6 w-6" strokeWidth={2.6} /> Nueva OT
+        </NavLink>
+      )}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+8px)] backdrop-blur">
+        <div className="mx-auto flex max-w-lg gap-1.5">
+          {item('/', Home, 'Inicio')}
+          {item('/ordenes', CarFront, 'Órdenes')}
+          {item('/trabajos', Wrench, 'Trabajos')}
+          {item('/cuenta', UserRound, 'Mi perfil')}
+        </div>
+      </nav>
+    </>
   )
 }
 
@@ -52,15 +56,16 @@ export default function AppMovil() {
       </div>
     )
   }
-  const sinBarra = loc.pathname.startsWith('/nueva')
+  const sinBarra = loc.pathname.startsWith('/nueva') || loc.pathname.endsWith('/evidencia')
   return (
     <div className="mx-auto min-h-screen max-w-lg bg-slate-50 text-slate-800">
-      <div className={sinBarra ? '' : 'pb-[calc(76px+env(safe-area-inset-bottom))]'}>
+      <div className={sinBarra ? '' : 'pb-[calc(92px+env(safe-area-inset-bottom))]'}>
         <Suspense fallback={<Cargando />}>
           <Routes>
             <Route path="/" element={<Inicio />} />
             <Route path="/ordenes" element={<Ordenes />} />
             <Route path="/orden/:id" element={<Orden />} />
+            <Route path="/orden/:id/evidencia" element={<EvidenciaFotos />} />
             <Route path="/nueva" element={<NuevaOrden />} />
             <Route path="/trabajos" element={<Trabajos />} />
             <Route path="/cuenta" element={<Cuenta />} />

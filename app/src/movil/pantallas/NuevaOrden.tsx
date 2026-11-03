@@ -1,18 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Camera, Check, ImagePlus, Loader2, Search, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Loader2, Search, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { subirFoto } from '../../lib/storage'
 import { errorTexto } from '../../lib/format'
 import { CHECKLIST_RECEPCION } from '../../pages/vehiculos/Recepcion'
-import { Aviso, Campo, Vacio, entrada } from '../ui'
+import { Aviso, Campo, EncabezadoClaro, Vacio, entrada } from '../ui'
+import { RejillaEvidencia, fotosVacias, listaFotos, totalFotos, type FotosGuiadas } from '../Evidencia'
 
 interface TipoRep { id: number; nombre: string; dias_objetivo: number; aseguradora_id: number | null }
 const COLORES = ['BLANCO', 'NEGRO', 'GRIS', 'PLATA', 'ROJO', 'AZUL', 'VERDE', 'ARENA', 'CAFÉ', 'VINO', 'AMARILLO', 'NARANJA']
 const MUESTRA: Record<string, string> = { BLANCO: '#f8fafc', NEGRO: '#111827', GRIS: '#9ca3af', PLATA: '#cbd5e1', ROJO: '#dc2626', AZUL: '#2563eb', VERDE: '#16a34a', ARENA: '#d6c29a', 'CAFÉ': '#7c4a2d', VINO: '#7f1d1d', AMARILLO: '#facc15', NARANJA: '#ea580c' }
 const COMBUSTIBLE = ['Reserva', '1/4', '1/2', '3/4', 'Lleno']
-const PASOS = ['Origen', 'Vehículo y cliente', 'Condiciones', 'Fotos']
+const PASOS = ['Origen', 'Propietario y vehículo', 'Condiciones de ingreso', 'Fotografías']
 
 export default function NuevaOrden() {
   const { puede, perfil } = useAuth()
@@ -24,15 +25,14 @@ export default function NuevaOrden() {
   const [tipos, setTipos] = useState<TipoRep[]>([])
   const [existente, setExistente] = useState<{ vehiculo_id: number; cliente_id: number | null; texto: string } | null>(null)
   const [buscado, setBuscado] = useState(false)
-  const [fotos, setFotos] = useState<File[]>([])
+  const [fotos, setFotos] = useState<FotosGuiadas>(fotosVacias('recepcion'))
+  const [asesores, setAsesores] = useState<{ id: string; nombre: string }[]>([])
   const [checklist, setChecklist] = useState<Record<string, string>>(Object.fromEntries(CHECKLIST_RECEPCION.map(i => [i, 'bien'])))
   const [f, setF] = useState({
     tipo: 'aseguradora' as 'aseguradora' | 'particular', aseguradora_id: '', siniestro: '', tipo_reparacion_id: '', fecha_compromiso: '',
     placas: '', marca: '', modelo: '', anio: '', color: '', cliente_nombre: '', cliente_telefono: '',
-    kilometraje: '', combustible: '1/2', danos_reportados: '', objetos: '',
+    kilometraje: '', combustible: '1/2', danos_reportados: '', objetos: '', asesor_id: perfil?.id ?? '', vin: '',
   })
-  const camara = useRef<HTMLInputElement>(null)
-  const galeria = useRef<HTMLInputElement>(null)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF(p => ({ ...p, [k]: e.target.value }))
 
   useEffect(() => {
@@ -40,6 +40,7 @@ export default function NuevaOrden() {
       setAseguradoras(data ?? []); if (data?.length) setF(p => ({ ...p, aseguradora_id: p.aseguradora_id || String(data[0].id) }))
     })
     supabase.from('tipos_reparacion').select('*').eq('activo', true).order('dias_objetivo').then(({ data }) => setTipos((data ?? []) as TipoRep[]))
+    supabase.from('perfiles').select('id,nombre').eq('activo', true).in('rol', ['asesor', 'administracion', 'direccion', 'supervisor']).order('nombre').then(({ data }) => setAsesores(data ?? []))
   }, [])
   useEffect(() => { window.scrollTo(0, 0) }, [paso])
 
@@ -77,7 +78,7 @@ export default function NuevaOrden() {
 
   async function guardar() {
     for (const p of [1, 2, 3]) { const e = validar(p); if (e) { setError(e); setPaso(p); return } }
-    if (!fotos.length && !confirm('No agregaste fotos de recepción. ¿Crear la orden sin fotos?')) return
+    if (!totalFotos(fotos) && !confirm('No agregaste fotos de recepción. ¿Crear la orden sin fotos?')) return
     setError(null); setGuardando('Creando orden…')
     try {
       let clienteId = existente?.cliente_id ?? null
@@ -88,7 +89,7 @@ export default function NuevaOrden() {
         clienteId = data.id
       }
       if (!vehiculoId) {
-        const { data, error } = await supabase.from('vehiculos').insert({ cliente_id: clienteId, marca: f.marca.trim().toUpperCase(), modelo: f.modelo.trim().toUpperCase(), anio: f.anio ? Number(f.anio) : null, placas: f.placas.trim().toUpperCase() || null, color: f.color || null }).select('id').single()
+        const { data, error } = await supabase.from('vehiculos').insert({ cliente_id: clienteId, marca: f.marca.trim().toUpperCase(), modelo: f.modelo.trim().toUpperCase(), anio: f.anio ? Number(f.anio) : null, placas: f.placas.trim().toUpperCase() || null, color: f.color || null, vin: f.vin.trim().toUpperCase() || null }).select('id').single()
         if (error) throw error
         vehiculoId = data.id
       } else if (!existente?.cliente_id) {
@@ -99,14 +100,15 @@ export default function NuevaOrden() {
         siniestro: f.tipo === 'aseguradora' ? f.siniestro.trim() : null,
         cliente_id: clienteId, vehiculo_id: vehiculoId, tipo_reparacion_id: f.tipo_reparacion_id ? Number(f.tipo_reparacion_id) : null,
         fecha_compromiso: f.fecha_compromiso, kilometraje: f.kilometraje ? Number(f.kilometraje) : null,
-        danos_reportados: f.danos_reportados.trim(), objetos: f.objetos.trim() || null, asesor_id: perfil?.id ?? null,
+        danos_reportados: f.danos_reportados.trim(), objetos: f.objetos.trim() || null, asesor_id: f.asesor_id || null,
         checklist_recepcion: { ...checklist, Combustible: f.combustible },
       }).select('id, folio').single()
       if (error) throw error
       let fallidas = 0
-      for (const [i, file] of fotos.entries()) {
-        setGuardando(`Subiendo foto ${i + 1} de ${fotos.length}…`)
-        try { await subirFoto(file, orden.id, 'recepcion') } catch { fallidas++ }
+      const lista = listaFotos(fotos)
+      for (const [i, [file, desc]] of lista.entries()) {
+        setGuardando(`Subiendo foto ${i + 1} de ${lista.length}…`)
+        try { await subirFoto(file, orden.id, 'recepcion', null, desc) } catch { fallidas++ }
       }
       if (fallidas) alert(`La orden ${orden.folio} se creó, pero ${fallidas} foto(s) no se subieron. Agrégalas desde la orden (pestaña Fotos).`)
       nav(`/orden/${orden.id}`, { replace: true })
@@ -117,18 +119,24 @@ export default function NuevaOrden() {
 
   if (!puede('ordenes.gestionar')) return <Vacio icono={X}>Tu rol no tiene permiso para recibir vehículos.</Vacio>
 
-  const chip = (activo: boolean) => `rounded-2xl px-4 py-3 text-sm font-semibold ring-1 transition active:scale-[.97] ${activo ? 'bg-brand-700 text-white ring-brand-700 shadow' : 'bg-white text-slate-700 ring-slate-200'}`
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-30 bg-gradient-to-r from-navy-950 to-navy-800 pt-[env(safe-area-inset-top)] text-white shadow-lg">
-        <div className="flex h-14 items-center gap-1 px-2">
-          <button onClick={() => (confirm('¿Salir sin guardar la orden?') ? nav(-1) : null)} className="flex h-11 w-11 items-center justify-center rounded-full active:bg-white/15" aria-label="Salir"><X className="h-6 w-6" /></button>
-          <div className="flex-1"><div className="text-[17px] font-bold">Recibir vehículo</div><div className="text-xs text-emerald-100/75">Paso {paso} de 4 · {PASOS[paso - 1]}</div></div>
-        </div>
-        <div className="flex gap-1.5 px-4 pb-3">{PASOS.map((_, i) => <div key={i} className={`h-1.5 flex-1 rounded-full transition ${i < paso ? 'bg-brand-400' : 'bg-white/20'}`} />)}</div>
-      </header>
+      <EncabezadoClaro titulo="Recepción de vehículo" sub="Genera una nueva orden de trabajo" atras={() => (confirm('¿Salir sin guardar la orden?') ? nav(-1) : null)}>
+        <ol className="mt-5 grid grid-cols-4 gap-1">
+          {PASOS.map((nombre, i) => {
+            const n = i + 1; const hecho = n < paso; const actual = n === paso
+            return (
+              <li key={nombre} className="flex flex-col items-center gap-1 text-center">
+                <button type="button" disabled={n > paso} onClick={() => setPaso(n)} className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition ${actual ? 'bg-brand-600 text-white shadow-md shadow-brand-800/30 ring-4 ring-brand-100' : hecho ? 'bg-brand-100 text-brand-700' : 'bg-white text-slate-500 ring-1 ring-slate-200'}`}>{hecho ? <Check className="h-4 w-4" strokeWidth={3} /> : n}</button>
+                <span className={`text-[10.5px] leading-tight ${actual ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{nombre}</span>
+              </li>
+            )
+          })}
+        </ol>
+      </EncabezadoClaro>
 
-      <div className="space-y-5 px-4 pt-4 pb-[calc(110px+env(safe-area-inset-bottom))]">
+      <div className="space-y-5 px-4 pt-2 pb-[calc(110px+env(safe-area-inset-bottom))]">
+        <div className="space-y-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
         {error && <Aviso onClose={() => setError(null)}>{error}</Aviso>}
 
         {paso === 1 && <>
@@ -137,21 +145,18 @@ export default function NuevaOrden() {
               <button key={t} onClick={() => setF(p => ({ ...p, tipo: t, tipo_reparacion_id: '' }))}
                 className={`rounded-3xl p-4 text-left ring-2 transition ${f.tipo === t ? 'bg-brand-50 ring-brand-500' : 'bg-white ring-slate-200'}`}>
                 <div className="text-lg font-extrabold">{t === 'aseguradora' ? 'Aseguradora' : 'Particular'}</div>
-                <div className="text-xs text-slate-500">{t === 'aseguradora' ? 'Siniestro asignado' : 'Cliente directo'}</div>
+                <div className="text-xs text-slate-500">{t === 'aseguradora' ? `Siniestro asignado${aseguradoras.length === 1 ? ` (${aseguradoras[0].nombre})` : ''}` : 'Cliente directo'}</div>
               </button>
             ))}
           </div>
           {f.tipo === 'aseguradora' && <>
-            {aseguradoras.length > 1 && <Campo label="Aseguradora"><select className={entrada} value={f.aseguradora_id} onChange={set('aseguradora_id')}>{aseguradoras.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Campo>}
-            <Campo label={`Número de siniestro ${aseguradoras.length === 1 ? `(${aseguradoras[0].nombre})` : ''}`}><input className={entrada} inputMode="numeric" value={f.siniestro} onChange={set('siniestro')} placeholder="Ej. 4264105478000121" /></Campo>
+            <Campo label="Aseguradora *"><select className={entrada} value={f.aseguradora_id} onChange={set('aseguradora_id')}>{aseguradoras.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Campo>
+            <Campo label="Número de siniestro *"><input className={entrada} inputMode="numeric" value={f.siniestro} onChange={set('siniestro')} placeholder="Ej. 4264105478000121" /></Campo>
           </>}
-          <div>
-            <span className="mb-1.5 block text-[13px] font-semibold text-slate-600">Tipo de reparación</span>
-            <div className="grid grid-cols-2 gap-2">{tiposFiltrados.map(t => (
-              <button key={t.id} onClick={() => elegirTipoRep(t)} className={chip(f.tipo_reparacion_id === String(t.id))}>{t.nombre}<span className="block text-[11px] font-normal opacity-75">{t.dias_objetivo} días</span></button>
-            ))}</div>
-          </div>
-          <Campo label="Fecha compromiso de entrega" ayuda="Se calcula sola con el tipo de reparación; puedes cambiarla."><input className={entrada} type="date" value={f.fecha_compromiso} onChange={set('fecha_compromiso')} /></Campo>
+          <Campo label="Tipo de reparación"><select className={entrada} value={f.tipo_reparacion_id} onChange={e => { const t = tipos.find(x => String(x.id) === e.target.value); if (t) elegirTipoRep(t); else setF(p => ({ ...p, tipo_reparacion_id: '' })) }}>
+            <option value="">Selecciona…</option>{tiposFiltrados.map(t => <option key={t.id} value={t.id}>{t.nombre} ({t.dias_objetivo} días)</option>)}</select></Campo>
+          <Campo label="Fecha compromiso de entrega *" ayuda="Se calcula sola con el tipo de reparación; puedes cambiarla."><input className={entrada} type="date" value={f.fecha_compromiso} onChange={set('fecha_compromiso')} /></Campo>
+          <Campo label="Asesor responsable"><select className={entrada} value={f.asesor_id} onChange={set('asesor_id')}><option value="">Sin asignar</option>{asesores.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Campo>
         </>}
 
         {paso === 2 && <>
@@ -165,7 +170,10 @@ export default function NuevaOrden() {
             <Campo label="Marca"><input className={`${entrada} uppercase`} autoCapitalize="characters" value={f.marca} onChange={set('marca')} placeholder="NISSAN" /></Campo>
             <Campo label="Modelo"><input className={`${entrada} uppercase`} autoCapitalize="characters" value={f.modelo} onChange={set('modelo')} placeholder="VERSA" /></Campo>
           </div>
-          <Campo label="Año"><input className={entrada} inputMode="numeric" maxLength={4} value={f.anio} onChange={set('anio')} placeholder="2020" /></Campo>
+          <div className="grid grid-cols-[1fr_2fr] gap-3">
+            <Campo label="Año"><input className={entrada} inputMode="numeric" maxLength={4} value={f.anio} onChange={set('anio')} placeholder="2020" /></Campo>
+            <Campo label="VIN (opcional)"><input className={`${entrada} uppercase`} autoCapitalize="characters" maxLength={17} value={f.vin} onChange={set('vin')} /></Campo>
+          </div>
           <div>
             <span className="mb-1.5 block text-[13px] font-semibold text-slate-600">Color</span>
             <div className="grid grid-cols-4 gap-2">{COLORES.map(c => (
@@ -201,31 +209,19 @@ export default function NuevaOrden() {
         </>}
 
         {paso === 4 && <>
-          <p className="text-sm text-slate-600">Toma fotos de los 4 lados del auto, los daños y el tablero (kilometraje y combustible). Son la evidencia de cómo llegó.</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => camara.current?.click()} className="flex flex-col items-center gap-2 rounded-3xl bg-brand-50 py-7 font-bold text-brand-800 ring-2 ring-brand-200 active:scale-[.98]"><Camera className="h-9 w-9" /> Tomar foto</button>
-            <button onClick={() => galeria.current?.click()} className="flex flex-col items-center gap-2 rounded-3xl bg-white py-7 font-bold text-slate-700 ring-1 ring-slate-200 active:scale-[.98]"><ImagePlus className="h-9 w-9" /> De galería</button>
-          </div>
-          <input ref={camara} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const fl = e.target.files; if (fl) setFotos(a => [...a, ...Array.from(fl)]); e.target.value = '' }} />
-          <input ref={galeria} type="file" accept="image/*" multiple className="hidden" onChange={e => { const fl = e.target.files; if (fl) setFotos(a => [...a, ...Array.from(fl)]); e.target.value = '' }} />
-          {fotos.length > 0 && (
-            <div className="grid grid-cols-3 gap-2">{fotos.map((file, i) => (
-              <div key={i} className="relative aspect-square overflow-hidden rounded-2xl bg-slate-100">
-                <img src={URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" />
-                <button onClick={() => setFotos(a => a.filter((_, j) => j !== i))} className="absolute top-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white" aria-label="Quitar foto"><X className="h-4 w-4" /></button>
-              </div>
-            ))}</div>
-          )}
+          <p className="text-sm text-slate-600">Toca cada casilla para tomar la foto. Son la evidencia de cómo llegó el vehículo.</p>
+          <RejillaEvidencia valor={fotos} onChange={setFotos} />
           <div className="rounded-3xl bg-white p-4 text-sm shadow-sm ring-1 ring-slate-200">
             <div className="mb-2 font-bold">Resumen</div>
             <div className="space-y-1 text-slate-600">
               <div>{f.tipo === 'aseguradora' ? `${aseguradoras.find(a => String(a.id) === f.aseguradora_id)?.nombre ?? ''} · siniestro ${f.siniestro}` : 'Particular'}</div>
               <div>{f.marca} {f.modelo} {f.anio} · {f.placas || 's/placas'} · {f.color || 'sin color'}</div>
               <div>{f.cliente_nombre} · {f.cliente_telefono || 'sin teléfono'}</div>
-              <div>Compromiso: {f.fecha_compromiso} · {fotos.length} foto(s)</div>
+              <div>Compromiso: {f.fecha_compromiso} · {totalFotos(fotos)} foto(s)</div>
             </div>
           </div>
         </>}
+        </div>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur">

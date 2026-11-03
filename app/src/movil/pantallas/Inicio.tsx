@@ -43,8 +43,8 @@ export default function Inicio() {
 
   return (
     <div>
-      <div className="relative overflow-hidden bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 px-5 pt-[calc(env(safe-area-inset-top)+20px)] pb-16 text-white">
-        <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full bg-brand-500/25 blur-2xl" />
+      <div className="relative overflow-hidden rounded-b-[28px] bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 px-5 pt-[calc(env(safe-area-inset-top)+20px)] pb-16 text-white">
+        <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden className="pointer-events-none absolute right-0 bottom-0 h-40 w-[65%] object-cover object-[72%_55%] opacity-80 [mask-image:linear-gradient(to_left,black_40%,transparent)]" />
         <div className="relative flex items-center gap-3">
           {emp.logoUrl && <img src={emp.logoUrl} alt="" className="h-12 w-12 rounded-2xl bg-white object-contain p-0.5" />}
           <div className="min-w-0">

@@ -1,14 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Loader2, X } from 'lucide-react'
+import { BadgeCheck, CheckCircle2, ChevronLeft, ClipboardList, Cog, FileClock, Hammer, Loader2, Paintbrush, ScanSearch, Sparkles, SprayCan, Truck, Wrench, X, XCircle, type LucideIcon } from 'lucide-react'
 import { ETAPAS, type Etapa } from '../lib/format'
 
 /** Barra superior fija con título y botón de regreso */
 export function Barra({ titulo, sub, atras, accion }: { titulo: string; sub?: ReactNode; atras?: boolean | string; accion?: ReactNode }) {
   const nav = useNavigate()
   return (
-    <header className="sticky top-0 z-30 bg-gradient-to-r from-navy-950 to-navy-800 pt-[env(safe-area-inset-top)] text-white shadow-lg shadow-black/10">
-      <div className="flex h-14 items-center gap-1 px-2">
+    <header className="sticky top-0 z-30 overflow-hidden bg-gradient-to-r from-navy-950 to-navy-800 pt-[env(safe-area-inset-top)] text-white shadow-lg shadow-black/10">
+      <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden className="pointer-events-none absolute inset-y-0 right-0 h-full w-1/2 object-cover object-[70%_50%] opacity-60 [mask-image:linear-gradient(to_left,black_30%,transparent)]" />
+      <div className="relative flex h-14 items-center gap-1 px-2">
         {atras ? (
           <button onClick={() => (typeof atras === 'string' ? nav(atras) : nav(-1))} className="flex h-11 w-11 items-center justify-center rounded-full active:bg-white/15" aria-label="Regresar">
             <ChevronLeft className="h-7 w-7" />
@@ -24,9 +25,41 @@ export function Barra({ titulo, sub, atras, accion }: { titulo: string; sub?: Re
   )
 }
 
+const ICONO_ETAPA: Record<Etapa, LucideIcon> = {
+  recepcion: ClipboardList, diagnostico: ScanSearch, esperando_autorizacion: FileClock, en_reparacion: Cog, hojalateria: Hammer,
+  preparacion: SprayCan, pintura: Paintbrush, detallado: Sparkles, control_calidad: BadgeCheck, listo_entrega: CheckCircle2, entregado: Truck, cancelado: XCircle,
+}
+const CORTO: Partial<Record<Etapa, string>> = { esperando_autorizacion: 'Por autorizar', control_calidad: 'Calidad', listo_entrega: 'Listo' }
+/** Etiqueta de etapa con ícono (estilo píldora) */
 export function BadgeEtapa({ etapa, grande }: { etapa: Etapa; grande?: boolean }) {
-  const e = ETAPAS[etapa]
-  return <span className={`inline-flex items-center rounded-full font-semibold whitespace-nowrap ${e.badge} ${grande ? 'px-3 py-1 text-sm' : 'px-2 py-0.5 text-[11px]'}`}>{e.label}</span>
+  const e = ETAPAS[etapa]; const Icono = ICONO_ETAPA[etapa] ?? Wrench
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full font-semibold whitespace-nowrap ring-1 ring-black/5 ${e.badge} ${grande ? 'px-3 py-1 text-sm' : 'px-2.5 py-1 text-[11px]'}`}>
+      <Icono className={grande ? 'h-4 w-4' : 'h-3.5 w-3.5'} />{grande ? e.label : (CORTO[etapa] ?? e.label)}
+    </span>
+  )
+}
+
+/** Encabezado claro con la imagen del taller a la derecha (Recepción, Evidencia) */
+export function EncabezadoClaro({ titulo, sub, icono: Icono = ClipboardList, atras = true, derecha, children }: { titulo: string; sub?: ReactNode; icono?: LucideIcon; atras?: boolean | string | (() => void); derecha?: ReactNode; children?: ReactNode }) {
+  const nav = useNavigate()
+  const volver = () => (typeof atras === 'function' ? atras() : typeof atras === 'string' ? nav(atras) : nav(-1))
+  return (
+    <header className="relative overflow-hidden bg-gradient-to-b from-emerald-50 via-white to-slate-50 pt-[env(safe-area-inset-top)]">
+      <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden className="pointer-events-none absolute top-0 right-0 h-[104px] w-[72%] object-cover object-[70%_45%] opacity-90 [mask-image:linear-gradient(to_left,black_40%,transparent),linear-gradient(to_bottom,black_50%,transparent)] [mask-composite:intersect]" />
+      <div className="relative px-4 pt-2 pb-3">
+        <div className="flex h-11 items-center justify-between">
+          {atras ? <button onClick={volver} className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full text-slate-800 active:bg-black/5" aria-label="Regresar"><ChevronLeft className="h-7 w-7" /></button> : <span />}
+          {derecha}
+        </div>
+        <div className="mt-6 flex items-center gap-3">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-brand-700 shadow-sm ring-1 ring-brand-200"><Icono className="h-6 w-6" /></span>
+          <div className="min-w-0 [text-shadow:0_1px_8px_rgba(255,255,255,.9)]"><h1 className="text-[22px] leading-tight font-extrabold text-slate-900">{titulo}</h1>{sub && <p className="text-sm text-slate-500">{sub}</p>}</div>
+        </div>
+        {children}
+      </div>
+    </header>
+  )
 }
 
 export function Cargando({ texto = 'Cargando…' }: { texto?: string }) {

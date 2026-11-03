@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
-import { ArrowRight, Calendar, Camera, CheckCircle2, ChevronDown, Clock, ExternalLink, Gauge, ImagePlus, Loader2, MessageCircle, Phone, Play, RotateCcw, Shield, Truck, User, Wrench } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, ArrowLeftRight, ArrowRight, Camera, Check, CheckCircle2, ClipboardList, ExternalLink, FileText, Fuel, History, ImagePlus, Loader2, MessageCircle, MoreVertical, Phone, Play, RotateCcw, Share2, Shield, Truck, User, Users, Wrench } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { subirFoto, useUrlFirmada, type CategoriaFoto } from '../../lib/storage'
@@ -8,7 +8,7 @@ import { ESTADO_ACTIVIDAD, ETAPAS, ETAPAS_TABLERO, errorTexto, fecha, fechaHora,
 import type { VOrden } from '../../lib/tipos'
 import { CHECKLIST_CALIDAD } from '../../pages/expediente/Entrega'
 import { Miniatura, type FotoRow } from '../../components/Fotos'
-import { Aviso, Barra, BadgeEtapa, Cargando, Campo, Hoja, Vacio, botonPrimario, botonSecundario, entrada } from '../ui'
+import { Aviso, BadgeEtapa, Cargando, Campo, Hoja, Vacio, botonPrimario, botonSecundario, entrada } from '../ui'
 
 const FLUJO: Etapa[] = ETAPAS_TABLERO.filter(e => e !== 'entregado')
 const CATEGORIAS: { id: CategoriaFoto; label: string }[] = [
@@ -22,16 +22,20 @@ interface Act { id: number; actividad: string; area: string; estado: string; imp
 export default function Orden() {
   const { id } = useParams()
   const { puede, perfil } = useAuth()
+  const nav = useNavigate()
+  const [sp, setSp] = useSearchParams()
   const [o, setO] = useState<VOrden | null>(null)
-  const [sp] = useSearchParams()
-  const [tab, setTab] = useState<'datos' | 'fotos' | 'trabajos'>(sp.get('tab') === 'trabajos' ? 'trabajos' : 'datos')
+  const [vin, setVin] = useState<string | null>(null)
   const [fotos, setFotos] = useState<FotoRow[]>([])
   const [acts, setActs] = useState<Act[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [ok, setOk] = useState<string | null>(null)
-  const [hoja, setHoja] = useState<null | 'etapa' | 'entrega' | 'foto'>(null)
+  const [ok, setOk] = useState<string | null>(sp.get('ok') === 'fotos' ? `${sp.get('n') ?? ''} foto(s) guardada(s) en el expediente` : null)
+  const [hoja, setHoja] = useState<null | 'etapa' | 'entrega' | 'historial' | 'mas'>(null)
   const [verFoto, setVerFoto] = useState<FotoRow | null>(null)
+  const [verChecklist, setVerChecklist] = useState(false)
+  const [verTodasFotos, setVerTodasFotos] = useState(false)
   const [ocupado, setOcupado] = useState(false)
+  const trabajosRef = useRef<HTMLElement>(null)
 
   const cargar = useCallback(async () => {
     const [a, b, c] = await Promise.all([
@@ -41,15 +45,21 @@ export default function Orden() {
     ])
     if (a.error) setError(errorTexto(a.error))
     setO(a.data as VOrden); setFotos((b.data ?? []) as FotoRow[]); setActs((c.data ?? []) as unknown as Act[])
+    if (a.data) supabase.from('vehiculos').select('vin').eq('id', (a.data as VOrden).vehiculo_id).single().then(({ data }) => setVin(data?.vin ?? null))
   }, [id])
   useEffect(() => { cargar() }, [cargar])
+  useEffect(() => { if (sp.get('ok')) setSp(new URLSearchParams(), { replace: true }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (o && sp.get('tab') === 'trabajos') setTimeout(() => trabajosRef.current?.scrollIntoView({ behavior: 'smooth' }), 300) }, [o, sp])
 
-  if (!o) return <><Barra titulo="Orden" atras /><div className="p-4">{error ? <Aviso>{error}</Aviso> : <Cargando />}</div></>
+  if (!o) return <><BarraBlanca titulo="Detalle de OT" /><div className="p-4">{error ? <Aviso>{error}</Aviso> : <Cargando />}</div></>
 
   const cerrada = o.etapa === 'entregado' || o.etapa === 'cancelado'
   const idx = FLUJO.indexOf(o.etapa)
   const siguiente = idx >= 0 && idx < FLUJO.length - 1 ? FLUJO[idx + 1] : null
   const retraso = !cerrada && o.fecha_compromiso && o.fecha_compromiso < hoyISO()
+  const tel = o.cliente_telefono?.replace(/\D/g, '')
+  const check = Object.entries((o.checklist_recepcion ?? {}) as Record<string, string>).filter(([k]) => k !== 'Combustible')
+  const combustible = (o.checklist_recepcion as Record<string, string> | null)?.Combustible
 
   async function cambiarEtapa(etapa: Etapa, just?: string) {
     if (!confirm(`¿Pasar ${o!.folio} a "${ETAPAS[etapa].label}"?`)) return
@@ -59,120 +69,174 @@ export default function Orden() {
     if (error) return setError(errorTexto(error))
     setHoja(null); setOk(`Etapa actualizada: ${ETAPAS[etapa].label}`); cargar()
   }
+  async function compartir() {
+    const texto = `${o!.folio} · ${o!.marca} ${o!.modelo} ${o!.placas ?? ''} · ${ETAPAS[o!.etapa].label}`
+    const url = `${location.origin}${import.meta.env.BASE_URL}ordenes/${o!.id}`
+    try {
+      if (navigator.share) await navigator.share({ title: o!.folio, text: texto, url })
+      else { await navigator.clipboard.writeText(`${texto}\n${url}`); setOk('Liga copiada al portapapeles') }
+    } catch { /* cancelado */ }
+  }
 
-  const tel = o.cliente_telefono?.replace(/\D/g, '')
-  const tabBtn = (t: typeof tab, label: string, n?: number) => (
-    <button onClick={() => setTab(t)} className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition ${tab === t ? 'bg-white text-brand-800 shadow' : 'text-slate-500'}`}>{label}{n ? <span className="ml-1 text-xs font-semibold text-slate-400">{n}</span> : null}</button>
-  )
+  const tarjeta = 'rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80'
+  const titulo = (Icono: typeof User, t: string, extra?: ReactNode) => <div className="mb-2 flex items-center gap-2 text-[15px] font-bold text-slate-900"><Icono className="h-5 w-5 text-brand-700" /><span className="flex-1">{t}</span>{extra}</div>
+  const estadoChk: Record<string, [string, string, string]> = { bien: ['Bien', 'text-brand-700', 'bg-brand-600'], danado: ['Dañado', 'text-amber-600', 'bg-amber-500'], no_tiene: ['No tiene', 'text-slate-500', 'bg-slate-400'] }
+  const fotosVisibles = verTodasFotos ? fotos : fotos.slice(0, 6)
 
   return (
     <div>
-      <Barra titulo={o.folio} sub={`${o.marca} ${o.modelo} · ${o.placas ?? 's/placas'}`} atras="/ordenes" />
-      <div className="relative">
-        <Miniatura auto={o} path={o.foto_portada} className="h-52 w-full rounded-none" onClick={o.foto_portada ? () => setTab('fotos') : undefined} />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
-        <div className="absolute bottom-3 left-4 flex items-center gap-2"><BadgeEtapa etapa={o.etapa} grande />{retraso && <span className="rounded-full bg-red-600 px-3 py-1 text-sm font-semibold text-white">Retrasada</span>}</div>
-      </div>
+      <BarraBlanca titulo="Detalle de OT" derecha={<>
+        <button onClick={compartir} className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 active:bg-slate-100" aria-label="Compartir"><Share2 className="h-5 w-5" /></button>
+        <button onClick={() => setHoja('mas')} className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 active:bg-slate-100" aria-label="Más opciones"><MoreVertical className="h-5 w-5" /></button>
+      </>} />
 
-      <div className="space-y-4 px-4 py-4">
-        <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-xl font-extrabold text-slate-900">{o.marca} {o.modelo} {o.anio ?? ''}</div>
-              <div className="text-sm text-slate-500">{o.placas ?? 's/placas'}{o.color && ` · ${o.color}`}{o.os_bitacora && ` · OS ${o.os_bitacora}`}</div>
-            </div>
-            <span className={`shrink-0 rounded-xl px-2.5 py-1 text-xs font-bold ${o.tipo === 'aseguradora' ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700'}`}>{o.tipo === 'aseguradora' ? o.aseguradora_nombre : 'Particular'}</span>
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-2xl bg-slate-50 p-2"><div className="text-[11px] text-slate-500">Ingreso</div><div className="text-sm font-bold">{fecha(o.fecha_ingreso)}</div></div>
-            <div className={`rounded-2xl p-2 ${retraso ? 'bg-red-50' : 'bg-slate-50'}`}><div className="text-[11px] text-slate-500">Compromiso</div><div className={`text-sm font-bold ${retraso ? 'text-red-600' : ''}`}>{fecha(o.fecha_compromiso)}</div></div>
-            <div className="rounded-2xl bg-slate-50 p-2"><div className="text-[11px] text-slate-500">En etapa</div><div className="text-sm font-bold">{o.dias_en_etapa ?? 0} días</div></div>
-          </div>
+      <div className="space-y-3 px-4 pt-3 pb-4">
+        <div className="flex items-center gap-3 rounded-3xl bg-gradient-to-r from-emerald-50 to-white p-4 shadow-sm ring-1 ring-brand-200/70">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-brand-700 ring-1 ring-brand-200"><ClipboardList className="h-6 w-6" /></span>
+          <div className="min-w-0 flex-1"><div className="text-[22px] leading-tight font-extrabold text-slate-900">{o.folio}</div><div className="text-xs text-slate-500">Creada: {fecha(o.fecha_ingreso)}{o.os_bitacora && ` · OS ${o.os_bitacora}`}</div></div>
+          <BadgeEtapa etapa={o.etapa} />
         </div>
 
         {error && <Aviso onClose={() => setError(null)}>{error}</Aviso>}
         {ok && <Aviso tipo="ok" onClose={() => setOk(null)}>{ok}</Aviso>}
 
-        {!cerrada && puede('ordenes.etapa') && (
-          <div className="space-y-2">
-            {o.etapa === 'listo_entrega' ? (
-              puede('ordenes.gestionar') && <button className={botonPrimario} onClick={() => setHoja('entrega')}><Truck className="h-5 w-5" /> Registrar entrega al cliente</button>
-            ) : siguiente && (
-              <button className={botonPrimario} disabled={ocupado} onClick={() => cambiarEtapa(siguiente)}>
-                {ocupado ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />} Pasar a {ETAPAS[siguiente].label}
-              </button>
-            )}
-            <button className={botonSecundario} onClick={() => setHoja('etapa')}><ChevronDown className="h-5 w-5" /> Elegir otra etapa</button>
+        <div className={`${tarjeta} flex gap-3`}>
+          <Miniatura auto={o} path={o.foto_portada} className="h-[92px] w-[124px] rounded-2xl" onClick={o.foto_portada ? () => setVerFoto(fotos.find(f => f.path === o.foto_portada) ?? null) : undefined} />
+          <div className="min-w-0 flex-1 text-[13px] leading-relaxed text-slate-600">
+            <div className="text-base leading-tight font-extrabold text-slate-900">{o.marca} {o.modelo} {o.anio ?? ''}</div>
+            <div>Placas: <b className="text-slate-800">{o.placas ?? '—'}</b></div>
+            {vin && <div className="truncate">VIN: <b className="text-slate-800">{vin}</b></div>}
+            <div>Color: <b className="text-slate-800">{o.color ?? '—'}</b></div>
           </div>
-        )}
-
-        <div className="flex gap-1 rounded-2xl bg-slate-200/70 p-1">
-          {tabBtn('datos', 'Datos')}{tabBtn('fotos', 'Fotos', fotos.length)}{tabBtn('trabajos', 'Trabajos', acts.length)}
         </div>
 
-        {tab === 'datos' && (
-          <div className="space-y-3">
-            <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
-              <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-700"><User className="h-5 w-5" /></span>
-                <div className="min-w-0 flex-1"><div className="text-xs text-slate-500">Cliente</div><div className="truncate font-bold">{o.cliente_nombre}</div><div className="text-sm text-slate-500">{o.cliente_telefono ?? 'Sin teléfono'}</div></div>
-              </div>
-              {tel && (
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <a href={`tel:${tel}`} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 py-3 font-semibold text-slate-700 active:bg-slate-200"><Phone className="h-5 w-5" /> Llamar</a>
-                  <a href={`https://wa.me/52${tel.slice(-10)}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 py-3 font-semibold text-emerald-700 active:bg-emerald-100"><MessageCircle className="h-5 w-5" /> WhatsApp</a>
-                </div>
-              )}
+        <div className={tarjeta}>
+          {titulo(Users, 'Propietario / Aseguradora')}
+          <div className="space-y-1.5 text-[14px] text-slate-700">
+            <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-slate-400" /><b>{o.tipo === 'aseguradora' ? o.aseguradora_nombre : 'PARTICULAR'}</b>{o.siniestro && <span className="truncate text-xs text-slate-500">· Sin. {o.siniestro}</span>}</div>
+            <div className="flex items-center gap-2"><User className="h-4 w-4 text-slate-400" />{o.cliente_nombre}</div>
+            <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-slate-400" />{o.cliente_telefono ?? 'Sin teléfono'}</div>
+          </div>
+          {tel && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <a href={`tel:${tel}`} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 active:bg-slate-200"><Phone className="h-4 w-4" /> Llamar</a>
+              <a href={`https://wa.me/52${tel.slice(-10)}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 py-2.5 text-sm font-semibold text-emerald-700 active:bg-emerald-100"><MessageCircle className="h-4 w-4" /> WhatsApp</a>
             </div>
-            <div className="divide-y divide-slate-100 rounded-3xl bg-white px-4 shadow-sm ring-1 ring-slate-200/80">
-              {([
-                [Shield, 'Siniestro', o.siniestro],
-                [Wrench, 'Tipo de reparación', o.tipo_reparacion_nombre],
-                [User, 'Asesor', o.asesor_nombre],
-                [Gauge, 'Kilometraje', o.kilometraje != null ? `${o.kilometraje.toLocaleString('es-MX')} km` : null],
-                [Calendar, 'Entregado', o.fecha_entrega ? fechaHora(o.fecha_entrega) : null],
-                [Clock, 'Técnicos trabajando', o.tecnicos_activos],
-              ] as [typeof User, string, string | null | undefined][]).filter(([, , v]) => v).map(([Icono, l, v]) => (
-                <div key={l} className="flex items-center gap-3 py-3"><Icono className="h-5 w-5 text-slate-400" /><span className="flex-1 text-sm text-slate-500">{l}</span><span className="text-right text-sm font-semibold">{v}</span></div>
-              ))}
-            </div>
-            {o.danos_reportados && <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80"><div className="mb-1 text-xs font-semibold text-slate-500">Daños reportados</div><p className="text-sm whitespace-pre-line">{o.danos_reportados}</p></div>}
-            {o.objetos && <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80"><div className="mb-1 text-xs font-semibold text-slate-500">Objetos y accesorios</div><p className="text-sm">{o.objetos}</p></div>}
-            <a href={`${import.meta.env.BASE_URL}ordenes/${o.id}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 py-2 text-sm font-semibold text-brand-700"><ExternalLink className="h-4 w-4" /> Ver expediente completo en el sistema web</a>
+          )}
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-xs">
+            <div><span className="text-slate-500">Compromiso</span><div className={`text-sm font-bold ${retraso ? 'text-red-600' : ''}`}>{fecha(o.fecha_compromiso)}{retraso && ' · retrasada'}</div></div>
+            <div><span className="text-slate-500">Días en la etapa</span><div className="text-sm font-bold">{o.dias_en_etapa ?? 0}</div></div>
+          </div>
+        </div>
+
+        {o.danos_reportados && (
+          <div className={tarjeta}>
+            {titulo(FileText, 'Daños reportados')}
+            <p className="rounded-2xl bg-slate-50 px-3 py-2.5 text-[13px] text-slate-700 uppercase">{o.danos_reportados}</p>
+            {o.objetos && <p className="mt-2 text-xs text-slate-500">Objetos: {o.objetos}</p>}
           </div>
         )}
 
-        {tab === 'fotos' && (
-          <div className="space-y-4">
-            {puede('ordenes.gestionar') && <button className={botonPrimario} onClick={() => setHoja('foto')}><Camera className="h-5 w-5" /> Tomar o subir fotos</button>}
-            {fotos.length === 0 ? <Vacio icono={ImagePlus}>Aún no hay fotografías de esta orden</Vacio> :
-              Object.entries(fotos.reduce<Record<string, FotoRow[]>>((g, f) => { (g[f.categoria] ||= []).push(f); return g }, {})).map(([cat, fs]) => (
-                <section key={cat}>
-                  <h3 className="mb-2 px-1 text-sm font-bold text-slate-600">{NOMBRE_CAT[cat] ?? cat} <span className="font-normal text-slate-400">({fs.length})</span></h3>
-                  <div className="grid grid-cols-3 gap-2">{fs.map(f => <Miniatura key={f.id} path={f.path} className="aspect-square h-auto w-full rounded-2xl" onClick={() => setVerFoto(f)} />)}</div>
-                </section>
-              ))}
+        {check.length > 0 && (
+          <div className={tarjeta}>
+            {titulo(CheckCircle2, 'Checklist de condiciones físicas', combustible && <span className="flex items-center gap-1 text-xs font-semibold text-slate-500"><Fuel className="h-4 w-4" />{combustible}</span>)}
+            <div className="flex flex-wrap gap-2">
+              {(verChecklist ? check : check.slice(0, 3)).map(([k, v]) => {
+                const [l, txt, dot] = estadoChk[v] ?? estadoChk.bien
+                return <span key={k} className="flex items-center gap-1.5 rounded-xl bg-slate-50 px-2.5 py-1.5 text-xs ring-1 ring-slate-200"><span className={`flex h-4 w-4 items-center justify-center rounded-full text-white ${dot}`}><Check className="h-3 w-3" strokeWidth={3} /></span><span className="font-semibold text-slate-700">{k}</span><span className={`font-semibold ${txt}`}>{l}</span></span>
+              })}
+              {check.length > 3 && <button onClick={() => setVerChecklist(!verChecklist)} className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">{verChecklist ? 'Ver menos' : `+${check.length - 3} más`}</button>}
+            </div>
           </div>
         )}
 
-        {tab === 'trabajos' && <Trabajos acts={acts} orden={o} onCambio={cargar} miPerfil={perfil?.id} />}
+        <div className="space-y-2.5 pt-1">
+          {!cerrada && o.etapa === 'listo_entrega' && puede('ordenes.gestionar') && <button className={botonPrimario} onClick={() => setHoja('entrega')}><Truck className="h-5 w-5" /> Registrar entrega al cliente</button>}
+          {!cerrada && puede('ordenes.etapa') && o.etapa !== 'listo_entrega' && <button className={botonPrimario} disabled={ocupado} onClick={() => setHoja('etapa')}>{ocupado ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowLeftRight className="h-5 w-5" />} Actualizar etapa</button>}
+          {puede('ordenes.gestionar') && <button className={botonSecundario} onClick={() => nav(`/orden/${o.id}/evidencia?cat=${o.etapa === 'recepcion' || o.etapa === 'diagnostico' ? 'recepcion' : o.etapa === 'listo_entrega' || o.etapa === 'entregado' ? 'entrega' : 'proceso'}`)}><Camera className="h-5 w-5" /> Agregar evidencia</button>}
+          <button className={botonSecundario} onClick={() => setHoja('historial')}><History className="h-5 w-5" /> Ver historial</button>
+        </div>
+
+        <section ref={trabajosRef} className={tarjeta}>
+          {titulo(Wrench, `Trabajos (${acts.length})`)}
+          <Trabajos acts={acts} orden={o} onCambio={cargar} miPerfil={perfil?.id} />
+        </section>
+
+        <section className={tarjeta}>
+          {titulo(ImagePlus, `Fotografías (${fotos.length})`, puede('ordenes.gestionar') && <button onClick={() => nav(`/orden/${o.id}/evidencia`)} className="text-sm font-semibold text-brand-700">Agregar</button>)}
+          {fotos.length === 0 ? <p className="py-4 text-center text-sm text-slate-400">Aún no hay fotografías</p> : (
+            <>
+              <div className="grid grid-cols-3 gap-2">{fotosVisibles.map(f => (
+                <div key={f.id}><Miniatura path={f.path} className="aspect-square h-auto w-full rounded-2xl" onClick={() => setVerFoto(f)} /><div className="mt-0.5 truncate text-[10px] text-slate-500">{f.descripcion || NOMBRE_CAT[f.categoria]}</div></div>
+              ))}</div>
+              {fotos.length > 6 && <button onClick={() => setVerTodasFotos(!verTodasFotos)} className="mt-2 w-full py-2 text-sm font-semibold text-brand-700">{verTodasFotos ? 'Ver menos' : `Ver las ${fotos.length} fotos`}</button>}
+            </>
+          )}
+        </section>
       </div>
 
-      {hoja === 'etapa' && (
-        <HojaEtapa actual={o.etapa} onClose={() => setHoja(null)} onElegir={cambiarEtapa} ocupado={ocupado} />
-      )}
+      {hoja === 'etapa' && <HojaEtapa actual={o.etapa} siguiente={siguiente} onClose={() => setHoja(null)} onElegir={cambiarEtapa} ocupado={ocupado} />}
       {hoja === 'entrega' && <HojaEntrega o={o} onClose={() => setHoja(null)} onListo={() => { setHoja(null); setOk('Vehículo entregado. La orden quedó cerrada.'); cargar() }} />}
-      {hoja === 'foto' && <HojaFotos ordenId={o.id} onClose={() => setHoja(null)} onListo={n => { setHoja(null); setOk(`${n} foto(s) guardada(s)`); setTab('fotos'); cargar() }} />}
+      {hoja === 'historial' && <HojaHistorial ordenId={o.id} onClose={() => setHoja(null)} />}
+      {hoja === 'mas' && (
+        <Hoja titulo="Más opciones" onClose={() => setHoja(null)}>
+          <div className="space-y-2 pb-2">
+            {!cerrada && puede('ordenes.etapa') && <button className={botonSecundario} onClick={() => setHoja('etapa')}><ArrowLeftRight className="h-5 w-5" /> Cambiar a otra etapa</button>}
+            {tel && <a className={botonSecundario} href={`tel:${tel}`}><Phone className="h-5 w-5" /> Llamar al cliente</a>}
+            <a className={botonSecundario} href={`${import.meta.env.BASE_URL}ordenes/${o.id}`} target="_blank" rel="noreferrer"><ExternalLink className="h-5 w-5" /> Expediente completo en el sistema web</a>
+          </div>
+        </Hoja>
+      )}
       {verFoto && <VisorFoto foto={verFoto} onClose={() => setVerFoto(null)} />}
     </div>
   )
 }
 
-function HojaEtapa({ actual, onClose, onElegir, ocupado }: { actual: Etapa; onClose: () => void; onElegir: (e: Etapa, j?: string) => void; ocupado: boolean }) {
+/** Barra superior blanca (detalle) */
+function BarraBlanca({ titulo, derecha }: { titulo: string; derecha?: ReactNode }) {
+  const nav = useNavigate()
+  return (
+    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/95 pt-[env(safe-area-inset-top)] backdrop-blur">
+      <div className="flex h-14 items-center gap-1 px-2">
+        <button onClick={() => (window.history.length > 1 ? nav(-1) : nav('/ordenes'))} className="flex h-11 w-11 items-center justify-center rounded-full text-slate-800 active:bg-slate-100" aria-label="Regresar"><ArrowLeft className="h-6 w-6" /></button>
+        <h1 className="flex-1 text-[19px] font-extrabold text-slate-900">{titulo}</h1>
+        {derecha}
+      </div>
+    </header>
+  )
+}
+
+function HojaHistorial({ ordenId, onClose }: { ordenId: number; onClose: () => void }) {
+  const [rows, setRows] = useState<{ id: number; fecha: string; etapa_anterior: Etapa | null; etapa_nueva: Etapa; justificacion: string | null; perfiles: { nombre: string } | null }[] | null>(null)
+  useEffect(() => {
+    supabase.from('orden_historial').select('id,fecha,etapa_anterior,etapa_nueva,justificacion,perfiles(nombre)').eq('orden_id', ordenId).order('fecha', { ascending: false })
+      .then(({ data }) => setRows((data ?? []) as unknown as typeof rows))
+  }, [ordenId])
+  return (
+    <Hoja titulo="Historial de la orden" onClose={onClose}>
+      {!rows ? <Cargando /> : rows.length === 0 ? <p className="py-6 text-center text-sm text-slate-400">Sin movimientos</p> : (
+        <ol className="relative ml-2 space-y-4 border-l-2 border-brand-200 pb-2 pl-5">
+          {rows.map(h => (
+            <li key={h.id} className="relative">
+              <span className="absolute top-1 -left-[27px] h-3.5 w-3.5 rounded-full bg-brand-600 ring-4 ring-white" />
+              <div className="flex flex-wrap items-center gap-1.5"><BadgeEtapa etapa={h.etapa_nueva} />{h.etapa_anterior && <span className="text-xs text-slate-400">desde {ETAPAS[h.etapa_anterior].label}</span>}</div>
+              <div className="mt-1 text-xs text-slate-500">{fechaHora(h.fecha)}{h.perfiles?.nombre && ` · ${h.perfiles.nombre}`}</div>
+              {h.justificacion && <div className="mt-0.5 text-sm text-slate-600">{h.justificacion}</div>}
+            </li>
+          ))}
+        </ol>
+      )}
+    </Hoja>
+  )
+}
+
+function HojaEtapa({ actual, siguiente, onClose, onElegir, ocupado }: { actual: Etapa; siguiente?: Etapa | null; onClose: () => void; onElegir: (e: Etapa, j?: string) => void; ocupado: boolean }) {
   const [just, setJust] = useState('')
   return (
-    <Hoja titulo="Cambiar etapa" onClose={onClose}>
+    <Hoja titulo="Actualizar etapa" onClose={onClose}>
       <div className="space-y-2">
+        {siguiente && <button disabled={ocupado} onClick={() => onElegir(siguiente, just)} className={`${botonPrimario} mb-2`}><ArrowRight className="h-5 w-5" /> Siguiente: {ETAPAS[siguiente].label}</button>}
+        <div className="px-1 pt-1 text-xs font-semibold text-slate-500">O elige otra etapa</div>
         {FLUJO.map(e => (
           <button key={e} disabled={e === actual || ocupado} onClick={() => onElegir(e, just)}
             className={`flex w-full items-center justify-between rounded-2xl px-4 py-3.5 text-left font-semibold ring-1 ${e === actual ? 'bg-brand-50 text-brand-800 ring-brand-300' : 'bg-white ring-slate-200 active:bg-slate-50'}`}>
