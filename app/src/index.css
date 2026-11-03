@@ -64,6 +64,15 @@ body { background: var(--color-surface); color: #0f172a; -webkit-font-smoothing:
 
 @media print {
   aside, header, .no-print { display: none !important; }
+  /* Reporte mensual: solo la hoja, tamaño carta, una página */
+  html:has(body.imprimir-reporte), body.imprimir-reporte { background: #fff !important; }
+  body.imprimir-reporte main *:not(:has(.reporte-hoja)):not(.reporte-hoja):not(.reporte-hoja *) { display: none !important; }
+  body.imprimir-reporte .min-h-screen { min-height: 0 !important; }
+  body.imprimir-reporte main, body.imprimir-reporte main :has(.reporte-hoja) { padding: 0 !important; margin: 0 !important; overflow: visible !important; animation: none !important; }
+  body.imprimir-reporte .reporte-hoja { margin: 0 !important; box-shadow: none !important; --tw-ring-shadow: 0 0 #0000; zoom: .86; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body.imprimir-reporte .reporte-hoja textarea::placeholder { color: transparent; }
   main { padding: 0 !important; }
   .card { box-shadow: none; break-inside: avoid; }
 }
+
+@page { size: letter portrait; margin: 8mm; }
