@@ -1,0 +1,22 @@
+{
+  "name": "Taller · Órdenes de trabajo",
+  "short_name": "Órdenes",
+  "description": "Recepción de vehículos, avance, fotos y trabajos del taller. Sincronizado con el sistema web.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#062b1e",
+  "theme_color": "#073626",
+  "lang": "es-MX",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Nueva orden", "url": "./#/nueva", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "Mis trabajos", "url": "./#/trabajos", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ]
+}

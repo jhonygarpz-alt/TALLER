@@ -1,7 +1,7 @@
 import AyudaContextual, { BotonAyuda } from './AyudaContextual'
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Car, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, LogOut, Menu, Search, Settings, Wrench, X } from 'lucide-react'
+import { Bell, Car, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, LogOut, Menu, Search, Settings, Wrench, X, Smartphone } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useAlertas } from '../lib/alertas'
@@ -95,6 +95,7 @@ function MenuUsuario() {
           {(puede('usuarios.gestionar') || puede('config.gestionar') || puede('auditoria.ver')) && (
             <Link to="/administracion" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><Settings className="h-4 w-4" /> Configuración</Link>
           )}
+          <a href={`${import.meta.env.BASE_URL}movil/`} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50"><Smartphone className="h-4 w-4" /> App móvil (instalar)</a>
           <button onClick={() => supabase.auth.signOut()} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"><LogOut className="h-4 w-4" /> Cerrar sesión</button>
         </div>
       )}
