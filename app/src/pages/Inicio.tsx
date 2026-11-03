@@ -186,7 +186,7 @@ export default function Inicio() {
                 <tbody>{ultimas.map(o => (
                   <tr key={o.id} className="cursor-pointer" onClick={() => nav(`/ordenes/${o.id}`)}>
                     <td className="font-bold whitespace-nowrap">{o.folio}</td>
-                    <td><div className="flex items-center gap-3"><Miniatura path={o.foto_portada} /><div><div className="font-medium">{o.marca} {o.modelo}</div><div className="text-xs text-slate-500">{o.placas ?? '—'}</div></div></div></td>
+                    <td><div className="flex items-center gap-3"><Miniatura auto={o} path={o.foto_portada} /><div><div className="font-medium">{o.marca} {o.modelo}</div><div className="text-xs text-slate-500">{o.placas ?? '—'}</div></div></div></td>
                     <td><div className="font-medium">{o.aseguradora_nombre ?? 'Particular'}</div><div className="text-xs text-slate-500">{o.siniestro ?? o.cliente_nombre}</div></td>
                     <td><EtapaBadge o={o} /></td>
                     <td className="whitespace-nowrap">{fecha(o.fecha_ingreso)}</td>
@@ -202,7 +202,7 @@ export default function Inicio() {
             <ul className="divide-y">
               {a.listas.slice(0, 5).map(o => (
                 <li key={o.id} className="flex items-center gap-3 py-3">
-                  <Miniatura path={o.foto_portada} className="h-12 w-16" />
+                  <Miniatura auto={o} path={o.foto_portada} className="h-12 w-16" />
                   <div className="min-w-0 flex-1">
                     <div className="font-bold">{o.folio}</div>
                     <div className="truncate text-sm text-slate-500">{vehiculoTxt(o)}</div>

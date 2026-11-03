@@ -4,16 +4,17 @@ import { supabase } from '../lib/supabase'
 import { subirFoto, useUrlFirmada, type CategoriaFoto } from '../lib/storage'
 import { errorTexto, fechaHora } from '../lib/format'
 import { Modal } from './ui'
+import IlustracionAuto from './IlustracionAuto'
 
 export interface FotoRow { id: number; path: string; categoria: string; ref_id: number | null; descripcion: string | null; created_at: string }
 
-export function Miniatura({ path, className = 'h-12 w-16', onClick }: { path?: string | null; className?: string; onClick?: () => void }) {
+export function Miniatura({ path, className = 'h-12 w-16', onClick, auto }: { path?: string | null; className?: string; onClick?: () => void; auto?: { modelo?: string | null; color?: string | null } }) {
   const url = useUrlFirmada(path)
   const esPdf = path?.endsWith('.pdf')
   return (
     <button type="button" onClick={onClick} disabled={!onClick}
       className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 text-slate-400 ${className}`}>
-      {esPdf ? <FileText className="h-1/2 w-1/2" /> : url ? <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" /> : <Car className="h-1/2 w-1/2" strokeWidth={1.5} />}
+      {esPdf ? <FileText className="h-1/2 w-1/2" /> : url ? <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" /> : auto ? <IlustracionAuto modelo={auto.modelo} color={auto.color} /> : <Car className="h-1/2 w-1/2" strokeWidth={1.5} />}
     </button>
   )
 }

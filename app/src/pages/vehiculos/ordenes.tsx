@@ -101,7 +101,7 @@ export function ListaOrdenes() {
               <tbody>{rows.map(o => (
                 <tr key={o.id} className="cursor-pointer" onClick={() => nav(`/ordenes/${o.id}`)}>
                   <td className="font-bold whitespace-nowrap">{o.folio}{o.detenido_material && <div className="text-[11px] font-semibold text-orange-600">Detenido por material</div>}</td>
-                  <td><div className="flex items-center gap-3"><Miniatura path={o.foto_portada} /><div><div className="font-medium">{o.marca} {o.modelo} {o.anio}</div><div className="text-xs text-slate-500">{o.placas ?? '—'} {o.color && `· ${o.color}`}</div></div></div></td>
+                  <td><div className="flex items-center gap-3"><Miniatura auto={o} path={o.foto_portada} /><div><div className="font-medium">{o.marca} {o.modelo} {o.anio}</div><div className="text-xs text-slate-500">{o.placas ?? '—'} {o.color && `· ${o.color}`}</div></div></div></td>
                   <td><div className="font-medium">{o.aseguradora_nombre ?? 'Particular'}</div><div className="text-xs text-slate-500">{o.siniestro ? `${o.siniestro} · ` : ''}{o.cliente_nombre}</div></td>
                   <td><EtapaBadge o={o} /></td>
                   <td className="text-xs">{o.tecnicos_activos ?? o.asesor_nombre ?? '—'}</td>

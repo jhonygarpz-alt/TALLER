@@ -158,7 +158,7 @@ function PanelVehiculo({ id, onClose }: { id: number; onClose: () => void }) {
   return (
     <Modal title={`${o.folio} · ${o.marca} ${o.modelo} ${o.anio ?? ''}`} onClose={onClose} wide>
       <div className="mb-4 flex flex-wrap items-start gap-4">
-        <Miniatura path={o.foto_portada} className="h-24 w-36" />
+        <Miniatura auto={o} path={o.foto_portada} className="h-24 w-36" />
         <div className="min-w-0 flex-1 space-y-1 text-sm">
           <div className="flex flex-wrap items-center gap-2"><EtapaBadge o={o} /><Badge cls={PRIORIDAD[o.prioridad]?.cls ?? ''}>Prioridad {PRIORIDAD[o.prioridad]?.label}</Badge>{o.detenido_material && <Badge cls="bg-orange-100 text-orange-700">Detenido por material</Badge>}</div>
           <div><b>{o.aseguradora_nombre ?? 'Particular'}</b>{o.siniestro && ` · Siniestro ${o.siniestro}`} · {o.cliente_nombre}{o.placas && ` · ${o.placas}`}</div>
@@ -181,7 +181,7 @@ function Tarjeta({ o, onClick }: { o: VOrden; onClick: () => void }) {
   return (
     <button onClick={onClick} className={`group w-full rounded-xl border bg-white p-3 text-left transition duration-200 [box-shadow:var(--neon-suave)] hover:-translate-y-0.5 hover:border-brand-400 hover:[box-shadow:var(--neon-fuerte)] ${o.retrasado ? 'border-red-300' : 'border-brand-300/70'}`}>
       <div className="flex gap-3">
-        <Miniatura path={o.foto_portada} className="h-14 w-[72px]" />
+        <Miniatura auto={o} path={o.foto_portada} className="h-14 w-[72px]" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-1"><span className="text-sm font-extrabold text-slate-900">{o.folio}</span>{o.prioridad !== 'normal' && <Badge cls={PRIORIDAD[o.prioridad].cls}>{PRIORIDAD[o.prioridad].label}</Badge>}</div>
           <div className="truncate text-xs font-semibold text-slate-700 uppercase">{o.marca} {o.modelo} {o.anio}</div>
@@ -240,7 +240,7 @@ function Lista({ ordenes, onVer }: { ordenes: VOrden[]; onVer: (id: number) => v
           <tbody>{ordenes.map(o => (
             <tr key={o.id} className="cursor-pointer" onClick={() => onVer(o.id)}>
               <td className="font-bold">{o.folio}</td>
-              <td><div className="flex items-center gap-3"><Miniatura path={o.foto_portada} /><div>{o.marca} {o.modelo} {o.anio}<div className="text-xs text-slate-500">{o.placas}</div></div></div></td>
+              <td><div className="flex items-center gap-3"><Miniatura auto={o} path={o.foto_portada} /><div>{o.marca} {o.modelo} {o.anio}<div className="text-xs text-slate-500">{o.placas}</div></div></div></td>
               <td>{o.aseguradora_nombre ?? 'Particular'}<div className="text-xs text-slate-500">{o.cliente_nombre}</div></td>
               <td><EtapaBadge o={o} /></td><td><Badge cls={PRIORIDAD[o.prioridad].cls}>{PRIORIDAD[o.prioridad].label}</Badge></td>
               <td className="text-xs">{responsable(o)}</td><td>{fecha(o.fecha_ingreso)}</td>

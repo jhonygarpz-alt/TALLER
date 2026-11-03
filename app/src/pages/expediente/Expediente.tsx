@@ -47,7 +47,7 @@ export default function Expediente() {
     <div>
       <div className="no-print"><Link to="/ordenes" className="text-sm font-medium text-brand-700 hover:underline">← Órdenes de trabajo</Link></div>
       <div className="card mt-2 mb-5 flex flex-col gap-4 md:flex-row md:items-center">
-        <Miniatura path={o.foto_portada} className="h-24 w-full md:w-36" />
+        <Miniatura auto={o} path={o.foto_portada} className="h-24 w-full md:w-36" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-extrabold">{o.folio}</h1>
