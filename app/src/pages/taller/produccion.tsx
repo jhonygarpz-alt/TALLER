@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Download, Plus } from 'lucide-react'
+import { Download, Pencil, Plus, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { revertir } from '../../lib/revertir'
 import { useAuth } from '../../lib/auth'
 
 import { usePeriodo } from '../../lib/periodo'
-import { AREAS, ESTADO_ACTIVIDAD, ESTADO_DESTAJO, errorTexto, fecha, money2, num } from '../../lib/format'
+import { AREAS, ROLES, ESTADO_ACTIVIDAD, ESTADO_DESTAJO, errorTexto, fecha, money2, num } from '../../lib/format'
 import { descargarCSV } from '../../lib/exportar'
 import type { Tarifa, Tecnico } from '../../lib/tipos'
 import { Badge, Card, Empty, ErrorMsg, Field, SinPermiso } from '../../components/ui'
@@ -192,7 +192,9 @@ export function TecnicosTarifas() {
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
   const [tarifas, setTarifas] = useState<Tarifa[]>([])
   const [usuarios, setUsuarios] = useState<{ id: string; nombre: string }[]>([])
-  const [ft, setFt] = useState({ nombre: '', area: 'hojalateria', perfil_id: '', especialidad: '', telefono: '' })
+  const vacioTec = { nombre: '', area: 'hojalateria', perfil_id: '', especialidad: '', telefono: '' }
+  const [ft, setFt] = useState(vacioTec)
+  const [editando, setEditando] = useState<Tecnico | null>(null)
   const [fa, setFa] = useState({ area: 'hojalateria', actividad: '', importe: '' })
   const [error, setError] = useState<string | null>(null)
   const editar = puede('config.gestionar')
@@ -201,9 +203,10 @@ export function TecnicosTarifas() {
     const [t, a, u] = await Promise.all([
       supabase.from('tecnicos').select('*').order('nombre'),
       supabase.from('tarifas_destajo').select('*').order('area').order('actividad'),
-      supabase.from('perfiles').select('id,nombre').eq('activo', true).eq('rol', 'tecnico').order('nombre'),
+      supabase.from('perfiles').select('id,nombre,rol').eq('activo', true).order('nombre'),
     ])
-    setTecnicos((t.data ?? []) as Tecnico[]); setTarifas((a.data ?? []) as Tarifa[]); setUsuarios(u.data ?? [])
+    setTecnicos((t.data ?? []) as Tecnico[]); setTarifas((a.data ?? []) as Tarifa[])
+    setUsuarios(((u.data ?? []) as { id: string; nombre: string; rol: string }[]).sort((x, y) => Number(y.rol === 'tecnico') - Number(x.rol === 'tecnico')).map(x => ({ id: x.id, nombre: x.rol === 'tecnico' ? x.nombre : `${x.nombre} (${ROLES[x.rol] ?? x.rol})` })))
   }, [])
   useEffect(() => { cargar() }, [cargar])
 
@@ -212,7 +215,19 @@ export function TecnicosTarifas() {
     setError(error ? errorTexto(error) : null)
     if (!error) { reset?.(); cargar() }
   }
-  const altaTec = (e: FormEvent) => { e.preventDefault(); run(supabase.from('tecnicos').insert({ ...ft, perfil_id: ft.perfil_id || null, especialidad: ft.especialidad || null, telefono: ft.telefono || null }), () => setFt({ ...ft, nombre: '', perfil_id: '', especialidad: '', telefono: '' })) }
+  const altaTec = (e: FormEvent) => {
+    e.preventDefault()
+    const datos = { nombre: ft.nombre.trim().toUpperCase(), area: ft.area, perfil_id: ft.perfil_id || null, especialidad: ft.especialidad.trim() || null, telefono: ft.telefono.trim() || null }
+    if (editando) {
+      if (editando.area !== ft.area && !confirm(`¿Cambiar el área de ${editando.nombre.trim()} a ${AREAS[ft.area]}? Sus trabajos ya registrados conservan su área.`)) return
+      run(supabase.from('tecnicos').update(datos).eq('id', editando.id), () => { setEditando(null); setFt(vacioTec) })
+    } else run(supabase.from('tecnicos').insert(datos), () => setFt({ ...vacioTec, area: ft.area }))
+  }
+  function empezarEdicion(t: Tecnico) {
+    setEditando(t); setError(null)
+    setFt({ nombre: t.nombre.trim(), area: t.area, perfil_id: t.perfil_id ?? '', especialidad: t.especialidad ?? '', telefono: t.telefono ?? '' })
+    setTimeout(() => document.getElementById('form-tecnico')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
+  }
   const altaTar = (e: FormEvent) => { e.preventDefault(); run(supabase.from('tarifas_destajo').insert(fa), () => setFa({ ...fa, actividad: '', importe: '' })) }
   async function cambiarImporte(t: Tarifa) {
     const v = prompt(`Nuevo importe para "${t.actividad}" (actual ${money2(t.importe)}). Aplica a trabajos que se asignen a partir de ahora:`, String(t.importe))
@@ -226,14 +241,18 @@ export function TecnicosTarifas() {
       <Card title="Técnicos" className="lg:col-start-1">
         {tecnicos.length === 0 ? <Empty>Sin técnicos</Empty> : (
           <ul className="divide-y text-sm">{tecnicos.map(t => (
-            <li key={t.id} className={`flex items-center justify-between py-2 ${t.activo ? '' : 'opacity-50'}`}>
-              <span><b>{t.nombre}</b> · {AREAS[t.area]}{t.especialidad && ` · ${t.especialidad}`}{t.telefono && <span className="text-slate-500"> · {t.telefono}</span>} {t.perfil_id && <Badge cls="bg-blue-50 text-blue-700">con usuario</Badge>}</span>
-              {editar && <button className="text-xs text-slate-500 hover:underline" onClick={() => run(supabase.from('tecnicos').update({ activo: !t.activo }).eq('id', t.id))}>{t.activo ? 'Desactivar' : 'Activar'}</button>}
+            <li key={t.id} className={`flex items-center justify-between gap-3 py-2 ${t.activo ? '' : 'opacity-50'} ${editando?.id === t.id ? 'rounded-lg bg-brand-50 px-2 ring-1 ring-brand-300' : ''}`}>
+              <span><b>{t.nombre.trim()}</b> · {AREAS[t.area]}{t.especialidad && ` · ${t.especialidad}`}{t.telefono && <span className="text-slate-500"> · {t.telefono}</span>} {t.perfil_id && <Badge cls="bg-blue-50 text-blue-700">con usuario</Badge>}</span>
+              {editar && <span className="flex shrink-0 items-center gap-3">
+                <button className="flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline" onClick={() => empezarEdicion(t)}><Pencil className="h-3.5 w-3.5" /> Editar</button>
+                <button className="text-xs text-slate-500 hover:underline" onClick={() => run(supabase.from('tecnicos').update({ activo: !t.activo }).eq('id', t.id))}>{t.activo ? 'Desactivar' : 'Activar'}</button>
+              </span>}
             </li>))}
           </ul>
         )}
         {editar && (
-          <form onSubmit={altaTec} className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3 sm:grid-cols-2">
+          <form id="form-tecnico" onSubmit={altaTec} className={`mt-3 grid gap-2 rounded-xl p-3 sm:grid-cols-2 ${editando ? 'bg-brand-50 ring-2 ring-brand-300' : 'bg-slate-50'}`}>
+            {editando && <div className="text-sm font-bold text-brand-800 sm:col-span-2">Editando a {editando.nombre.trim()}</div>}
             <Field label="Nombre *"><input className="input" required value={ft.nombre} onChange={e => setFt({ ...ft, nombre: e.target.value })} /></Field>
             <Field label="Especialidad"><input className="input" value={ft.especialidad} onChange={e => setFt({ ...ft, especialidad: e.target.value })} placeholder="Ej. Pintor preparador, hojalatero" /></Field>
             <Field label="Teléfono"><input className="input" type="tel" value={ft.telefono} onChange={e => setFt({ ...ft, telefono: e.target.value })} /></Field>
@@ -241,7 +260,12 @@ export function TecnicosTarifas() {
             <Field label="Usuario del sistema (opcional)" className="sm:col-span-2" hint="Vincúlalo para que el técnico vea y avance sus propios trabajos">
               <select className="input" value={ft.perfil_id} onChange={e => setFt({ ...ft, perfil_id: e.target.value })}><option value="">Sin usuario</option>{usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select>
             </Field>
-            <button className="btn btn-primary sm:col-span-2"><Plus className="h-4 w-4" /> Agregar técnico</button>
+            {editando ? (
+              <div className="flex gap-2 sm:col-span-2">
+                <button type="button" className="btn btn-secondary flex-1" onClick={() => { setEditando(null); setFt(vacioTec) }}>Cancelar</button>
+                <button className="btn btn-primary flex-1"><Save className="h-4 w-4" /> Guardar cambios</button>
+              </div>
+            ) : <button className="btn btn-primary sm:col-span-2"><Plus className="h-4 w-4" /> Agregar técnico</button>}
           </form>
         )}
       </Card>
