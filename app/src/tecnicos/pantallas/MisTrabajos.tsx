@@ -6,6 +6,7 @@ import { useEmpresa } from '../../lib/empresa'
 import { errorTexto } from '../../lib/format'
 import { Aviso, Cargando, Vacio } from '../../movil/ui'
 import { HojaAvance, TarjetaTrabajo } from '../componentes'
+import { BannerNotificaciones } from '../Notificaciones'
 import { SELECT_TRABAJO, cargarExtras, pctTrabajo, useMisFichas, type Avance, type Trabajo } from '../datos'
 
 type Vista = 'hacer' | 'proceso' | 'terminados'
@@ -84,6 +85,7 @@ export default function MisTrabajos() {
         </div>
 
         {msg && <Aviso tipo={msg.t === 'ok' ? 'ok' : 'error'} onClose={() => setMsg(null)}>{msg.m}</Aviso>}
+        {fichas && fichas.length > 0 && <BannerNotificaciones />}
 
         {fichas && fichas.length === 0 ? (
           <Vacio icono={PlayCircle}>Tu usuario todavía no está ligado a una ficha de técnico. Pide a Dirección que te ligue en <b>Mano de obra → Técnicos y tarifas → Editar → Usuario del sistema</b>.</Vacio>
