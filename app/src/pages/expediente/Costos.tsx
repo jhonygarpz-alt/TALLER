@@ -9,11 +9,11 @@ import { Badge, Card, Empty, ErrorMsg, Field, SinPermiso, TableWrap } from '../.
 import type { TabProps } from './Expediente'
 
 interface Destajo { id: number; importe: number; estado: string; tipo: string; referencia_pago: string | null; tecnicos?: { nombre: string }; actividades?: { actividad: string; pieza: string | null } }
-interface Costo { id: number; tipo: string; concepto: string; proveedor: string | null; monto: number; fecha: string }
+interface Costo { id: number; tipo: string; concepto: string; proveedor: string | null; monto: number; fecha: string; particular?: boolean }
 interface Factura { id: number; folio: string; fecha: string; receptor: string; monto: number; cancelada: boolean }
 interface Cobro { id: number; fecha: string; monto: number; metodo: string; referencia: string | null; factura_id: number | null }
 
-const TIPOS_COSTO: Record<string, string> = { mano_obra_adicional: 'Mano de obra adicional', servicio_externo: 'Servicio externo', otro: 'Otro gasto directo' }
+const TIPOS_COSTO: Record<string, string> = { mano_obra_adicional: 'Mano de obra adicional', servicio_externo: 'Servicio externo', material: 'Materiales (compra directa)', refaccion: 'Refacciones (compra directa)', pulido: 'Pulido', otro: 'Otro gasto directo' }
 
 export function DesgloseRentabilidad({ r }: { r: Rentabilidad }) {
   const margen = r.ingreso_reconocido ? (r.utilidad_bruta / r.ingreso_reconocido) * 100 : NaN
@@ -118,7 +118,7 @@ export default function Costos({ o, recargar }: TabProps) {
         <Card title="Otros costos directos (mano de obra adicional, servicios externos, otros)">
           {costos.length === 0 ? <Empty>Sin costos adicionales</Empty> : (
             <TableWrap><table className="tbl"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Proveedor</th><th className="text-right">Monto</th></tr></thead>
-              <tbody>{costos.map(c => <tr key={c.id}><td>{fecha(c.fecha)}</td><td>{TIPOS_COSTO[c.tipo]}</td><td>{c.concepto}</td><td>{c.proveedor ?? '—'}</td><td className="text-right">{money2(c.monto)}{gestFin && <button className="ml-2 text-xs text-red-600 hover:underline" onClick={() => borrar('orden_costos', c.id, `${c.concepto} por ${money2(c.monto)}`)}>Eliminar</button>}</td></tr>)}</tbody>
+              <tbody>{costos.map(c => <tr key={c.id}><td>{fecha(c.fecha)}</td><td>{TIPOS_COSTO[c.tipo] ?? c.tipo}{c.particular && <span className="ml-1 rounded bg-orange-100 px-1 text-[10px] font-semibold text-orange-700">adicional particular</span>}</td><td>{c.concepto}</td><td>{c.proveedor ?? '—'}</td><td className="text-right">{money2(c.monto)}{gestFin && <button className="ml-2 text-xs text-red-600 hover:underline" onClick={() => borrar('orden_costos', c.id, `${c.concepto} por ${money2(c.monto)}`)}>Eliminar</button>}</td></tr>)}</tbody>
             </table></TableWrap>
           )}
           {gestFin && o.etapa !== 'cancelado' && (

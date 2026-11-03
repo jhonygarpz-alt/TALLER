@@ -1,7 +1,7 @@
 import type { Etapa } from './format'
 
 export interface VOrden {
-  id: number; folio: string; tipo: 'aseguradora' | 'particular'; aseguradora_id: number | null; asignacion_id: number | null
+  id: number; folio: string; tipo: 'aseguradora' | 'particular'; aseguradora_id: number | null; asignacion_id: number | null; os_bitacora?: string | null
   siniestro: string | null; cliente_id: number; vehiculo_id: number; tipo_reparacion_id: number | null; etapa: Etapa
   asesor_id: string | null; kilometraje: number | null; fecha_ingreso: string; fecha_compromiso: string | null
   danos_reportados: string | null; checklist_recepcion: Record<string, string>; objetos: string | null

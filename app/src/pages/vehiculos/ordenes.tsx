@@ -41,7 +41,7 @@ export function ListaOrdenes() {
     else if (filtro === 'particulares') query = query.eq('tipo', 'particular').not('etapa', 'in', '(entregado,cancelado)')
     else if (filtro === 'aseguradora') query = query.eq('tipo', 'aseguradora').not('etapa', 'in', '(entregado,cancelado)')
     const s = limpiaBusqueda(q)
-    if (s) query = query.or(['folio', 'placas', 'siniestro', 'cliente_nombre', 'marca', 'modelo'].map(c => `${c}.ilike.%${s}%`).join(','))
+    if (s) query = query.or(['folio', 'os_bitacora', 'placas', 'siniestro', 'cliente_nombre', 'marca', 'modelo'].map(c => `${c}.ilike.%${s}%`).join(','))
     query.then(({ data }) => { setRows((data ?? []) as VOrden[]); setCargando(false) })
     if (s) {
       supabase.from('asignaciones').select('id,siniestro,asegurado,placas,estatus').neq('estatus', 'ingresado')
@@ -68,7 +68,7 @@ export function ListaOrdenes() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <form className="relative" onSubmit={e => { e.preventDefault(); const n = new URLSearchParams(); if (busca.trim()) n.set('q', busca.trim()); n.set('filtro', 'todos'); setSp(n) }}>
-          <input className="input w-64" placeholder="Folio, placas, siniestro, cliente…" value={busca} onChange={e => setBusca(e.target.value)} />
+          <input className="input w-64" placeholder="Folio, OS, placas, siniestro, cliente…" value={busca} onChange={e => setBusca(e.target.value)} />
         </form>
         <select className="input w-auto" value={filtro.startsWith('etapa:') ? '' : filtro} onChange={e => setFiltro(e.target.value)}>
           {etapaLabel && <option value="">Etapa: {etapaLabel}</option>}

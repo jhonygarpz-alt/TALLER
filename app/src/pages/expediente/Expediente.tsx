@@ -56,7 +56,7 @@ export default function Expediente() {
             {o.detenido_material && <Badge cls="bg-orange-100 text-orange-700"><AlertTriangle className="h-3 w-3" /> Detenido por material</Badge>}
           </div>
           <div className="mt-1 text-lg font-semibold text-slate-800">{o.marca} {o.modelo} {o.anio} <span className="font-mono text-base text-slate-500">{o.placas}</span></div>
-          <div className="text-sm text-slate-500">{o.cliente_nombre}{o.siniestro && ` · Siniestro ${o.siniestro}`}{o.cliente_telefono && ` · ${o.cliente_telefono}`}</div>
+          <div className="text-sm text-slate-500">{o.cliente_nombre}{o.os_bitacora && ` · OS ${o.os_bitacora}`}{o.siniestro && ` · Siniestro ${o.siniestro}`}{o.cliente_telefono && ` · ${o.cliente_telefono}`}</div>
         </div>
         <div className="grid grid-cols-3 gap-3 text-center md:w-80">
           <div className="rounded-xl bg-slate-50 p-2"><div className="text-[11px] text-slate-500">Ingreso</div><div className="text-sm font-bold">{fecha(o.fecha_ingreso)}</div></div>
