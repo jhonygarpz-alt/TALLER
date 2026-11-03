@@ -134,7 +134,7 @@ export default function Layout() {
           <Logo compacto={chico} />
           <button className="rounded-lg p-1 text-emerald-100/70 hover:bg-white/10 md:hidden" onClick={() => setMenu(false)} aria-label="Cerrar menú"><X className="h-6 w-6" /></button>
         </div>
-        <nav className="relative flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+        <nav data-sin-ayuda className="relative flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           {NAV.filter(n => !n.permiso || n.permiso.some(p => puede(p))).map(n => (
             <NavLink key={n.to} to={n.to} end={n.to === '/'} title={chico ? n.label : undefined}
               className={({ isActive }) => `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${chico ? 'justify-center' : ''} ${isActive
