@@ -1,3 +1,4 @@
+import AyudaContextual, { BotonAyuda } from './AyudaContextual'
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Bell, Car, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, LogOut, Menu, Search, Settings, Wrench, X } from 'lucide-react'
@@ -164,6 +165,7 @@ export default function Layout() {
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-10 text-sm transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:outline-none" />
           </form>
           <div className="ml-auto flex items-center gap-1 md:gap-3">
+            <BotonAyuda />
             <Campana />
             <div className="hidden h-8 w-px bg-slate-200 md:block" />
             <MenuUsuario />
@@ -173,6 +175,7 @@ export default function Layout() {
           <Suspense fallback={<Cargando />}><Outlet /></Suspense>
         </main>
       </div>
+      <AyudaContextual />
     </div>
   )
 }

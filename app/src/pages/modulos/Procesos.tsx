@@ -214,7 +214,7 @@ function Tablero({ ordenes, onVer, verEntregados, setVerEntregados }: { ordenes:
           const E = ESTILO[e]
           return (
             <section key={e} className={`flex w-[264px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl ${E.body}`}>
-              <header className={`flex items-center gap-2 px-3 py-3 ${E.head}`}>
+              <header data-ayuda-clave={ETAPAS[e].label} className={`flex items-center gap-2 px-3 py-3 ${E.head}`}>
                 <E.icon className={`h-5 w-5 ${E.texto}`} />
                 <span className={`flex-1 text-sm leading-tight font-bold ${E.texto}`}>{ETAPAS[e].label}</span>
                 <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-1.5 text-xs font-bold text-slate-700 shadow-sm">{items.length}</span>
