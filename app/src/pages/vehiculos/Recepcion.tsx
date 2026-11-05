@@ -7,6 +7,7 @@ import { useAlertas } from '../../lib/alertas'
 import { subirFoto } from '../../lib/storage'
 import { errorTexto, fecha } from '../../lib/format'
 import { ErrorMsg, Field, PageHeader, SinPermiso } from '../../components/ui'
+import { SelectorAsignacion, asegurarAsignacion, type AsignacionSel } from '../../components/SelectorAsignacion'
 
 export const CHECKLIST_RECEPCION = [
   'Espejos', 'Faros', 'Calaveras', 'Parabrisas', 'Cristales', 'Limpiaparabrisas', 'Antena', 'Tapones de rueda',
@@ -32,6 +33,8 @@ export default function Recepcion() {
   const [existente, setExistente] = useState<{ vehiculo_id: number; cliente_id: number | null; texto: string } | null>(null)
   const [buscado, setBuscado] = useState(false)
   const [fotos, setFotos] = useState<File[]>([])
+  const [asig, setAsig] = useState<AsignacionSel | null>(null)
+  const [asigNueva, setAsigNueva] = useState(false)
 
   const [f, setF] = useState({
     tipo: 'aseguradora' as 'aseguradora' | 'particular', aseguradora_id: '', siniestro: '', tipo_reparacion_id: '', fecha_compromiso: '',
@@ -52,6 +55,7 @@ export default function Recepcion() {
     if (asignacionId) {
       supabase.from('asignaciones').select('*').eq('id', asignacionId).single().then(({ data: a }) => {
         if (!a) return
+        setAsig(a as AsignacionSel)
         setF(p => ({
           ...p, tipo: 'aseguradora', aseguradora_id: String(a.aseguradora_id), siniestro: a.siniestro,
           cliente_nombre: a.asegurado, cliente_telefono: a.telefono ?? '', marca: a.marca ?? '', modelo: a.modelo ?? '',
@@ -85,9 +89,18 @@ export default function Recepcion() {
       cliente_email: v.clientes?.email ?? '', cliente_rfc: v.clientes?.rfc ?? '' }))
   }
 
+  function elegirAsignacion(a: AsignacionSel | null) {
+    setAsig(a); setBuscado(false); setExistente(null)
+    if (a) setF(p => ({ ...p, siniestro: a.siniestro, cliente_nombre: a.asegurado ?? p.cliente_nombre, cliente_telefono: a.telefono ?? p.cliente_telefono,
+      marca: a.marca ?? p.marca, modelo: a.modelo ?? p.modelo, anio: a.anio ? String(a.anio) : p.anio, placas: a.placas ?? p.placas }))
+    else setF(p => ({ ...p, siniestro: '' }))
+  }
+
   function validar(p: number): string | null {
     if (p === 1) {
-      if (f.tipo === 'aseguradora' && (!f.aseguradora_id || !f.siniestro.trim())) return 'Indica la aseguradora y el número de siniestro'
+      if (f.tipo === 'aseguradora' && !f.aseguradora_id) return 'Elige la aseguradora'
+      if (f.tipo === 'aseguradora' && !asig && !asigNueva) return 'Elige la asignación de la aseguradora (o registra una nueva si aún no está capturada)'
+      if (f.tipo === 'aseguradora' && asigNueva && !f.siniestro.trim()) return 'Captura el número de siniestro de la asignación nueva'
       if (!f.fecha_compromiso) return 'Indica la fecha compromiso de entrega (o elige el tipo de reparación)'
     }
     if (p === 2) {
@@ -97,12 +110,21 @@ export default function Recepcion() {
     if (p === 3 && !f.danos_reportados.trim()) return 'Describe los daños reportados'
     return null
   }
-  const siguiente = () => { const e = validar(paso); setError(e); if (!e) setPaso(paso + 1) }
+  const siguiente = () => {
+    const e = validar(paso); setError(e); if (e) return
+    setPaso(paso + 1)
+    if (paso === 1 && f.placas.trim() && !buscado) buscarPlacas() // con la asignación ya vienen las placas
+  }
 
   async function guardar() {
     for (const p of [1, 2, 3]) { const e = validar(p); if (e) { setError(e); setPaso(p); return } }
     setGuardando(true); setError(null)
     try {
+      // Toda orden de aseguradora va ligada a su asignación (si es nueva, se registra en este momento)
+      const asignacionFinal = f.tipo !== 'aseguradora' ? null : asig ? asig.id : await asegurarAsignacion({
+        aseguradora_id: Number(f.aseguradora_id), siniestro: f.siniestro, asegurado: f.cliente_nombre, telefono: f.cliente_telefono,
+        marca: f.marca, modelo: f.modelo, anio: f.anio ? Number(f.anio) : null, placas: f.placas, asesor_id: f.asesor_id || null,
+      })
       let clienteId = existente?.cliente_id ?? null
       let vehiculoId = existente?.vehiculo_id ?? null
       if (!clienteId) {
@@ -119,7 +141,7 @@ export default function Recepcion() {
       }
       const { data: orden, error } = await supabase.from('ordenes').insert({
         tipo: f.tipo, aseguradora_id: f.tipo === 'aseguradora' ? Number(f.aseguradora_id) : null,
-        siniestro: f.tipo === 'aseguradora' ? f.siniestro.trim() : null, asignacion_id: asignacionId ? Number(asignacionId) : null,
+        siniestro: f.tipo === 'aseguradora' ? f.siniestro.trim() : null, asignacion_id: asignacionFinal,
         cliente_id: clienteId, vehiculo_id: vehiculoId, tipo_reparacion_id: f.tipo_reparacion_id ? Number(f.tipo_reparacion_id) : null,
         fecha_compromiso: f.fecha_compromiso, kilometraje: f.kilometraje ? Number(f.kilometraje) : null,
         danos_reportados: f.danos_reportados.trim(), objetos: f.objetos.trim() || null, asesor_id: f.asesor_id || null,
@@ -173,8 +195,12 @@ export default function Recepcion() {
           </div>
           {f.tipo === 'aseguradora' && (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Aseguradora *"><select className="input" value={f.aseguradora_id} disabled={!!asignacionId} onChange={e => setF(p => ({ ...p, aseguradora_id: e.target.value, tipo_reparacion_id: '' }))}>{aseguradoras.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Field>
-              <Field label="Número de siniestro *"><input className="input" value={f.siniestro} disabled={!!asignacionId} onChange={set('siniestro')} /></Field>
+              <Field label="Aseguradora *"><select className="input" value={f.aseguradora_id} disabled={!!asignacionId} onChange={e => { setF(p => ({ ...p, aseguradora_id: e.target.value, tipo_reparacion_id: '' })); elegirAsignacion(null); setAsigNueva(false) }}>{aseguradoras.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Field>
+              {asigNueva ? <Field label="Número de siniestro *"><input className="input" value={f.siniestro} onChange={set('siniestro')} placeholder="Siniestro de la asignación nueva" /></Field> : <div />}
+              <Field label="Asignación de la aseguradora *" className="sm:col-span-2" hint="Toda orden de aseguradora va ligada a su asignación. Al elegirla se llenan el siniestro, el asegurado y el vehículo.">
+                <SelectorAsignacion aseguradoraId={f.aseguradora_id} seleccion={asig} nueva={asigNueva} bloqueado={!!asignacionId}
+                  onElegir={elegirAsignacion} onNueva={v => { setAsigNueva(v); elegirAsignacion(null) }} />
+              </Field>
             </div>
           )}
           <div className="grid gap-3 sm:grid-cols-2">

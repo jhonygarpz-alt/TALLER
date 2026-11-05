@@ -8,6 +8,7 @@ import { errorTexto } from '../../lib/format'
 import { CHECKLIST_RECEPCION } from '../../pages/vehiculos/Recepcion'
 import { Aviso, Campo, EncabezadoClaro, Vacio, entrada } from '../ui'
 import { RejillaEvidencia, fotosVacias, listaFotos, totalFotos, type FotosGuiadas } from '../Evidencia'
+import { SelectorAsignacion, asegurarAsignacion, type AsignacionSel } from '../../components/SelectorAsignacion'
 
 interface TipoRep { id: number; nombre: string; dias_objetivo: number; aseguradora_id: number | null }
 const COLORES = ['BLANCO', 'NEGRO', 'GRIS', 'PLATA', 'ROJO', 'AZUL', 'VERDE', 'ARENA', 'CAFÉ', 'VINO', 'AMARILLO', 'NARANJA']
@@ -26,6 +27,8 @@ export default function NuevaOrden() {
   const [existente, setExistente] = useState<{ vehiculo_id: number; cliente_id: number | null; texto: string } | null>(null)
   const [buscado, setBuscado] = useState(false)
   const [fotos, setFotos] = useState<FotosGuiadas>(fotosVacias('recepcion'))
+  const [asig, setAsig] = useState<AsignacionSel | null>(null)
+  const [asigNueva, setAsigNueva] = useState(false)
   const [asesores, setAsesores] = useState<{ id: string; nombre: string }[]>([])
   const [checklist, setChecklist] = useState<Record<string, string>>(Object.fromEntries(CHECKLIST_RECEPCION.map(i => [i, 'bien'])))
   const [f, setF] = useState({
@@ -64,7 +67,8 @@ export default function NuevaOrden() {
 
   function validar(p: number): string | null {
     if (p === 1) {
-      if (f.tipo === 'aseguradora' && (!f.aseguradora_id || !f.siniestro.trim())) return 'Captura el número de siniestro'
+      if (f.tipo === 'aseguradora' && !asig && !asigNueva) return 'Elige la asignación de la aseguradora (o registra una nueva)'
+      if (f.tipo === 'aseguradora' && asigNueva && !f.siniestro.trim()) return 'Captura el número de siniestro de la asignación nueva'
       if (!f.fecha_compromiso) return 'Elige el tipo de reparación o la fecha compromiso'
     }
     if (p === 2) {
@@ -74,13 +78,27 @@ export default function NuevaOrden() {
     if (p === 3 && !f.danos_reportados.trim()) return 'Describe los daños reportados'
     return null
   }
-  const siguiente = () => { const e = validar(paso); setError(e); if (!e) setPaso(paso + 1) }
+  const siguiente = () => {
+    const e = validar(paso); setError(e); if (e) return
+    setPaso(paso + 1)
+    if (paso === 1 && f.placas.trim() && !buscado) buscarPlacas()
+  }
+  function elegirAsignacion(a: AsignacionSel | null) {
+    setAsig(a); setBuscado(false); setExistente(null)
+    if (a) setF(p => ({ ...p, siniestro: a.siniestro, cliente_nombre: a.asegurado ?? p.cliente_nombre, cliente_telefono: a.telefono ?? p.cliente_telefono,
+      marca: a.marca ?? p.marca, modelo: a.modelo ?? p.modelo, anio: a.anio ? String(a.anio) : p.anio, placas: a.placas ?? p.placas }))
+    else setF(p => ({ ...p, siniestro: '' }))
+  }
 
   async function guardar() {
     for (const p of [1, 2, 3]) { const e = validar(p); if (e) { setError(e); setPaso(p); return } }
     if (!totalFotos(fotos) && !confirm('No agregaste fotos de recepción. ¿Crear la orden sin fotos?')) return
     setError(null); setGuardando('Creando orden…')
     try {
+      const asignacionFinal = f.tipo !== 'aseguradora' ? null : asig ? asig.id : await asegurarAsignacion({
+        aseguradora_id: Number(f.aseguradora_id), siniestro: f.siniestro, asegurado: f.cliente_nombre, telefono: f.cliente_telefono,
+        marca: f.marca, modelo: f.modelo, anio: f.anio ? Number(f.anio) : null, placas: f.placas, asesor_id: f.asesor_id || null,
+      })
       let clienteId = existente?.cliente_id ?? null
       let vehiculoId = existente?.vehiculo_id ?? null
       if (!clienteId) {
@@ -97,7 +115,7 @@ export default function NuevaOrden() {
       }
       const { data: orden, error } = await supabase.from('ordenes').insert({
         tipo: f.tipo, aseguradora_id: f.tipo === 'aseguradora' ? Number(f.aseguradora_id) : null,
-        siniestro: f.tipo === 'aseguradora' ? f.siniestro.trim() : null,
+        siniestro: f.tipo === 'aseguradora' ? f.siniestro.trim() : null, asignacion_id: asignacionFinal,
         cliente_id: clienteId, vehiculo_id: vehiculoId, tipo_reparacion_id: f.tipo_reparacion_id ? Number(f.tipo_reparacion_id) : null,
         fecha_compromiso: f.fecha_compromiso, kilometraje: f.kilometraje ? Number(f.kilometraje) : null,
         danos_reportados: f.danos_reportados.trim(), objetos: f.objetos.trim() || null, asesor_id: f.asesor_id || null,
@@ -150,8 +168,11 @@ export default function NuevaOrden() {
             ))}
           </div>
           {f.tipo === 'aseguradora' && <>
-            <Campo label="Aseguradora *"><select className={entrada} value={f.aseguradora_id} onChange={set('aseguradora_id')}>{aseguradoras.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Campo>
-            <Campo label="Número de siniestro *"><input className={entrada} inputMode="numeric" value={f.siniestro} onChange={set('siniestro')} placeholder="Ej. 4264105478000121" /></Campo>
+            <Campo label="Aseguradora *"><select className={entrada} value={f.aseguradora_id} onChange={e => { set('aseguradora_id')(e); elegirAsignacion(null); setAsigNueva(false) }}>{aseguradoras.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Campo>
+            <Campo label="Asignación de la aseguradora *" ayuda="Al elegirla se llenan el siniestro, el asegurado y el vehículo.">
+              <SelectorAsignacion movil aseguradoraId={f.aseguradora_id} seleccion={asig} nueva={asigNueva} onElegir={elegirAsignacion} onNueva={v => { setAsigNueva(v); elegirAsignacion(null) }} />
+            </Campo>
+            {asigNueva && <Campo label="Número de siniestro *"><input className={entrada} inputMode="numeric" value={f.siniestro} onChange={set('siniestro')} placeholder="Ej. 4264105478000121" /></Campo>}
           </>}
           <Campo label="Tipo de reparación"><select className={entrada} value={f.tipo_reparacion_id} onChange={e => { const t = tipos.find(x => String(x.id) === e.target.value); if (t) elegirTipoRep(t); else setF(p => ({ ...p, tipo_reparacion_id: '' })) }}>
             <option value="">Selecciona…</option>{tiposFiltrados.map(t => <option key={t.id} value={t.id}>{t.nombre} ({t.dias_objetivo} días)</option>)}</select></Campo>

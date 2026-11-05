@@ -4,6 +4,7 @@ import { AlertTriangle, Camera, ClipboardList, DollarSign, FileText, Package, Pe
 import { useAuth } from '../../lib/auth'
 import EliminarOrden from './EliminarOrden'
 import EditarOrden from './EditarOrden'
+import VincularAsignacion from './VincularAsignacion'
 import { ligaInvitacion } from '../../lib/invitacion'
 import { supabase } from '../../lib/supabase'
 import { useAlertas } from '../../lib/alertas'
@@ -72,6 +73,7 @@ export default function Expediente() {
         </div>
       </div>
 
+      <VincularAsignacion o={o} recargar={recargar} />
       <Tabs tabs={[
         { id: 'general', label: 'Información general', icon: ClipboardList },
         { id: 'diagnostico', label: 'Diagnóstico y fotos', icon: Camera },
