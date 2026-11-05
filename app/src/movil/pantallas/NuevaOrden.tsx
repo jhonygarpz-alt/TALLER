@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, Loader2, Search, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Loader2, Search, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { subirFoto } from '../../lib/storage'
 import { errorTexto } from '../../lib/format'
 import { CHECKLIST_RECEPCION } from '../../pages/vehiculos/Recepcion'
-import { Aviso, Campo, EncabezadoClaro, Vacio, entrada } from '../ui'
+import { Campo, EncabezadoClaro, Vacio, entrada } from '../ui'
 import { RejillaEvidencia, fotosVacias, listaFotos, totalFotos, type FotosGuiadas } from '../Evidencia'
 import { SelectorAsignacion, asegurarAsignacion, type AsignacionSel } from '../../components/SelectorAsignacion'
 
@@ -79,7 +79,8 @@ export default function NuevaOrden() {
     return null
   }
   const siguiente = () => {
-    const e = validar(paso); setError(e); if (e) return
+    const e = validar(paso); setError(e)
+    if (e) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
     setPaso(paso + 1)
     if (paso === 1 && f.placas.trim() && !buscado) buscarPlacas()
   }
@@ -155,7 +156,6 @@ export default function NuevaOrden() {
 
       <div className="space-y-5 px-4 pt-2 pb-[calc(110px+env(safe-area-inset-bottom))]">
         <div className="space-y-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
-        {error && <Aviso onClose={() => setError(null)}>{error}</Aviso>}
 
         {paso === 1 && <>
           <div className="grid grid-cols-2 gap-3">
@@ -246,6 +246,7 @@ export default function NuevaOrden() {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur">
+        {error && <div role="alert" className="mx-auto mb-2.5 flex max-w-lg items-start gap-2 rounded-2xl bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700 ring-1 ring-red-200"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
         <div className="mx-auto flex max-w-lg gap-3">
           {paso > 1 && <button disabled={!!guardando} onClick={() => { setError(null); setPaso(paso - 1) }} className="flex items-center justify-center gap-1 rounded-2xl bg-slate-100 px-5 font-semibold text-slate-700"><ArrowLeft className="h-5 w-5" /> Atrás</button>}
           {paso < 4
