@@ -3,6 +3,7 @@
 //  1) Desde la base de datos (disparador en actividades) con el encabezado x-webhook-secret:
 //     { tipo: 'asignado' | 'retrabajo', actividad_id }
 //     { tipo: 'cliente_listo' | 'cliente_encuesta', orden_id } → avisos a la app del cliente
+//     { tipo: 'gerencia_ingreso' | 'gerencia_entrega' | 'gerencia_encuesta', orden_id } | { tipo: 'gerencia_resumen' } → app de gerencia
 //  2) Desde la app, con la sesión del usuario: { tipo: 'prueba' } → aviso de prueba a sus propios celulares.
 // Las llaves VAPID se leen de Supabase Vault mediante push_config() (solo service_role).
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -16,6 +17,8 @@ const cors = {
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 const APP_URL = 'https://jhonygarpz-alt.github.io/TALLER/tecnicos/'
 const APP_CLIENTE = 'https://jhonygarpz-alt.github.io/TALLER/cliente/'
+const APP_GERENCIA = 'https://jhonygarpz-alt.github.io/TALLER/gerencia/'
+const TZ = 'America/Mexico_City'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -47,6 +50,35 @@ Deno.serve(async (req) => {
         : { title: '⭐ ¿Cómo te atendimos?', body: `Gracias por confiar en nosotros. Califica el servicio de tu ${auto}; solo toma un minuto.`, url: `${APP_CLIENTE}#/encuesta/${ord.id}`, tag: `encuesta-${ord.id}` }
       tablaSubs = 'cliente_push'
       subs = (await admin.from('cliente_push').select('id, endpoint, p256dh, auth').eq('vehiculo_id', ord.vehiculo_id)).data
+    } else if (req.headers.get('x-webhook-secret') && String(body.tipo ?? '').startsWith('gerencia_')) {
+      if (req.headers.get('x-webhook-secret') !== cfg.push_webhook) return json({ error: 'No autorizado' }, 401)
+      const tipo = String(body.tipo)
+      if (tipo === 'gerencia_resumen') {
+        const hoy = new Date().toLocaleDateString('en-CA', { timeZone: TZ })
+        const { data: d, error: eD } = await admin.rpc('_gerencia_datos', { p_desde: hoy, p_hasta: hoy, p_finanzas: false })
+        if (eD) throw eD
+        const x = (d as { dia: Record<string, number> }).dia
+        aviso = { title: '📊 Resumen del día', body: `Ingresaron ${x.ingresos} · Entregados ${x.entregas}\nEn taller ${x.en_taller} · Retrasados ${x.retrasados} · Listos ${x.listos}`, url: APP_GERENCIA, tag: `resumen-${hoy}` }
+      } else {
+        const { data: o } = await admin.from('v_ordenes').select('id, folio, tipo, marca, modelo, placas, aseguradora_nombre, dias_en_taller, satisfaccion, encuesta_comentario, cliente_nombre').eq('id', body.orden_id).single()
+        // deno-lint-ignore no-explicit-any
+        const ord = o as any
+        if (!ord) return json({ ok: true, omitido: 'orden no encontrada' })
+        const auto = `${ord.marca} ${ord.modelo}${ord.placas ? ` · ${ord.placas}` : ''}`
+        const origen = ord.tipo === 'aseguradora' ? (ord.aseguradora_nombre ?? 'Aseguradora') : 'Particular'
+        aviso = tipo === 'gerencia_ingreso'
+          ? { title: '🚗 Ingresó un vehículo', body: `${ord.folio} · ${auto}\n${origen}`, url: APP_GERENCIA, tag: `g-ing-${ord.id}` }
+          : tipo === 'gerencia_entrega'
+          ? { title: '✅ Vehículo entregado', body: `${ord.folio} · ${auto}\n${origen} · ${ord.dias_en_taller} días en taller`, url: APP_GERENCIA, tag: `g-ent-${ord.id}` }
+          : { title: `⚠️ Calificación baja: ${'★'.repeat(ord.satisfaccion ?? 0)}`, body: `${ord.folio} · ${auto} · ${ord.cliente_nombre}${ord.encuesta_comentario ? `\n“${ord.encuesta_comentario}”` : ''}`, url: APP_GERENCIA, tag: `g-enc-${ord.id}` }
+      }
+      // Destinatarios: celulares de la app de gerencia de usuarios activos con permiso de reportes que aceptan este aviso
+      const { data: s } = await admin.from('push_suscripciones').select('id, endpoint, p256dh, auth, avisos, perfiles(rol, activo)').eq('app', 'gerencia')
+      const { data: rp } = await admin.from('rol_permisos').select('rol').eq('permiso', 'reportes.ver')
+      const roles = new Set(['direccion', ...(rp ?? []).map((r: { rol: string }) => r.rol)])
+      const clave = tipo.replace('gerencia_', '')
+      // deno-lint-ignore no-explicit-any
+      subs = (s ?? []).filter((x: any) => x.perfiles?.activo && roles.has(x.perfiles.rol) && (!x.avisos || x.avisos.includes(clave)))
     } else if (req.headers.get('x-webhook-secret')) {
       if (req.headers.get('x-webhook-secret') !== cfg.push_webhook) return json({ error: 'No autorizado' }, 401)
       const { data: a } = await admin.from('actividades')
@@ -68,7 +100,11 @@ Deno.serve(async (req) => {
       const { data: u } = await usuario.auth.getUser()
       if (!u?.user || body.tipo !== 'prueba') return json({ error: 'No autorizado' }, 401)
       perfilId = u.user.id
-      aviso = { title: '✅ Notificaciones activadas', body: 'Así te avisaremos cuando te asignen un trabajo.', url: APP_URL, tag: 'prueba' }
+      const app = body.app === 'gerencia' ? 'gerencia' : 'tecnicos'
+      aviso = app === 'gerencia'
+        ? { title: '✅ Notificaciones activadas', body: 'Te avisaremos de ingresos, entregas, calificaciones bajas y el resumen del día.', url: APP_GERENCIA, tag: 'prueba' }
+        : { title: '✅ Notificaciones activadas', body: 'Así te avisaremos cuando te asignen un trabajo.', url: APP_URL, tag: 'prueba' }
+      subs = (await admin.from('push_suscripciones').select('id, endpoint, p256dh, auth').eq('perfil_id', perfilId).eq('app', app)).data
     }
 
     if (!subs) subs = (await admin.from('push_suscripciones').select('id, endpoint, p256dh, auth').eq('perfil_id', perfilId).eq('app', 'tecnicos')).data

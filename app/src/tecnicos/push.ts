@@ -15,7 +15,7 @@ const esIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
 const instalada = () => window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true
 
 /** Estado y acciones de las notificaciones push de este celular */
-export function usePush() {
+export function usePush(app: 'tecnicos' | 'gerencia' = 'tecnicos') {
   const [estado, setEstado] = useState<EstadoPush>('cargando')
 
   const revisar = useCallback(async () => {
@@ -41,7 +41,7 @@ export function usePush() {
     const j = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
     const { data: u } = await supabase.auth.getUser()
     await supabase.from('push_suscripciones').delete().eq('endpoint', j.endpoint) // por si el celular era de otro usuario
-    const { error } = await supabase.from('push_suscripciones').insert({ perfil_id: u.user?.id, app: 'tecnicos', endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, user_agent: navigator.userAgent.slice(0, 200) })
+    const { error } = await supabase.from('push_suscripciones').insert({ perfil_id: u.user?.id, app, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, user_agent: navigator.userAgent.slice(0, 200) })
     if (error) throw error
     setEstado('activo')
   }
@@ -54,7 +54,7 @@ export function usePush() {
   }
 
   async function probar() {
-    const { data, error } = await supabase.functions.invoke('notificar-push', { body: { tipo: 'prueba' } })
+    const { data, error } = await supabase.functions.invoke('notificar-push', { body: { tipo: 'prueba', app } })
     if (error) throw error
     return (data as { enviados: number }).enviados
   }

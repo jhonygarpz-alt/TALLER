@@ -6,7 +6,7 @@ import { Aviso } from '../ui'
 
 const BASE = import.meta.env.BASE_URL
 
-export default function LoginMovil({ titulo = 'Órdenes de trabajo', sub = 'Recepción, avance y fotos desde tu celular', icono = 'movil/icon-192.png' }: { titulo?: string; sub?: string; icono?: string }) {
+export default function LoginMovil({ titulo = 'Órdenes de trabajo', sub = 'Recepción, avance y fotos desde tu celular', icono = 'movil/icon-192.png', soloIcono }: { titulo?: string; sub?: string; icono?: string; soloIcono?: boolean }) {
   const emp = useEmpresa()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,7 +30,7 @@ export default function LoginMovil({ titulo = 'Órdenes de trabajo', sub = 'Rece
       <img src={`${BASE}img/banner-taller.webp`} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-[46vh] w-full object-cover object-[65%_50%] opacity-50" />
       <div className="pointer-events-none absolute inset-0 h-[46vh] bg-gradient-to-b from-navy-950/40 via-navy-950/60 to-navy-950" />
       <div className="relative flex flex-1 flex-col items-center justify-end px-6 pt-[calc(env(safe-area-inset-top)+32px)] pb-6 text-center text-white">
-        {emp.logoUrl
+        {emp.logoUrl && !soloIcono
           ? <div className="mb-3 h-24 w-24 overflow-hidden rounded-3xl bg-white p-1 shadow-[0_0_24px_rgba(61,220,132,.45)] ring-2 ring-brand-400/60"><img src={emp.logoUrl} alt="" className="h-full w-full object-contain" /></div>
           : <img src={`${BASE}${icono}`} alt="" className="mb-3 h-24 w-24 rounded-3xl" />}
         <h1 className="text-2xl font-extrabold tracking-tight">{titulo}</h1>

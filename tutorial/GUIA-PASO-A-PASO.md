@@ -46,6 +46,7 @@ Expediente → **Entrega y cierre**: después de control de calidad, registra la
 - **Reportes y KPIs**: indicadores y descargas a Excel.
 - **Calendario**: entregas, citas y llamadas.
 - **Administración → Auditoría**: quién cambió qué.
+- **App de Gerencia** (celular, `…/TALLER/gerencia/`, QR en `QR_app_gerencia.png`): ingresos y entregas del día, unidades en taller por etapa, cumplimiento, satisfacción, productividad y rentabilidad. En *Ajustes* activa los avisos push: ingreso, entrega, calificación baja y resumen diario (7:10 p. m.).
 
 ## Corregir errores
 - **Editar** orden: botón Editar en el expediente.
