@@ -17,7 +17,7 @@ export function BarraAvance({ pct, grande }: { pct: number; grande?: boolean }) 
   return (
     <div className="flex items-center gap-2">
       <div className={`flex-1 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200 ${grande ? 'h-3' : 'h-2'}`}>
-        <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 shadow-[0_0_8px_rgba(61,220,132,.6)] transition-all duration-500" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 shadow-[0_0_8px_rgba(79,192,213,.6)] transition-all duration-500" style={{ width: `${pct}%` }} />
       </div>
       <span className={`text-right font-extrabold text-brand-700 ${grande ? 'w-12 text-base' : 'w-9 text-xs'}`}>{pct}%</span>
     </div>
@@ -90,7 +90,7 @@ export function HojaAvance({ t, actual, onClose, onListo }: { t: Trabajo; actual
       <div className="space-y-5">
         <div className="text-sm text-slate-500">{t.actividad}{t.pieza && ` · ${t.pieza}`} · {t.ordenes?.vehiculos?.marca} {t.ordenes?.vehiculos?.modelo} {t.ordenes?.vehiculos?.placas}</div>
         {error && <Aviso onClose={() => setError(null)}>{error}</Aviso>}
-        <div className="rounded-3xl bg-gradient-to-br from-emerald-50 to-white p-4 ring-1 ring-brand-200">
+        <div className="rounded-3xl bg-gradient-to-br from-brand-50 to-white p-4 ring-1 ring-brand-200">
           <div className="text-center"><span className="text-5xl font-black text-brand-700">{pct}</span><span className="text-2xl font-bold text-brand-600">%</span></div>
           <input type="range" min={0} max={100} step={5} value={pct} onChange={e => setPct(Number(e.target.value))} aria-label="Porcentaje de avance" className="mt-3 w-full accent-brand-600" />
           <div className="mt-3 grid grid-cols-6 gap-1.5">{RAPIDOS.map(n => (

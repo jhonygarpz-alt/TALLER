@@ -17,7 +17,7 @@ export function Barra({ titulo, sub, atras, accion }: { titulo: string; sub?: Re
         ) : <div className="w-3" />}
         <div className="min-w-0 flex-1">
           <div className="truncate text-[17px] leading-tight font-bold">{titulo}</div>
-          {sub && <div className="truncate text-xs text-emerald-100/75">{sub}</div>}
+          {sub && <div className="truncate text-xs text-cyan-100/75">{sub}</div>}
         </div>
         {accion}
       </div>
@@ -45,7 +45,7 @@ export function EncabezadoClaro({ titulo, sub, icono: Icono = ClipboardList, atr
   const nav = useNavigate()
   const volver = () => (typeof atras === 'function' ? atras() : typeof atras === 'string' ? nav(atras) : nav(-1))
   return (
-    <header className="relative overflow-hidden bg-gradient-to-b from-emerald-50 via-white to-slate-50 pt-[env(safe-area-inset-top)]">
+    <header className="relative overflow-hidden bg-gradient-to-b from-brand-50 via-white to-slate-50 pt-[env(safe-area-inset-top)]">
       <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden className="pointer-events-none absolute top-0 right-0 h-[104px] w-[72%] object-cover object-[70%_45%] opacity-90 [mask-image:linear-gradient(to_left,black_40%,transparent),linear-gradient(to_bottom,black_50%,transparent)] [mask-composite:intersect]" />
       <div className="relative px-4 pt-2 pb-3">
         <div className="flex h-11 items-center justify-between">

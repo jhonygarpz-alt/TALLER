@@ -31,10 +31,10 @@ export default function LoginMovil({ titulo = 'Órdenes de trabajo', sub = 'Rece
       <div className="pointer-events-none absolute inset-0 h-[46vh] bg-gradient-to-b from-navy-950/40 via-navy-950/60 to-navy-950" />
       <div className="relative flex flex-1 flex-col items-center justify-end px-6 pt-[calc(env(safe-area-inset-top)+32px)] pb-6 text-center text-white">
         {emp.logoUrl && !soloIcono
-          ? <div className="mb-3 h-24 w-24 overflow-hidden rounded-3xl bg-white p-1 shadow-[0_0_24px_rgba(61,220,132,.45)] ring-2 ring-brand-400/60"><img src={emp.logoUrl} alt="" className="h-full w-full object-contain" /></div>
+          ? <div className="mb-3 h-24 w-24 overflow-hidden rounded-3xl bg-white p-1 shadow-[0_0_24px_rgba(79,192,213,.45)] ring-2 ring-brand-400/60"><img src={emp.logoUrl} alt="" className="h-full w-full object-contain" /></div>
           : <img src={`${BASE}${icono}`} alt="" className="mb-3 h-24 w-24 rounded-3xl" />}
         <h1 className="text-2xl font-extrabold tracking-tight">{titulo}</h1>
-        <p className="text-sm text-emerald-100/75">{sub}</p>
+        <p className="text-sm text-cyan-100/75">{sub}</p>
       </div>
       <form onSubmit={entrar} className="relative space-y-4 rounded-t-[32px] bg-slate-50 px-6 pt-8 pb-[calc(env(safe-area-inset-bottom)+28px)]">
         <h2 className="text-xl font-bold text-slate-900">Iniciar sesión</h2>

@@ -65,7 +65,7 @@ export default function MisTrabajos() {
           <button onClick={() => { setRows(null); cargar() }} className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full active:bg-white/15" aria-label="Actualizar"><RefreshCw className="h-5 w-5" /></button>
         </div>
         <div className="relative mt-4">
-          <div className="text-sm text-emerald-100/80">{hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'},</div>
+          <div className="text-sm text-cyan-100/80">{hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'},</div>
           <h1 className="text-[26px] leading-tight font-extrabold">{fichas?.[0]?.nombre?.split(' ')[0] ?? perfil?.nombre?.split(' ')[0]}</h1>
           <div className="mt-1 flex gap-1.5">{areas.map(a => (
             <span key={a} className="flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold">{a === 'pintura' ? <Paintbrush className="h-3.5 w-3.5" /> : <Hammer className="h-3.5 w-3.5" />}{a === 'pintura' ? 'Pintor' : a === 'hojalateria' ? 'Hojalatero' : a}</span>
@@ -76,7 +76,7 @@ export default function MisTrabajos() {
       <div className="relative z-10 -mt-10 space-y-4 px-4">
         <div className="grid grid-cols-3 gap-2.5">
           {([['hacer', 'Por hacer', ClipboardList, 'bg-sky-100 text-sky-700'], ['proceso', 'En proceso', Timer, 'bg-amber-100 text-amber-700'], ['terminados', 'Terminados', CheckCircle2, 'bg-emerald-100 text-emerald-700']] as [Vista, string, typeof Timer, string][]).map(([id, l, Ic, tono]) => (
-            <button key={id} onClick={() => setVista(id)} className={`flex flex-col gap-1 rounded-2xl bg-white p-3 text-left shadow-sm transition active:scale-[.98] ${vista === id ? 'ring-2 ring-brand-500 shadow-[0_0_14px_rgba(29,180,100,.35)]' : 'ring-1 ring-slate-200/80'}`}>
+            <button key={id} onClick={() => setVista(id)} className={`flex flex-col gap-1 rounded-2xl bg-white p-3 text-left shadow-sm transition active:scale-[.98] ${vista === id ? 'ring-2 ring-brand-500 shadow-[0_0_14px_rgba(34,152,175,.35)]' : 'ring-1 ring-slate-200/80'}`}>
               <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${tono}`}><Ic className="h-[18px] w-[18px]" /></span>
               <span className="text-2xl leading-none font-extrabold text-slate-900">{rows ? grupos[id].length : '…'}</span>
               <span className="text-[11px] font-semibold text-slate-500">{l}</span>

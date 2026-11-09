@@ -21,7 +21,7 @@ export default function Taller({ datos: d }: PropsPantalla) {
         <Barras datos={etapas} vacio="No hay vehículos en proceso" />
       </Panel>
       <Panel titulo="Productividad de técnicos" sub="Trabajos terminados en el periodo · (en proceso)">
-        <Barras datos={d.tecnicos.map((t, i) => ({ label: `${nombreCorto(t.nombre)} · ${AREAS[t.area] ?? t.area}`, valor: t.terminados, color: [C.oscuro, C.medio, C.lima, C.ambar, C.teal, C.gris][i % 6], extra: <span className="font-normal text-[#66736c]"> ({t.en_proceso})</span> }))} vacio="Sin trabajos en el periodo" />
+        <Barras datos={d.tecnicos.map((t, i) => ({ label: `${nombreCorto(t.nombre)} · ${AREAS[t.area] ?? t.area}`, valor: t.terminados, color: [C.oscuro, C.medio, C.lima, C.ambar, C.teal, C.gris][i % 6], extra: <span className="font-normal text-[#66818f]"> ({t.en_proceso})</span> }))} vacio="Sin trabajos en el periodo" />
       </Panel>
       <Kpi icono={RotateCcw} label="Retrabajos solicitados en el periodo" valor={d.periodo.retrabajos} />
     </>

@@ -72,7 +72,7 @@ export default function Ordenes() {
         </div>
         <div className="relative mt-3 px-5">
           <h1 className="text-[26px] leading-tight font-extrabold">Órdenes de trabajo</h1>
-          <p className="max-w-[60%] text-sm text-emerald-100/80">Gestiona y da seguimiento a las OT del taller</p>
+          <p className="max-w-[60%] text-sm text-cyan-100/80">Gestiona y da seguimiento a las OT del taller</p>
         </div>
       </header>
 
@@ -90,7 +90,7 @@ export default function Ordenes() {
               return (
                 <button key={f.id} onClick={() => elegir(f.id)}
                   className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition ${activo ? 'bg-brand-700 text-white shadow-md shadow-brand-900/20' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>
-                  <f.icono className="h-4 w-4" />{f.label}{conteo[f.id] != null && <span className={activo ? 'text-emerald-100' : 'text-slate-400'}>({conteo[f.id]})</span>}
+                  <f.icono className="h-4 w-4" />{f.label}{conteo[f.id] != null && <span className={activo ? 'text-cyan-100' : 'text-slate-400'}>({conteo[f.id]})</span>}
                 </button>
               )
             })}

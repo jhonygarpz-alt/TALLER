@@ -19,7 +19,7 @@ function Linea({ o }: { o: OrdenCliente }) {
         return (
           <li key={nombre} className="relative flex gap-3 pb-4 last:pb-0">
             {n < PASOS.length && <span className={`absolute top-7 left-[13px] h-[calc(100%-20px)] w-0.5 ${hecho ? 'bg-brand-500' : 'bg-slate-200'}`} />}
-            <span className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${hecho ? 'bg-brand-600 text-white' : ahora ? 'bg-white text-brand-700 ring-4 ring-brand-200 shadow-[0_0_12px_rgba(29,180,100,.55)]' : 'bg-slate-100 text-slate-400'}`}>
+            <span className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${hecho ? 'bg-brand-600 text-white' : ahora ? 'bg-white text-brand-700 ring-4 ring-brand-200 shadow-[0_0_12px_rgba(34,152,175,.55)]' : 'bg-slate-100 text-slate-400'}`}>
               {hecho ? <CheckCircle2 className="h-4 w-4" /> : n}
             </span>
             <div className="min-w-0 pt-0.5">
@@ -74,7 +74,7 @@ export default function Seguimiento({ token, onSalir }: { token: string; onSalir
             <button onClick={() => confirm('¿Salir de tu cuenta en este celular?') && salir(token).then(onSalir)} className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full active:bg-white/15" aria-label="Salir"><LogOut className="h-5 w-5" /></button>
           </div>
         </div>
-        <div className="relative mt-4"><div className="text-sm text-emerald-100/80">Hola,</div><h1 className="text-[26px] leading-tight font-extrabold">{d.cliente?.nombre ?? 'cliente'}</h1></div>
+        <div className="relative mt-4"><div className="text-sm text-cyan-100/80">Hola,</div><h1 className="text-[26px] leading-tight font-extrabold">{d.cliente?.nombre ?? 'cliente'}</h1></div>
       </header>
 
       <div className="relative z-10 -mt-10 space-y-4 px-4">

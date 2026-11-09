@@ -13,7 +13,7 @@ function Tendencia({ hoy, ayer }: { hoy: number; ayer: number }) {
   const pct = Math.round((hoy - ayer) / ayer * 100)
   const sube = pct > 0
   const I = sube ? ArrowUpRight : ArrowDownRight
-  return <span className={`flex items-center gap-0.5 text-[13px] font-semibold ${sube ? 'text-[#1f7a45]' : 'text-[#d65a52]'}`} title="Contra ayer"><I className="h-4 w-4" />{sube ? '+' : ''}{pct}%</span>
+  return <span className={`flex items-center gap-0.5 text-[13px] font-semibold ${sube ? 'text-emerald-600' : 'text-[#d65a52]'}`} title="Contra ayer"><I className="h-4 w-4" />{sube ? '+' : ''}{pct}%</span>
 }
 
 /** Etapas agrupadas para la dona de órdenes */
@@ -44,15 +44,15 @@ function Rendimiento() {
   return (
     <Panel titulo="Rendimiento" sub="Ingresos vs Entregas"
       derecha={
-        <div className="flex shrink-0 rounded-full bg-[#f1f4f2] p-0.5 text-[12px]">
+        <div className="flex shrink-0 rounded-full bg-[#eef6f8] p-0.5 text-[12px]">
           {([['semana', 'Semana'], ['mes', 'Mes'], ['anio', 'Año']] as [Rango, string][]).map(([id, l]) => (
-            <button key={id} onClick={() => setRango(id)} className={`rounded-full px-2.5 py-1.5 transition ${rango === id ? 'bg-gradient-to-b from-[#1f7a45] to-[#155c35] font-semibold text-white shadow' : 'text-[#16211b]'}`}>{l}</button>
+            <button key={id} onClick={() => setRango(id)} className={`rounded-full px-2.5 py-1.5 transition ${rango === id ? 'bg-gradient-to-b from-[#2298af] to-[#17657c] font-semibold text-white shadow' : 'text-[#193344]'}`}>{l}</button>
           ))}
         </div>
       }>
-      {error ? <p className="text-sm text-red-600">{error}</p> : !serie ? <div className="h-[210px] animate-pulse rounded-2xl bg-[#f1f4f2]" />
+      {error ? <p className="text-sm text-red-600">{error}</p> : !serie ? <div className="h-[210px] animate-pulse rounded-2xl bg-[#eef6f8]" />
         : <Lineas serie={serie} etiqueta={etiqueta} detalle={detalle} />}
-      <p className="mt-1 text-center text-[11px] text-[#66736c]">{rango === 'semana' ? 'Últimos 7 días' : rango === 'mes' ? 'Últimos 30 días' : 'Últimos 12 meses'}</p>
+      <p className="mt-1 text-center text-[11px] text-[#66818f]">{rango === 'semana' ? 'Últimos 7 días' : rango === 'mes' ? 'Últimos 30 días' : 'Últimos 12 meses'}</p>
     </Panel>
   )
 }
@@ -77,7 +77,7 @@ export default function Resumen({ datos: d, periodo }: PropsPantalla) {
       </div>
 
       <Panel titulo="Órdenes de Trabajo" sub="Estado actual de las unidades" a="/taller">
-        {h.en_taller ? <Dona centro={h.en_taller} sub="Unidades" datos={g} /> : <p className="py-4 text-center text-sm text-[#66736c]">No hay unidades en proceso</p>}
+        {h.en_taller ? <Dona centro={h.en_taller} sub="Unidades" datos={g} /> : <p className="py-4 text-center text-sm text-[#66818f]">No hay unidades en proceso</p>}
       </Panel>
 
       <Rendimiento />
@@ -90,10 +90,10 @@ export default function Resumen({ datos: d, periodo }: PropsPantalla) {
             { i: ClipboardList, v: h.por_autorizar, l: 'Por autorizar', c: C.azul },
             { i: PackageX, v: h.detenidos, l: 'Sin material', c: C.teal },
           ].map(x => (
-            <div key={x.l} className="rounded-2xl bg-[#f6f8f7] px-1 py-3 text-center">
+            <div key={x.l} className="rounded-2xl bg-[#f4f9fb] px-1 py-3 text-center">
               <x.i className="mx-auto h-[18px] w-[18px]" strokeWidth={1.8} style={{ color: x.c }} />
               <div className="mt-1 text-[22px] leading-none font-bold" style={{ color: x.v ? x.c : C.texto }}>{x.v}</div>
-              <div className="mt-1 text-[11px] leading-tight text-[#66736c]">{x.l}</div>
+              <div className="mt-1 text-[11px] leading-tight text-[#66818f]">{x.l}</div>
             </div>
           ))}
         </div>

@@ -35,8 +35,8 @@ export default function Encuesta({ token }: { token: string }) {
   }
 
   if (gracias) return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-b from-emerald-50 to-white p-8 text-center">
-      <span className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-600 text-white shadow-[0_0_30px_rgba(29,180,100,.5)]"><Heart className="h-10 w-10" fill="currentColor" /></span>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-b from-brand-50 to-white p-8 text-center">
+      <span className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-600 text-white shadow-[0_0_30px_rgba(34,152,175,.5)]"><Heart className="h-10 w-10" fill="currentColor" /></span>
       <h1 className="text-2xl font-extrabold">¡Gracias por tu opinión!</h1>
       <p className="text-slate-600">Nos ayuda a darte un mejor servicio cada vez.</p>
       <button onClick={() => nav('/', { replace: true })} className="mt-2 rounded-2xl bg-brand-700 px-8 py-3.5 font-bold text-white">Volver</button>
@@ -51,7 +51,7 @@ export default function Encuesta({ token }: { token: string }) {
       <header className="bg-gradient-to-br from-navy-950 to-navy-800 px-4 pt-[calc(env(safe-area-inset-top)+8px)] pb-6 text-white">
         <button onClick={() => nav(-1)} className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full active:bg-white/15" aria-label="Regresar"><ArrowLeft className="h-6 w-6" /></button>
         <h1 className="mt-2 text-2xl font-extrabold">¿Cómo te atendimos?</h1>
-        <p className="text-sm text-emerald-100/80">Servicio {o.folio} · tu opinión nos ayuda a mejorar</p>
+        <p className="text-sm text-cyan-100/80">Servicio {o.folio} · tu opinión nos ayuda a mejorar</p>
       </header>
       <div className="space-y-5 px-4 pt-5">
         {error && <Aviso onClose={() => setError(null)}>{error}</Aviso>}

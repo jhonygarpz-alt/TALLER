@@ -33,10 +33,10 @@ export default function MisDestajos() {
           <button key={id} onClick={() => setPeriodo(id)} className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold ${periodo === id ? 'bg-brand-700 text-white shadow' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}>{l}</button>
         ))}</div>
         <div className="rounded-3xl bg-gradient-to-br from-navy-900 to-navy-800 p-5 text-white shadow-lg">
-          <div className="text-sm text-emerald-100/80">Total generado</div>
+          <div className="text-sm text-cyan-100/80">Total generado</div>
           <div className="text-4xl font-black">{money2(suma())}</div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-            {(['pendiente', 'autorizado', 'pagado'] as const).map(e => <div key={e} className="rounded-2xl bg-white/10 p-2"><div className="text-emerald-100/75">{ESTADO[e][0]}</div><div className="text-sm font-bold">{money2(suma(e))}</div></div>)}
+            {(['pendiente', 'autorizado', 'pagado'] as const).map(e => <div key={e} className="rounded-2xl bg-white/10 p-2"><div className="text-cyan-100/75">{ESTADO[e][0]}</div><div className="text-sm font-bold">{money2(suma(e))}</div></div>)}
           </div>
         </div>
         {!rows ? <Cargando /> : rows.length === 0 ? <Vacio icono={Wallet}>{fichas?.length === 0 ? 'Tu usuario no está ligado a un técnico.' : 'Sin destajos en este periodo. Se generan cuando el supervisor valida tus trabajos.'}</Vacio> : (

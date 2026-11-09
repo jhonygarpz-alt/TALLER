@@ -48,11 +48,11 @@ export default function Inicio() {
         <div className="relative flex items-center gap-3">
           {emp.logoUrl && <img src={emp.logoUrl} alt="" className="h-12 w-12 rounded-2xl bg-white object-contain p-0.5" />}
           <div className="min-w-0">
-            <div className="text-sm text-emerald-100/80">{saludo},</div>
+            <div className="text-sm text-cyan-100/80">{saludo},</div>
             <div className="truncate text-xl font-extrabold">{perfil?.nombre?.split(' ')[0] ?? ''}</div>
           </div>
         </div>
-        <Link to="/ordenes?buscar=1" className="relative mt-5 flex items-center gap-3 rounded-2xl bg-white/12 px-4 py-3.5 text-emerald-50/80 ring-1 ring-white/15 backdrop-blur active:bg-white/20">
+        <Link to="/ordenes?buscar=1" className="relative mt-5 flex items-center gap-3 rounded-2xl bg-white/12 px-4 py-3.5 text-cyan-50/80 ring-1 ring-white/15 backdrop-blur active:bg-white/20">
           <Search className="h-5 w-5" /> Buscar por placas, folio, OS o cliente
         </Link>
       </div>
@@ -68,7 +68,7 @@ export default function Inicio() {
           {puede('ordenes.gestionar') && (
             <Link to="/nueva" className="col-span-2 flex items-center gap-4 rounded-3xl bg-gradient-to-r from-brand-600 to-brand-500 p-5 text-white shadow-lg shadow-brand-800/25 active:scale-[.98]">
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20"><Camera className="h-7 w-7" /></span>
-              <span className="flex-1"><span className="block text-lg font-extrabold">Recibir vehículo</span><span className="text-sm text-emerald-50/90">Nueva orden con fotos</span></span>
+              <span className="flex-1"><span className="block text-lg font-extrabold">Recibir vehículo</span><span className="text-sm text-cyan-50/90">Nueva orden con fotos</span></span>
               <ChevronRight className="h-6 w-6" />
             </Link>
           )}
@@ -83,9 +83,9 @@ export default function Inicio() {
         </div>
 
         {puedeInstalar && (
-          <button onClick={instalar} className="flex w-full items-center gap-3 rounded-2xl bg-emerald-50 p-4 text-left ring-1 ring-emerald-200 active:scale-[.98]">
+          <button onClick={instalar} className="flex w-full items-center gap-3 rounded-2xl bg-brand-50 p-4 text-left ring-1 ring-brand-200 active:scale-[.98]">
             <Download className="h-6 w-6 text-brand-700" />
-            <span className="flex-1"><span className="block font-bold text-brand-800">Instalar la app</span><span className="text-xs text-emerald-800/80">Agrega el ícono a tu pantalla de inicio</span></span>
+            <span className="flex-1"><span className="block font-bold text-brand-800">Instalar la app</span><span className="text-xs text-brand-800/80">Agrega el ícono a tu pantalla de inicio</span></span>
           </button>
         )}
 

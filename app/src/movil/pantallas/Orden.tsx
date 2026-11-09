@@ -92,7 +92,7 @@ export default function Orden() {
       </>} />
 
       <div className="space-y-3 px-4 pt-3 pb-4">
-        <div className="flex items-center gap-3 rounded-3xl bg-gradient-to-r from-emerald-50 to-white p-4 shadow-sm ring-1 ring-brand-200/70">
+        <div className="flex items-center gap-3 rounded-3xl bg-gradient-to-r from-brand-50 to-white p-4 shadow-sm ring-1 ring-brand-200/70">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-brand-700 ring-1 ring-brand-200"><ClipboardList className="h-6 w-6" /></span>
           <div className="min-w-0 flex-1"><div className="text-[22px] leading-tight font-extrabold text-slate-900">{o.folio}</div><div className="text-xs text-slate-500">Creada: {fecha(o.fecha_ingreso)}{o.os_bitacora && ` · OS ${o.os_bitacora}`}</div></div>
           <BadgeEtapa etapa={o.etapa} />

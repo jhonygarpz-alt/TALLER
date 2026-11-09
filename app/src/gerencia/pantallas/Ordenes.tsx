@@ -23,7 +23,7 @@ export default function Ordenes({ datos: d }: PropsPantalla) {
       </div>
 
       <Panel titulo="Requieren atención" sub="Vencidas en fecha compromiso o detenidas por material">
-        {d.alertas.length === 0 ? <p className="py-3 text-center text-sm text-[#1f7a45]">Todo en tiempo: sin unidades retrasadas.</p> : (
+        {d.alertas.length === 0 ? <p className="py-3 text-center text-sm text-emerald-700">Todo en tiempo: sin unidades retrasadas.</p> : (
           <ul className="-mx-1 divide-y divide-black/[.05]">
             {d.alertas.map(a => (
               <li key={a.id}>
@@ -33,10 +33,10 @@ export default function Ordenes({ datos: d }: PropsPantalla) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2"><b className="text-[14px] font-semibold">{a.folio}</b><Etiqueta etapa={a.etapa} /></div>
-                    <div className="truncate text-[12.5px] text-[#66736c]">{a.auto}{a.placas ? ` · ${a.placas}` : ''}</div>
+                    <div className="truncate text-[12.5px] text-[#66818f]">{a.auto}{a.placas ? ` · ${a.placas}` : ''}</div>
                     <div className="text-[12px] text-[#c2453d]">{a.detenido ? 'Detenida por material · ' : ''}Compromiso {fecha(a.compromiso)}</div>
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-[#9aa5a0]" />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-[#8aa2ad]" />
                 </a>
               </li>
             ))}
@@ -52,14 +52,14 @@ export default function Ordenes({ datos: d }: PropsPantalla) {
                 <span className="h-10 w-1 shrink-0 rounded-full" style={{ background: r.tipo === 'aseguradora' ? C.verde : C.ambar }} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2"><b className="text-[14px] font-semibold">{r.folio}</b><Etiqueta etapa={r.etapa} /></div>
-                  <div className="truncate text-[12.5px] text-[#66736c]">{r.auto}{r.placas ? ` · ${r.placas}` : ''} · {r.tipo === 'aseguradora' ? r.aseguradora ?? 'Aseguradora' : 'Particular'}</div>
+                  <div className="truncate text-[12.5px] text-[#66818f]">{r.auto}{r.placas ? ` · ${r.placas}` : ''} · {r.tipo === 'aseguradora' ? r.aseguradora ?? 'Aseguradora' : 'Particular'}</div>
                 </div>
-                <span className="shrink-0 text-[12px] text-[#66736c]">{fecha(r.fecha)}</span>
+                <span className="shrink-0 text-[12px] text-[#66818f]">{fecha(r.fecha)}</span>
               </a>
             </li>
           ))}
         </ul>
-        <p className="mt-2 text-center text-[11px] text-[#9aa5a0]">Toca una orden para abrir su expediente en el sistema web</p>
+        <p className="mt-2 text-center text-[11px] text-[#8aa2ad]">Toca una orden para abrir su expediente en el sistema web</p>
       </Panel>
     </>
   )
