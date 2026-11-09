@@ -19,18 +19,18 @@ export const diasEntre = (a: string, b = new Date()) => Math.floor((b.getTime() 
 
 export type Etapa = 'recepcion' | 'diagnostico' | 'preparacion' | 'esperando_autorizacion' | 'en_reparacion' | 'hojalateria' | 'pintura' | 'detallado' | 'control_calidad' | 'listo_entrega' | 'entregado' | 'cancelado'
 export const ETAPAS: Record<Etapa, { label: string; badge: string; color: string }> = {
-  recepcion:              { label: 'Recepción',              badge: 'bg-sky-100 text-sky-800',        color: '#0284c7' },
-  diagnostico:            { label: 'Diagnóstico',            badge: 'bg-amber-100 text-amber-800',    color: '#ca8a04' },
-  esperando_autorizacion: { label: 'Pendiente de autorización', badge: 'bg-orange-100 text-orange-800',  color: '#ea580c' },
-  en_reparacion:          { label: 'En reparación',          badge: 'bg-blue-100 text-blue-700',      color: '#2563eb' },
-  hojalateria:            { label: 'Hojalatería',            badge: 'bg-cyan-100 text-cyan-800',      color: '#0891b2' },
-  preparacion:            { label: 'Preparación',            badge: 'bg-violet-100 text-violet-700',  color: '#7c3aed' },
-  pintura:                { label: 'Pintura',                badge: 'bg-purple-100 text-purple-700',  color: '#9333ea' },
-  detallado:              { label: 'Detallado',              badge: 'bg-indigo-100 text-indigo-700',  color: '#4f46e5' },
-  control_calidad:        { label: 'Control de calidad',     badge: 'bg-teal-100 text-teal-800',      color: '#0d9488' },
-  listo_entrega:          { label: 'Listo para entrega',     badge: 'bg-green-100 text-green-700',    color: '#16a34a' },
-  entregado:              { label: 'Entregado',              badge: 'bg-slate-200 text-slate-700',    color: '#64748b' },
-  cancelado:              { label: 'Cancelado',              badge: 'bg-red-100 text-red-700',        color: '#dc2626' },
+  recepcion:              { label: 'Recepción',              badge: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',        color: '#0284c7' },
+  diagnostico:            { label: 'Diagnóstico',            badge: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',    color: '#ca8a04' },
+  esperando_autorizacion: { label: 'Pendiente de autorización', badge: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',  color: '#ea580c' },
+  en_reparacion:          { label: 'En reparación',          badge: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',      color: '#2563eb' },
+  hojalateria:            { label: 'Hojalatería',            badge: 'bg-cyan-50 text-cyan-800 ring-1 ring-cyan-200',      color: '#0891b2' },
+  preparacion:            { label: 'Preparación',            badge: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200',  color: '#7c3aed' },
+  pintura:                { label: 'Pintura',                badge: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',  color: '#9333ea' },
+  detallado:              { label: 'Detallado',              badge: 'bg-blue-50 text-blue-800 ring-1 ring-blue-200',  color: '#4f46e5' },
+  control_calidad:        { label: 'Control de calidad',     badge: 'bg-teal-50 text-teal-800 ring-1 ring-teal-200',      color: '#0d9488' },
+  listo_entrega:          { label: 'Listo para entrega',     badge: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',    color: '#16a34a' },
+  entregado:              { label: 'Entregado',              badge: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',    color: '#64748b' },
+  cancelado:              { label: 'Cancelado',              badge: 'bg-red-50 text-red-700 ring-1 ring-red-200',        color: '#dc2626' },
 }
 export const ETAPAS_TABLERO: Etapa[] = ['recepcion', 'diagnostico', 'esperando_autorizacion', 'en_reparacion', 'hojalateria', 'preparacion', 'pintura', 'detallado', 'control_calidad', 'listo_entrega', 'entregado']
 export const ETAPAS_ACTIVAS: Etapa[] = ETAPAS_TABLERO.filter(e => e !== 'entregado')

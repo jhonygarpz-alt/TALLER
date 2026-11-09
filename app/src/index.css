@@ -33,6 +33,45 @@
   --neon-fuerte: 0 0 0 1px rgba(61, 220, 132, .45), 0 0 16px rgba(61, 220, 132, .5), 0 0 34px rgba(29, 180, 100, .28);
 }
 
+/* ===================== ERP Admin Taller (sistema web) =====================
+   Paleta azul profundo / petróleo / turquesa. Solo aplica al sistema web (body.erp);
+   las apps móviles conservan su identidad. Las utilidades brand-* y navy-* toman estos valores. */
+body.erp {
+  --color-brand-50: #eef8fa;
+  --color-brand-100: #dcf0f4;
+  --color-brand-200: #c5e6ed;
+  --color-brand-300: #93d0dd;
+  --color-brand-400: #55b6ca;
+  --color-brand-500: #2298af;
+  --color-brand-600: #1d8299;
+  --color-brand-700: #17657c;
+  --color-brand-800: #135268;
+  --color-brand-900: #102c43;
+  --color-navy-950: #0b2133;
+  --color-navy-900: #102c43;
+  --color-navy-800: #133a55;
+  --color-navy-700: #16506a;
+  --color-navy-600: #17657c;
+  --color-surface: #f1f7f9;
+  --erp-profundo: #102c43;
+  --erp-petroleo: #17657c;
+  --erp-turquesa: #2298af;
+  --erp-cian: #c5e6ed;
+  --erp-hielo: #f1f7f9;
+  --erp-texto: #193344;
+  --erp-texto-2: #66818f;
+  --erp-borde: #d7e7ec;
+  --neon-suave: 0 1px 2px rgba(16, 44, 67, .05), 0 10px 28px -16px rgba(16, 44, 67, .28);
+  --neon-fuerte: 0 2px 4px rgba(16, 44, 67, .06), 0 18px 38px -16px rgba(23, 101, 124, .45);
+  background: #0e2638;
+  color: var(--erp-texto);
+}
+body.erp ::selection { background: #c5e6ed; }
+body.erp * { scrollbar-color: #a9c9d3 transparent; }
+.erp-shell { background: radial-gradient(1200px 500px at 85% -10%, rgba(34,152,175,.35), transparent 60%), linear-gradient(160deg, #0b2133 0%, #102c43 45%, #12405a 100%); }
+.erp-panel { background: linear-gradient(165deg, #cfe7ee 0%, #e2f1f5 22%, #eef6f9 55%, #f1f7f9 100%); }
+.erp-sidebar { background: linear-gradient(180deg, #123a55 0%, #15506a 55%, #17657c 100%); }
+
 @keyframes aparecer { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
 
 
@@ -41,6 +80,30 @@ body { background: var(--color-surface); color: #0f172a; -webkit-font-smoothing:
 * { scrollbar-width: thin; scrollbar-color: #cbd5d1 transparent; }
 
 @layer components {
+  /* ---- Variantes del sistema web (ERP) ---- */
+  body.erp .btn { @apply rounded-full; }
+  body.erp .btn-primary { @apply bg-gradient-to-b from-[#26a3bb] to-[#1d8299] text-white shadow-[0_6px_16px_-8px_rgba(29,130,153,.8)] hover:from-[#2298af] hover:to-[#17657c]; }
+  body.erp .btn-success { @apply bg-gradient-to-b from-emerald-500 to-emerald-600 shadow-[0_6px_16px_-8px_rgba(5,150,105,.7)] hover:from-emerald-600 hover:to-emerald-700; }
+  body.erp .btn-dark { @apply bg-[#102c43] text-white shadow-sm hover:bg-[#133a55]; }
+  body.erp .btn-secondary { @apply border-[#d7e7ec] bg-white text-[#193344] hover:border-[#93d0dd] hover:bg-[#f4fafb]; }
+  body.erp .btn-ghost { @apply text-[#40606e] hover:bg-[#e6f2f5]; }
+  body.erp .input { @apply rounded-xl border-[#d3e3e9] bg-white text-[#193344] placeholder:text-[#8aa2ad] focus:border-[#2298af] focus:ring-[#2298af]/20; }
+  body.erp .label { @apply text-[12px] font-semibold text-[#3d5c6b]; }
+  body.erp .card { @apply rounded-[20px] border-[#dbe9ee] bg-white; }
+  body.erp a.card:hover, body.erp button.card:hover, body.erp .neon-hover:hover { @apply -translate-y-px border-[#a7d8e2]; }
+  body.erp .tbl th { @apply border-[#e3eef2] bg-[#f4f9fb] text-[#5d7987]; }
+  body.erp .tbl td { @apply border-[#edf4f6]; }
+  body.erp .tbl tbody tr { @apply hover:bg-[#f1f8fa]; }
+  body.erp .tbl-neon tbody tr { filter: drop-shadow(0 4px 10px rgba(16,44,67,.06)); }
+  body.erp .tbl-neon tbody tr:hover { filter: drop-shadow(0 8px 18px rgba(23,101,124,.16)); }
+  body.erp .tbl-neon tbody td { border-top: 1px solid #dbe9ee; border-bottom: 1px solid #dbe9ee; }
+  body.erp .tbl-neon tbody tr:hover td { @apply bg-[#f6fbfc]; border-color: #a7d8e2; }
+  body.erp .tbl-neon tbody td:first-child { border-left: 1px solid #dbe9ee; }
+  body.erp .tbl-neon tbody td:last-child { border-right: 1px solid #dbe9ee; }
+  body.erp .tbl-neon tbody tr:hover td:first-child, body.erp .tbl-neon tbody tr:hover td:last-child { border-color: #a7d8e2; }
+  body.erp .badge { @apply rounded-full px-2.5; }
+  body.erp .esqueleto { @apply bg-[#dcebef]; }
+
   .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition duration-150 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50; }
   .btn-sm { @apply px-3 py-1.5 text-xs; }
   .btn-primary { @apply bg-brand-600 text-white shadow-sm shadow-brand-900/20 hover:bg-brand-700; }
@@ -74,6 +137,7 @@ body { background: var(--color-surface); color: #0f172a; -webkit-font-smoothing:
 
 @media print {
   aside, header, .no-print { display: none !important; }
+  body.erp, .erp-shell, .erp-panel { background: #fff !important; }
   /* Reporte mensual: solo la hoja, tamaño carta, una página */
   html:has(body.imprimir-reporte), body.imprimir-reporte { background: #fff !important; }
   body.imprimir-reporte main *:not(:has(.reporte-hoja)):not(.reporte-hoja):not(.reporte-hoja *) { display: none !important; }

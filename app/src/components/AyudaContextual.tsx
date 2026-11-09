@@ -113,7 +113,7 @@ export function BotonAyuda() {
     <button onClick={alternar} aria-label="Ayuda contextual" aria-pressed={activa}
       data-ayuda={activa ? 'Leyendas de ayuda ACTIVADAS: pasa el cursor sobre cualquier botón, pestaña, filtro o indicador para ver para qué sirve. Da clic para desactivarlas.' : 'Leyendas de ayuda desactivadas. Da clic para activarlas.'}
       data-ayuda-titulo="Ayuda contextual"
-      className={`hidden rounded-xl p-2 transition md:block ${activa ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-300 shadow-[0_0_10px_rgba(29,180,100,.35)]' : 'text-slate-400 hover:bg-slate-100'}`}>
+      className={`hidden h-10 w-10 items-center justify-center rounded-full transition md:flex ${activa ? 'bg-[#2298af] text-white shadow-[0_0_14px_rgba(34,152,175,.55)]' : 'bg-white/[.08] text-[#c5e6ed] ring-1 ring-white/10 hover:bg-white/15'}`}>
       <HelpCircle className="h-5 w-5" />
     </button>
   )
