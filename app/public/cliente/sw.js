@@ -1,6 +1,6 @@
 // Service worker de la app del cliente: guarda la "cáscara" de la app para abrir rápido y sin conexión.
 // Los datos (Supabase) siempre se piden a la red; nunca se guardan en caché.
-const CACHE = 'cliente-v3'
+const CACHE = 'cliente-v4'
 self.addEventListener('install', e => { self.skipWaiting() })
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()))

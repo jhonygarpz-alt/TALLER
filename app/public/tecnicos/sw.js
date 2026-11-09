@@ -1,6 +1,6 @@
 // Service worker de la app de técnicos: guarda la "cáscara" de la app para abrir rápido y sin conexión.
 // Los datos (Supabase) siempre se piden a la red; nunca se guardan en caché.
-const CACHE = 'tecnicos-v4'
+const CACHE = 'tecnicos-v5'
 self.addEventListener('install', e => { self.skipWaiting() })
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()))
