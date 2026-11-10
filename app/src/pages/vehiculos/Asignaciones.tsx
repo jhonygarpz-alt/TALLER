@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CalendarPlus, Car, Download, Inbox, Phone, Plus } from 'lucide-react'
+import { CalendarPlus, Car, Download, Inbox, Pencil, Phone, Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useAlertas } from '../../lib/alertas'
@@ -23,10 +23,16 @@ const RESULTADOS: Record<string, string> = {
 }
 const MEDIOS: Record<string, string> = { llamada: 'Llamada', whatsapp: 'WhatsApp', sms: 'SMS', correo: 'Correo', presencial: 'Presencial' }
 
-function NuevaAsignacion({ onDone }: { onDone: () => void }) {
+/** Alta y edición de una asignación. En edición, si ya está ligada a una orden, el siniestro y la aseguradora quedan fijos. */
+function FormAsignacion({ onDone, actual }: { onDone: () => void; actual?: Asignacion }) {
   const [aseg, setAseg] = useState<{ id: number; nombre: string }[]>([])
   const [asesores, setAsesores] = useState<{ id: string; nombre: string }[]>([])
-  const [f, setF] = useState({ aseguradora_id: '', siniestro: '', asegurado: '', telefono: '', marca: '', modelo: '', anio: '', placas: '', fecha_asignacion: hoyISO(), asesor_id: '', notas: '' })
+  const v = (x: unknown) => x == null ? '' : String(x)
+  const [f, setF] = useState(actual
+    ? { aseguradora_id: v(actual.aseguradora_id), siniestro: actual.siniestro, asegurado: actual.asegurado, telefono: v(actual.telefono), marca: v(actual.marca), modelo: v(actual.modelo), anio: v(actual.anio), placas: v(actual.placas), fecha_asignacion: actual.fecha_asignacion, asesor_id: v(actual.asesor_id), notas: v(actual.notas) }
+    : { aseguradora_id: '', siniestro: '', asegurado: '', telefono: '', marca: '', modelo: '', anio: '', placas: '', fecha_asignacion: hoyISO(), asesor_id: '', notas: '' })
+  const [guardando, setGuardando] = useState(false)
+  const ligada = !!actual && actual.estatus === 'ingresado'
   const [error, setError] = useState<string | null>(null)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF(p => ({ ...p, [k]: e.target.value }))
 
@@ -39,8 +45,18 @@ function NuevaAsignacion({ onDone }: { onDone: () => void }) {
   }, [])
 
   async function submit(e: FormEvent) {
-    e.preventDefault()
-    const { error } = await supabase.from('asignaciones').insert(clean({ ...f, placas: f.placas.toUpperCase().trim(), siniestro: f.siniestro.trim() }))
+    e.preventDefault(); setError(null)
+    const datos = { ...f, placas: f.placas.toUpperCase().trim(), siniestro: f.siniestro.trim(), asegurado: f.asegurado.trim() }
+    setGuardando(true)
+    const { error } = actual
+      ? await supabase.from('asignaciones').update({
+          ...(ligada ? {} : { aseguradora_id: Number(datos.aseguradora_id), siniestro: datos.siniestro }),
+          asegurado: datos.asegurado, telefono: datos.telefono.trim() || null, marca: datos.marca.trim() || null, modelo: datos.modelo.trim() || null,
+          anio: datos.anio ? Number(datos.anio) : null, placas: datos.placas || null, fecha_asignacion: datos.fecha_asignacion,
+          asesor_id: datos.asesor_id || null, notas: datos.notas.trim() || null,
+        }).eq('id', actual.id)
+      : await supabase.from('asignaciones').insert(clean(datos))
+    setGuardando(false)
     if (error) return setError(error.message.includes('duplicate') ? 'Ese número de siniestro ya está registrado' : errorTexto(error))
     onDone()
   }
@@ -49,11 +65,11 @@ function NuevaAsignacion({ onDone }: { onDone: () => void }) {
     <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
       <div className="sm:col-span-2"><ErrorMsg error={error} /></div>
       <Field label="Aseguradora *">
-        <select className="input" required value={f.aseguradora_id} onChange={set('aseguradora_id')}>
+        <select className="input" required disabled={ligada} value={f.aseguradora_id} onChange={set('aseguradora_id')}>
           <option value="">Selecciona…</option>{aseg.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
         </select>
       </Field>
-      <Field label="Número de siniestro *"><input className="input" required value={f.siniestro} onChange={set('siniestro')} /></Field>
+      <Field label="Número de siniestro *" hint={ligada ? 'Ya está ligada a una orden: el siniestro y la aseguradora no se cambian aquí.' : undefined}><input className="input" required disabled={ligada} value={f.siniestro} onChange={set('siniestro')} /></Field>
       <Field label="Nombre del asegurado *"><input className="input" required value={f.asegurado} onChange={set('asegurado')} /></Field>
       <Field label="Teléfono"><input className="input" type="tel" value={f.telefono} onChange={set('telefono')} /></Field>
       <div className="grid grid-cols-3 gap-2 sm:col-span-2">
@@ -71,7 +87,7 @@ function NuevaAsignacion({ onDone }: { onDone: () => void }) {
       <Field label="Notas" className="sm:col-span-2"><textarea className="input" rows={2} value={f.notas} onChange={set('notas')} /></Field>
       <div className="flex justify-end gap-2 sm:col-span-2">
         <button type="button" className="btn btn-secondary" onClick={onDone}>Cancelar</button>
-        <button className="btn btn-primary">Registrar asignación</button>
+        <button className="btn btn-primary" disabled={guardando}>{actual ? 'Guardar cambios' : 'Registrar asignación'}</button>
       </div>
     </form>
   )
@@ -85,6 +101,7 @@ function DetalleAsignacion({ id, onClose, onCambio }: { id: number; onClose: () 
   const [error, setError] = useState<string | null>(null)
   const [cancelar, setCancelar] = useState(false)
   const [motivo, setMotivo] = useState('')
+  const [editar, setEditar] = useState(false)
 
   const cargar = useCallback(async () => {
     const [x, h] = await Promise.all([
@@ -115,6 +132,7 @@ function DetalleAsignacion({ id, onClose, onCambio }: { id: number; onClose: () 
   }
 
   if (!a) return <Modal title="Asignación" onClose={onClose}><div className="text-slate-400">Cargando…</div></Modal>
+  if (editar) return <Modal title={`Editar asignación · ${a.siniestro}`} onClose={() => setEditar(false)} wide><FormAsignacion actual={a} onDone={() => { setEditar(false); cargar(); onCambio() }} /></Modal>
   const cerrada = ['ingresado', 'cancelada'].includes(a.estatus)
   const orden = Array.isArray(a.ordenes) ? a.ordenes[0] : a.ordenes
   return (
@@ -132,6 +150,7 @@ function DetalleAsignacion({ id, onClose, onCambio }: { id: number; onClose: () 
           {a.motivo_no_cita && <div className="text-slate-600">Motivo sin cita: {a.motivo_no_cita}</div>}
           {a.notas && <div className="text-slate-600">{a.notas}</div>}
           <div className="flex flex-wrap gap-2 pt-2">
+            {puede('asignaciones.gestionar') && <button className="btn btn-secondary btn-sm" onClick={() => setEditar(true)}><Pencil className="h-4 w-4" /> Editar datos</button>}
             {orden && <Link to={`/ordenes/${orden.id}`} className="btn btn-secondary btn-sm">Ver orden {orden.folio}</Link>}
             {!cerrada && puede('ordenes.gestionar') && <Link to={`/ordenes/nueva?asignacion=${a.id}`} className="btn btn-success btn-sm"><Car className="h-4 w-4" /> Recibir vehículo</Link>}
             {!cerrada && puede('asignaciones.gestionar') && <button className="btn btn-ghost btn-sm text-red-600" onClick={() => setCancelar(!cancelar)}>Cancelar asignación</button>}
@@ -184,6 +203,8 @@ export default function Asignaciones() {
   const [rows, setRows] = useState<Asignacion[]>([])
   const [q, setQ] = useState('')
   const [nueva, setNueva] = useState(false)
+  const [editando, setEditando] = useState<Asignacion | null>(null)
+  const editar = puede('asignaciones.gestionar')
 
   const cargar = useCallback(async () => {
     let query = supabase.from('asignaciones').select('*, aseguradoras(nombre), perfiles(nombre)').order('fecha_asignacion', { ascending: false }).limit(500)
@@ -222,7 +243,7 @@ export default function Asignaciones() {
         {rows.length === 0 ? <Empty icon={Inbox}>Sin asignaciones con este filtro</Empty> : (
           <div className="overflow-x-auto">
             <table className="tbl">
-              <thead><tr><th>Siniestro</th><th>Asegurado</th><th>Vehículo</th><th>Asignación</th><th>Asesor</th><th>Estatus</th><th>Cita</th><th className="text-right">Intentos</th></tr></thead>
+              <thead><tr><th>Siniestro</th><th>Asegurado</th><th>Vehículo</th><th>Asignación</th><th>Asesor</th><th>Estatus</th><th>Cita</th><th className="text-right">Intentos</th>{editar && <th className="w-10"></th>}</tr></thead>
               <tbody>{rows.map(r => (
                 <tr key={r.id} className="cursor-pointer" onClick={() => setParam('ver', String(r.id))}>
                   <td className="font-bold">{r.siniestro}<div className="text-xs font-normal text-slate-500">{r.aseguradoras?.nombre}</div></td>
@@ -233,6 +254,8 @@ export default function Asignaciones() {
                   <td><Badge cls={ESTATUS_CONTACTO[r.estatus].badge}>{ESTATUS_CONTACTO[r.estatus].label}</Badge></td>
                   <td className="whitespace-nowrap">{r.fecha_cita ? fechaHora(r.fecha_cita) : '—'}</td>
                   <td className="text-right">{r.intentos}</td>
+                  {editar && <td className="text-right"><button className="rounded-full p-2 text-[#17657c] transition hover:bg-[#e3f3f7]" title="Editar asignación" aria-label={`Editar asignación ${r.siniestro}`}
+                    onClick={e => { e.stopPropagation(); setEditando(r) }}><Pencil className="h-4 w-4" /></button></td>}
                 </tr>))}
               </tbody>
             </table>
@@ -240,7 +263,8 @@ export default function Asignaciones() {
         )}
       </Card>
 
-      {nueva && <Modal title="Nueva asignación" onClose={() => setNueva(false)} wide><NuevaAsignacion onDone={() => { setNueva(false); cargar(); al.recargar() }} /></Modal>}
+      {nueva && <Modal title="Nueva asignación" onClose={() => setNueva(false)} wide><FormAsignacion onDone={() => { setNueva(false); cargar(); al.recargar() }} /></Modal>}
+      {editando && <Modal title={`Editar asignación · ${editando.siniestro}`} onClose={() => setEditando(null)} wide><FormAsignacion actual={editando} onDone={() => { setEditando(null); cargar(); al.recargar() }} /></Modal>}
       {ver && <DetalleAsignacion id={Number(ver)} onClose={() => setParam('ver', null)} onCambio={() => { cargar(); al.recargar() }} />}
     </div>
   )
