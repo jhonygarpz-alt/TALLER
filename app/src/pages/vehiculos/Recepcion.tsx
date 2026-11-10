@@ -37,7 +37,7 @@ export default function Recepcion() {
   const [asigNueva, setAsigNueva] = useState(false)
 
   const [f, setF] = useState({
-    tipo: 'aseguradora' as 'aseguradora' | 'particular', aseguradora_id: '', siniestro: '', tipo_reparacion_id: '', fecha_compromiso: '',
+    tipo: 'aseguradora' as 'aseguradora' | 'particular', folio: '', aseguradora_id: '', siniestro: '', tipo_reparacion_id: '', fecha_compromiso: '',
     cliente_nombre: '', cliente_telefono: '', cliente_email: '', cliente_rfc: '',
     marca: '', modelo: '', anio: '', placas: '', color: '', vin: '',
     kilometraje: '', combustible: '1/2', danos_reportados: '', objetos: '', asesor_id: perfil?.id ?? '',
@@ -118,6 +118,10 @@ export default function Recepcion() {
 
   async function guardar() {
     for (const p of [1, 2, 3]) { const e = validar(p); if (e) { setError(e); setPaso(p); return } }
+    if (f.folio.trim()) {
+      const { count } = await supabase.from('ordenes').select('id', { count: 'exact', head: true }).eq('folio', f.folio.trim().toUpperCase())
+      if (count) { setError(`El folio ${f.folio.trim().toUpperCase()} ya lo tiene otra orden. Escribe uno distinto o déjalo vacío para usar el consecutivo.`); setPaso(1); return }
+    }
     setGuardando(true); setError(null)
     try {
       // Toda orden de aseguradora va ligada a su asignación (si es nueva, se registra en este momento)
@@ -140,6 +144,7 @@ export default function Recepcion() {
         await supabase.from('vehiculos').update({ cliente_id: clienteId }).eq('id', vehiculoId)
       }
       const { data: orden, error } = await supabase.from('ordenes').insert({
+        ...(f.folio.trim() ? { folio: f.folio.trim().toUpperCase() } : {}),
         tipo: f.tipo, aseguradora_id: f.tipo === 'aseguradora' ? Number(f.aseguradora_id) : null,
         siniestro: f.tipo === 'aseguradora' ? f.siniestro.trim() : null, asignacion_id: asignacionFinal,
         cliente_id: clienteId, vehiculo_id: vehiculoId, tipo_reparacion_id: f.tipo_reparacion_id ? Number(f.tipo_reparacion_id) : null,
@@ -209,6 +214,7 @@ export default function Recepcion() {
                 <option value="">Selecciona…</option>{tiposFiltrados.map(t => <option key={t.id} value={t.id}>{t.nombre} ({t.dias_objetivo} días)</option>)}
               </select>
             </Field>
+            <Field label="Folio de la orden" hint="Opcional. Déjalo vacío para usar el consecutivo automático (OT-…)."><input className="input uppercase" maxLength={30} value={f.folio} onChange={set('folio')} placeholder="Automático" /></Field>
             <Field label="Fecha compromiso de entrega *"><input className="input" type="date" value={f.fecha_compromiso} onChange={set('fecha_compromiso')} /></Field>
           </div>
           <Field label="Asesor responsable">

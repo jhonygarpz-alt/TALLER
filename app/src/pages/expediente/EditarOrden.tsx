@@ -18,7 +18,7 @@ export default function EditarOrden({ o, onClose, onGuardado }: { o: VOrden; onC
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [orden, setOrden] = useState({
-    siniestro: o.siniestro ?? '', tipo_reparacion_id: o.tipo_reparacion_id ? String(o.tipo_reparacion_id) : '', fecha_compromiso: o.fecha_compromiso ?? '',
+    folio: o.folio, siniestro: o.siniestro ?? '', tipo_reparacion_id: o.tipo_reparacion_id ? String(o.tipo_reparacion_id) : '', fecha_compromiso: o.fecha_compromiso ?? '',
     asesor_id: o.asesor_id ?? '', kilometraje: o.kilometraje != null ? String(o.kilometraje) : '', danos_reportados: o.danos_reportados ?? '',
     objetos: o.objetos ?? '', sucursal_id: '', prioridad: o.prioridad ?? 'normal',
   })
@@ -54,8 +54,11 @@ export default function EditarOrden({ o, onClose, onGuardado }: { o: VOrden; onC
     if (!orden.fecha_compromiso) return setError('La fecha compromiso es obligatoria')
     if (!orden.danos_reportados.trim()) return setError('Describe los daños reportados')
     if (!veh.marca.trim() || !veh.modelo.trim() || !cli.nombre.trim()) return setError('Marca, modelo y nombre del propietario son obligatorios')
+    if (!orden.folio.trim()) return setError('El folio no puede quedar vacío')
     setGuardando(true); setError(null)
+    const folioNuevo = orden.folio.trim().toUpperCase()
     const r1 = await supabase.from('ordenes').update({
+      ...(folioNuevo !== o.folio ? { folio: folioNuevo } : {}),
       siniestro: o.tipo === 'aseguradora' ? orden.siniestro.trim() || null : null,
       tipo_reparacion_id: orden.tipo_reparacion_id ? Number(orden.tipo_reparacion_id) : null,
       fecha_compromiso: orden.fecha_compromiso, asesor_id: orden.asesor_id || null,
@@ -79,6 +82,7 @@ export default function EditarOrden({ o, onClose, onGuardado }: { o: VOrden; onC
         <ErrorMsg error={error} />
         <section className="grid gap-3 sm:grid-cols-3">
           <div className="text-sm font-bold sm:col-span-3">Datos de la orden <span className="font-normal text-slate-500">· {o.tipo === 'aseguradora' ? `Aseguradora ${o.aseguradora_nombre}` : 'Particular'}</span></div>
+          <Field label="Folio de la orden *" hint="Debe ser único. El cambio queda en Auditoría."><input className="input uppercase" required maxLength={30} value={orden.folio} onChange={setO('folio')} /></Field>
           {o.tipo === 'aseguradora' && <Field label="Número de siniestro"><input className="input" value={orden.siniestro} onChange={setO('siniestro')} /></Field>}
           <Field label="Tipo de reparación">
             <select className="input" value={orden.tipo_reparacion_id} onChange={e => cambiarTipo(e.target.value)}>

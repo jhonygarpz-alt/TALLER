@@ -100,6 +100,7 @@ export function errorTexto(e: unknown): string {
   if (!e) return ''
   const m = (e as { message?: string }).message ?? String(e)
   if (m.includes('row-level security')) return 'No tienes permiso para realizar esta operación.'
+  if (m.includes('ordenes_folio_key')) return 'Ese folio ya lo tiene otra orden. Escribe uno distinto o déjalo vacío para usar el consecutivo.'
   if (m.includes('duplicate key')) return 'Ya existe un registro con esos datos.'
   return m
 }

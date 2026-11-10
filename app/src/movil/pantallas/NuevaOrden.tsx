@@ -32,7 +32,7 @@ export default function NuevaOrden() {
   const [asesores, setAsesores] = useState<{ id: string; nombre: string }[]>([])
   const [checklist, setChecklist] = useState<Record<string, string>>(Object.fromEntries(CHECKLIST_RECEPCION.map(i => [i, 'bien'])))
   const [f, setF] = useState({
-    tipo: 'aseguradora' as 'aseguradora' | 'particular', aseguradora_id: '', siniestro: '', tipo_reparacion_id: '', fecha_compromiso: '',
+    tipo: 'aseguradora' as 'aseguradora' | 'particular', folio: '', aseguradora_id: '', siniestro: '', tipo_reparacion_id: '', fecha_compromiso: '',
     placas: '', marca: '', modelo: '', anio: '', color: '', cliente_nombre: '', cliente_telefono: '',
     kilometraje: '', combustible: '1/2', danos_reportados: '', objetos: '', asesor_id: perfil?.id ?? '', vin: '',
   })
@@ -94,6 +94,10 @@ export default function NuevaOrden() {
   async function guardar() {
     for (const p of [1, 2, 3]) { const e = validar(p); if (e) { setError(e); setPaso(p); return } }
     if (!totalFotos(fotos) && !confirm('No agregaste fotos de recepción. ¿Crear la orden sin fotos?')) return
+    if (f.folio.trim()) {
+      const { count } = await supabase.from('ordenes').select('id', { count: 'exact', head: true }).eq('folio', f.folio.trim().toUpperCase())
+      if (count) { setError(`El folio ${f.folio.trim().toUpperCase()} ya lo tiene otra orden. Escribe uno distinto o déjalo vacío para usar el consecutivo.`); setPaso(1); return }
+    }
     setError(null); setGuardando('Creando orden…')
     try {
       const asignacionFinal = f.tipo !== 'aseguradora' ? null : asig ? asig.id : await asegurarAsignacion({
@@ -115,6 +119,7 @@ export default function NuevaOrden() {
         await supabase.from('vehiculos').update({ cliente_id: clienteId }).eq('id', vehiculoId)
       }
       const { data: orden, error } = await supabase.from('ordenes').insert({
+        ...(f.folio.trim() ? { folio: f.folio.trim().toUpperCase() } : {}),
         tipo: f.tipo, aseguradora_id: f.tipo === 'aseguradora' ? Number(f.aseguradora_id) : null,
         siniestro: f.tipo === 'aseguradora' ? f.siniestro.trim() : null, asignacion_id: asignacionFinal,
         cliente_id: clienteId, vehiculo_id: vehiculoId, tipo_reparacion_id: f.tipo_reparacion_id ? Number(f.tipo_reparacion_id) : null,
@@ -176,6 +181,7 @@ export default function NuevaOrden() {
           </>}
           <Campo label="Tipo de reparación"><select className={entrada} value={f.tipo_reparacion_id} onChange={e => { const t = tipos.find(x => String(x.id) === e.target.value); if (t) elegirTipoRep(t); else setF(p => ({ ...p, tipo_reparacion_id: '' })) }}>
             <option value="">Selecciona…</option>{tiposFiltrados.map(t => <option key={t.id} value={t.id}>{t.nombre} ({t.dias_objetivo} días)</option>)}</select></Campo>
+          <Campo label="Folio de la orden" ayuda="Opcional. Déjalo vacío para usar el consecutivo automático (OT-…)."><input className={`${entrada} uppercase`} maxLength={30} value={f.folio} onChange={set('folio')} placeholder="Automático" /></Campo>
           <Campo label="Fecha compromiso de entrega *" ayuda="Se calcula sola con el tipo de reparación; puedes cambiarla."><input className={entrada} type="date" value={f.fecha_compromiso} onChange={set('fecha_compromiso')} /></Campo>
           <Campo label="Asesor responsable"><select className={entrada} value={f.asesor_id} onChange={set('asesor_id')}><option value="">Sin asignar</option>{asesores.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Campo>
         </>}
