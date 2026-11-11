@@ -10,9 +10,16 @@ import type { Material, Proveedor } from '../../lib/tipos'
 import { Badge, Card, Empty, ErrorMsg, Field, PageHeader } from '../../components/ui'
 
 interface Compra { id: number; proveedor_id: number | null; estado: string; fecha: string; factura: string | null; factura_monto: number | null; factura_fecha: string | null; archivo_path: string | null; notas: string | null; autorizado_at: string | null; recibido_at: string | null; created_at: string }
-interface Partida { id: number; material_id: number; orden_id: number | null; cantidad: number; costo_unit: number; materiales?: { descripcion: string; unidad: string; costo_promedio: number }; ordenes?: { folio: string } | null }
+interface Partida { id: number; material_id: number; orden_id: number | null; cantidad: number; costo_unit: number; iva_pct: number; materiales?: { descripcion: string; unidad: string; costo_promedio: number }; ordenes?: { folio: string } | null }
 interface Cotizacion { id: number; proveedor_id: number; importe: number; dias_entrega: number | null; notas: string | null; elegida: boolean; proveedores?: { nombre: string } }
 interface Precio { material_id: number; fecha: string; costo_unit: number; proveedores?: { nombre: string } | null }
+
+/** Importes de una partida: neto (cantidad × costo unitario), IVA y total */
+const importes = (cantidad: number, costo: number, ivaPct: number) => {
+  const neto = Math.round(cantidad * costo * 100) / 100
+  const iva = Math.round(neto * (ivaPct || 0)) / 100
+  return { neto, iva, total: Math.round((neto + iva) * 100) / 100 }
+}
 
 /** Factura del proveedor: se captura después de recibir; avisa si no coincide con lo recibido */
 function FacturaProveedor({ c, total, editable, onCambio }: { c: Compra; total: number; editable: boolean; onCambio: () => void }) {
@@ -45,7 +52,7 @@ function FacturaProveedor({ c, total, editable, onCambio }: { c: Compra; total: 
         {editable && <button className="btn btn-primary self-end">Guardar</button>}
       </form>
       <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-        <span>Total recibido: <b>{money2(total)}</b></span>
+        <span>Total recibido (con IVA): <b>{money2(total)}</b></span>
         {dif !== null && Math.abs(dif) > 0.5 && <Badge cls="bg-red-100 text-red-700">La factura difiere en {money2(dif)}</Badge>}
         {dif !== null && Math.abs(dif) <= 0.5 && <Badge cls="bg-green-100 text-green-700">Coincide con lo recibido</Badge>}
         {c.archivo_path && <button className="text-brand-700 hover:underline" onClick={ver}>Ver documento</button>}
@@ -67,7 +74,7 @@ export default function CompraDetalle() {
   const [materiales, setMateriales] = useState<Material[]>([])
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [ordenes, setOrdenes] = useState<{ id: number; folio: string; marca: string; modelo: string }[]>([])
-  const [fp, setFp] = useState({ material_id: '', orden_id: '', cantidad: '', costo_unit: '' })
+  const [fp, setFp] = useState({ material_id: '', orden_id: '', cantidad: '', costo_unit: '', iva_pct: '16' })
   const [fc, setFc] = useState({ proveedor_id: '', importe: '', dias_entrega: '', notas: '' })
   const [error, setError] = useState<string | null>(null)
 
@@ -99,7 +106,9 @@ export default function CompraDetalle() {
 
   if (!c) return <div className="text-slate-400">Cargando…</div>
   const editable = ['requisicion', 'por_autorizar'].includes(c.estado) && puede('compras.gestionar')
-  const total = partidas.reduce((s, p) => s + p.cantidad * p.costo_unit, 0)
+  const tot = partidas.reduce((t, p) => { const x = importes(Number(p.cantidad), Number(p.costo_unit), Number(p.iva_pct)); return { neto: t.neto + x.neto, iva: t.iva + x.iva, total: t.total + x.total } }, { neto: 0, iva: 0, total: 0 })
+  const total = tot.total
+  const vista = importes(Number(fp.cantidad) || 0, Number(fp.costo_unit) || 0, Number(fp.iva_pct) || 0)
 
   function recibir() {
     const f = prompt('Número de factura o nota del proveedor:', c?.factura ?? '')
@@ -112,10 +121,10 @@ export default function CompraDetalle() {
       <Link to="/compras?tab=compras" className="text-sm font-medium text-brand-700 hover:underline">← Compras</Link>
       <PageHeader title={`Requisición REQ-${String(c.id).padStart(4, '0')}`} subtitle={<>Creada {fechaHora(c.created_at)} · <Badge cls={ESTADO_COMPRA[c.estado].badge}>{ESTADO_COMPRA[c.estado].label}</Badge></>}>
         {c.estado === 'requisicion' && puede('compras.gestionar') && <>
-          <button className="btn btn-ghost text-red-600" onClick={() => confirm('¿Eliminar requisición?') && run(supabase.from('compras').delete().eq('id', id), () => nav('/compras?tab=compras'))}><Trash2 className="h-4 w-4" /></button>
+          <button className="btn btn-secondary text-red-600" title="Eliminar requisición" aria-label="Eliminar requisición" onClick={() => confirm('¿Eliminar requisición?') && run(supabase.from('compras').delete().eq('id', id), () => nav('/compras?tab=compras'))}><Trash2 className="h-4 w-4" /></button>
           <button className="btn btn-primary" disabled={!partidas.length} onClick={() => accion('enviar', '¿Enviar a autorización? Las partidas ya no se podrán modificar después de autorizada.')}><Send className="h-4 w-4" /> Solicitar autorización</button>
         </>}
-        {c.estado === 'por_autorizar' && puede('compras.autorizar') && <button className="btn btn-success" onClick={() => accion('autorizar', `¿Autorizar compra por ${money2(total)}?`)}><CheckCircle2 className="h-4 w-4" /> Autorizar compra</button>}
+        {c.estado === 'por_autorizar' && puede('compras.autorizar') && <button className="btn btn-success" onClick={() => accion('autorizar', `¿Autorizar compra por ${money2(total)} (IVA incluido)?`)}><CheckCircle2 className="h-4 w-4" /> Autorizar compra</button>}
         {c.estado === 'autorizada' && puede('compras.gestionar') && <button className="btn btn-success" onClick={recibir}><PackageCheck className="h-4 w-4" /> Registrar recepción y factura</button>}
         {!['recibida', 'cancelada'].includes(c.estado) && (puede('compras.gestionar') || puede('compras.autorizar')) && c.estado !== 'requisicion' &&
           <button className="btn btn-secondary" onClick={() => accion('cancelar', '¿Cancelar esta compra?')}><XCircle className="h-4 w-4" /> Cancelar</button>}
@@ -141,8 +150,9 @@ export default function CompraDetalle() {
       <Card title="Partidas">
         {partidas.length === 0 ? <Empty>Agrega los materiales a comprar</Empty> : (
           <div className="-mx-5 overflow-x-auto px-5"><table className="tbl">
-            <thead><tr><th>Material</th><th>Cargo directo a orden</th><th className="text-right">Cantidad</th><th className="text-right">Costo unit.</th><th className="text-right">Último / promedio</th><th className="text-right">Importe</th><th></th></tr></thead>
+            <thead><tr><th>Material</th><th>Cargo directo a orden</th><th className="text-right">Cantidad</th><th className="text-right">Costo unit. (neto)</th><th className="text-right">Último / promedio</th><th className="text-right">Importe neto</th><th className="text-right">IVA</th><th className="text-right">Total</th><th></th></tr></thead>
             <tbody>{partidas.map(p => {
+              const im = importes(Number(p.cantidad), Number(p.costo_unit), Number(p.iva_pct))
               const ult = precios.find(x => x.material_id === p.material_id)
               const ref = ult?.costo_unit ?? p.materiales?.costo_promedio ?? 0
               const sube = ref > 0 && p.costo_unit > ref * 1.1
@@ -152,21 +162,40 @@ export default function CompraDetalle() {
                   <td className="text-right">{num(p.cantidad, 3)} {p.materiales?.unidad}</td>
                   <td className={`text-right ${sube ? 'font-semibold text-red-600' : ''}`}>{money2(p.costo_unit)}</td>
                   <td className="text-right text-xs text-slate-500">{ref ? money2(ref) : '—'}{sube && <div className="text-red-600">+{(((p.costo_unit / ref) - 1) * 100).toFixed(0)}%</div>}</td>
-                  <td className="text-right font-semibold">{money2(p.cantidad * p.costo_unit)}</td>
+                  <td className="text-right">{money2(im.neto)}</td>
+                  <td className="text-right whitespace-nowrap">{money2(im.iva)}
+                    {editable
+                      ? <label className="mt-0.5 flex items-center justify-end gap-1 text-[11px] text-slate-500"><input type="number" step="0.01" min="0" max="100" defaultValue={Number(p.iva_pct)} aria-label="IVA % de la partida" title="Cambia la tasa de IVA de esta partida"
+                          className="w-16 rounded-md border border-slate-200 px-1.5 py-0.5 text-right text-[12px]" onBlur={e => { const v = Number(e.target.value) || 0; if (v !== Number(p.iva_pct)) run(supabase.from('compra_partidas').update({ iva_pct: v }).eq('id', p.id)) }} />%</label>
+                      : <div className="text-[11px] text-slate-500">{num(p.iva_pct, 2)}%</div>}
+                  </td>
+                  <td className="text-right font-semibold">{money2(im.total)}</td>
                   <td>{editable && c.estado === 'requisicion' && <button className="text-red-500" onClick={() => run(supabase.from('compra_partidas').delete().eq('id', p.id))}><Trash2 className="h-4 w-4" /></button>}</td>
                 </tr>)
             })}</tbody>
-            <tfoot><tr><td colSpan={5} className="text-right font-semibold">Total</td><td className="text-right text-lg font-extrabold">{money2(total)}</td><td /></tr></tfoot>
+            <tfoot>
+              <tr><td colSpan={7} className="text-right text-slate-600">Subtotal (valor neto)</td><td className="text-right font-semibold">{money2(tot.neto)}</td><td /></tr>
+              <tr><td colSpan={7} className="text-right text-slate-600">IVA</td><td className="text-right font-semibold">{money2(tot.iva)}</td><td /></tr>
+              <tr><td colSpan={7} className="text-right font-semibold">Total con IVA</td><td className="text-right text-lg font-extrabold">{money2(tot.total)}</td><td /></tr>
+            </tfoot>
           </table></div>
         )}
         {c.estado === 'requisicion' && puede('compras.gestionar') && (
-          <form className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3 sm:grid-cols-[1.5fr_1fr_7rem_8rem_auto]" onSubmit={(e: FormEvent) => { e.preventDefault(); run(supabase.from('compra_partidas').insert({ compra_id: id, material_id: Number(fp.material_id), orden_id: fp.orden_id ? Number(fp.orden_id) : null, cantidad: Number(fp.cantidad), costo_unit: Number(fp.costo_unit) }), () => setFp({ material_id: '', orden_id: '', cantidad: '', costo_unit: '' })) }}>
+          <form className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3 sm:grid-cols-[1.5fr_1fr_7rem_8rem_6rem_auto]" onSubmit={(e: FormEvent) => { e.preventDefault(); run(supabase.from('compra_partidas').insert({ compra_id: id, material_id: Number(fp.material_id), orden_id: fp.orden_id ? Number(fp.orden_id) : null, cantidad: Number(fp.cantidad), costo_unit: Number(fp.costo_unit), iva_pct: Number(fp.iva_pct) || 0 }), () => setFp({ material_id: '', orden_id: '', cantidad: '', costo_unit: '', iva_pct: fp.iva_pct })) }}>
             <Field label="Material *"><select className="input" required value={fp.material_id} onChange={e => { const m = materiales.find(x => String(x.id) === e.target.value); setFp({ ...fp, material_id: e.target.value, costo_unit: m?.costo_promedio ? String(m.costo_promedio) : fp.costo_unit }) }}>
               <option value="">{materiales.length ? 'Selecciona…' : 'No hay materiales en el catálogo'}</option>{materiales.map(m => <option key={m.id} value={m.id}>{m.descripcion} ({m.unidad})</option>)}</select>{materiales.length === 0 && <Link to="/inventario" className="mt-1 block text-xs font-semibold text-brand-700 hover:underline">Regístralos en Inventario → Existencias → Nuevo material</Link>}</Field>
             <Field label="Orden (opcional)"><select className="input" value={fp.orden_id} onChange={e => setFp({ ...fp, orden_id: e.target.value })}><option value="">Para inventario</option>{ordenes.map(o => <option key={o.id} value={o.id}>{o.folio} · {o.marca} {o.modelo}</option>)}</select></Field>
             <Field label="Cantidad *"><input className="input" type="number" step="0.001" min="0.001" required value={fp.cantidad} onChange={e => setFp({ ...fp, cantidad: e.target.value })} /></Field>
-            <Field label="Costo unit. *"><input className="input" type="number" step="0.0001" min="0" required value={fp.costo_unit} onChange={e => setFp({ ...fp, costo_unit: e.target.value })} /></Field>
-            <button className="btn btn-primary self-end"><Plus className="h-4 w-4" /></button>
+            <Field label="Costo unit. (neto) *"><input className="input" type="number" step="0.0001" min="0" required value={fp.costo_unit} onChange={e => setFp({ ...fp, costo_unit: e.target.value })} /></Field>
+            <Field label="IVA %"><input className="input" type="number" step="0.01" min="0" max="100" value={fp.iva_pct} onChange={e => setFp({ ...fp, iva_pct: e.target.value })} title="Tasa de IVA de esta partida. Usa 0 si el material no causa IVA o la nota no lo desglosa." /></Field>
+            <button className="btn btn-primary self-end" title="Agregar partida"><Plus className="h-4 w-4" /></button>
+            {(Number(fp.cantidad) > 0 && Number(fp.costo_unit) >= 0) && (
+              <div className="flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-slate-600 sm:col-span-6">
+                <span>Valor neto: <b className="text-slate-900">{money2(vista.neto)}</b></span>
+                <span>IVA ({num(Number(fp.iva_pct) || 0, 2)}%): <b className="text-slate-900">{money2(vista.iva)}</b></span>
+                <span>Total con IVA: <b className="text-slate-900">{money2(vista.total)}</b></span>
+              </div>
+            )}
           </form>
         )}
       </Card>

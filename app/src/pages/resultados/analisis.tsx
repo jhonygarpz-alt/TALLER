@@ -360,9 +360,15 @@ export function TabReportes() {
         { key: 'cliente_nombre', label: 'Cliente' }, { key: 'fecha_ingreso', label: 'Ingreso' }, { key: 'fecha_compromiso', label: 'Compromiso' }, { key: 'retrasado', label: 'Retrasado' }, { key: 'dias_en_taller', label: 'Días' }])
     } },
     { id: 'compras', t: 'Compras', d: 'Compras del periodo por proveedor, estado, factura y total', permiso: 'compras.gestionar', run: async () => {
-      const { data } = await supabase.from('compras').select('*, proveedores(nombre), compra_partidas(cantidad, costo_unit)').gte('fecha', desde).lt('fecha', hasta).order('fecha')
-      descargarCSV('reporte_compras', (data ?? []).map(c => ({ ...c, folio: 'REQ-' + String(c.id).padStart(4, '0'), proveedor: c.proveedores?.nombre, total: c.compra_partidas.reduce((t: number, p: { cantidad: number; costo_unit: number }) => t + p.cantidad * p.costo_unit, 0).toFixed(2) })), [
-        { key: 'folio', label: 'Folio' }, { key: 'fecha', label: 'Fecha' }, { key: 'proveedor', label: 'Proveedor' }, { key: 'estado', label: 'Estado' }, { key: 'total', label: 'Total recibido' },
+      const { data } = await supabase.from('compras').select('*, proveedores(nombre), compra_partidas(cantidad, costo_unit, iva_pct)').gte('fecha', desde).lt('fecha', hasta).order('fecha')
+      type PC = { cantidad: number; costo_unit: number; iva_pct: number }
+      descargarCSV('reporte_compras', (data ?? []).map(c => {
+        const neto = c.compra_partidas.reduce((t: number, p: PC) => t + p.cantidad * p.costo_unit, 0)
+        const iva = c.compra_partidas.reduce((t: number, p: PC) => t + p.cantidad * p.costo_unit * Number(p.iva_pct ?? 0) / 100, 0)
+        return { ...c, folio: 'REQ-' + String(c.id).padStart(4, '0'), proveedor: c.proveedores?.nombre, subtotal: neto.toFixed(2), iva: iva.toFixed(2), total: (neto + iva).toFixed(2) }
+      }), [
+        { key: 'folio', label: 'Folio' }, { key: 'fecha', label: 'Fecha' }, { key: 'proveedor', label: 'Proveedor' }, { key: 'estado', label: 'Estado' },
+        { key: 'subtotal', label: 'Subtotal neto' }, { key: 'iva', label: 'IVA' }, { key: 'total', label: 'Total con IVA' },
         { key: 'factura', label: 'Factura' }, { key: 'factura_monto', label: 'Importe factura' }, { key: 'factura_fecha', label: 'Fecha factura' }])
     } },
     { id: 'rent_mensual', t: 'Rentabilidad mensual', d: 'Ingresos, costos y utilidad por mes (órdenes entregadas), separado por tipo de servicio', permiso: 'finanzas.ver', run: async () => {

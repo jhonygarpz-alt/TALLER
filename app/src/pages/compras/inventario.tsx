@@ -180,7 +180,7 @@ export function TabPintura() {
 }
 
 /* ----------------------------- COMPRAS ----------------------------- */
-interface CompraRow { id: number; fecha: string; estado: string; factura: string | null; notas: string | null; proveedores?: { nombre: string } | null; compra_partidas: { cantidad: number; costo_unit: number }[] }
+interface CompraRow { id: number; fecha: string; estado: string; factura: string | null; notas: string | null; proveedores?: { nombre: string } | null; compra_partidas: { cantidad: number; costo_unit: number; iva_pct: number }[] }
 export function TabCompras() {
   const { puede } = useAuth()
   const nav = useNavigate()
@@ -192,7 +192,7 @@ export function TabCompras() {
   const [f, setF] = useState({ proveedor_id: '', fecha: hoyISO(), notas: '' })
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    let q = supabase.from('compras').select('*, proveedores(nombre), compra_partidas(cantidad,costo_unit)').order('fecha', { ascending: false }).limit(500)
+    let q = supabase.from('compras').select('*, proveedores(nombre), compra_partidas(cantidad,costo_unit,iva_pct)').order('fecha', { ascending: false }).limit(500)
     if (estado === 'abiertas') q = q.in('estado', ['requisicion', 'por_autorizar', 'autorizada'])
     else if (estado !== 'todas') q = q.eq('estado', estado)
     q.then(({ data }) => setRows((data ?? []) as CompraRow[]))
@@ -204,7 +204,7 @@ export function TabCompras() {
     if (error) return setError(errorTexto(error))
     nav(`/compras/${data.id}`)
   }
-  const total = (c: CompraRow) => c.compra_partidas.reduce((s, p) => s + p.cantidad * p.costo_unit, 0)
+  const total = (c: CompraRow) => c.compra_partidas.reduce((s, p) => s + p.cantidad * p.costo_unit * (1 + Number(p.iva_pct ?? 0) / 100), 0)
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-1">
@@ -216,7 +216,7 @@ export function TabCompras() {
       <Card pad={false}>
         {rows.length === 0 ? <Empty icon={ShoppingCart}>Sin compras</Empty> : (
           <div className="overflow-x-auto"><table className="tbl">
-            <thead><tr><th>Folio</th><th>Fecha</th><th>Proveedor</th><th>Factura</th><th>Estado</th><th className="text-right">Partidas</th><th className="text-right">Total</th></tr></thead>
+            <thead><tr><th>Folio</th><th>Fecha</th><th>Proveedor</th><th>Factura</th><th>Estado</th><th className="text-right">Partidas</th><th className="text-right">Total con IVA</th></tr></thead>
             <tbody>{rows.map(c => (
               <tr key={c.id} className="cursor-pointer" onClick={() => nav(`/compras/${c.id}`)}>
                 <td className="font-bold">REQ-{String(c.id).padStart(4, '0')}</td><td>{fecha(c.fecha)}</td><td>{c.proveedores?.nombre ?? '—'}</td><td>{c.factura ?? '—'}</td>
