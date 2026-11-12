@@ -16,6 +16,14 @@ export interface Actividad {
   tecnicos?: { nombre: string; perfil_id: string | null }; ordenes?: { folio: string; etapa: string; tipo: string }
 }
 
+/** Tiempo trabajado en piezas: media pieza y de 1 hasta 12, en medias */
+const OPCIONES_PIEZAS = Array.from({ length: 24 }, (_, i) => (i + 1) / 2)
+export const piezasTxt = (n: number) => {
+  const e = Math.floor(n), media = n - e >= 0.5
+  if (e === 0) return '½ pieza'
+  return `${e}${media ? '½' : ''} ${e === 1 && !media ? 'pieza' : 'piezas'}`
+}
+
 function Terminar({ a, onClose, onOk }: { a: Actividad; onClose: () => void; onOk: () => void }) {
   const [horas, setHoras] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -33,8 +41,11 @@ function Terminar({ a, onClose, onOk }: { a: Actividad; onClose: () => void; onO
       <ErrorMsg error={error} />
       <p className="mb-3 text-sm text-slate-600">1. Adjunta al menos una fotografía de evidencia del trabajo terminado.</p>
       <Galeria ordenId={a.orden_id} categoria="actividad" refId={a.id} onCambio={() => setHayFoto(true)} />
-      <Field label="2. Tiempo trabajado (horas)" hint="Si lo dejas vacío se calcula desde el inicio" className="mt-4">
-        <input className="input" type="number" step="0.25" min="0" value={horas} onChange={e => setHoras(e.target.value)} />
+      <Field label="2. Tiempo trabajado (horas en piezas)" hint="Media pieza y de 1 hasta 12 piezas. Si no eliges, se calcula desde el inicio." className="mt-4">
+        <select className="input" value={horas} onChange={e => setHoras(e.target.value)}>
+          <option value="">Calcular desde el inicio</option>
+          {OPCIONES_PIEZAS.map(n => <option key={n} value={n}>{piezasTxt(n)}</option>)}
+        </select>
       </Field>
       <div className="mt-4 flex justify-end gap-2">
         <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
@@ -177,7 +188,7 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
                   <div className="mt-0.5 text-xs text-slate-500">
                     {mostrarOrden && a.ordenes && <><Link className="font-semibold text-brand-700 hover:underline" to={`/ordenes/${a.orden_id}?tab=trabajos`}>{a.ordenes.folio}</Link> · {a.ordenes.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'} · </>}
                     {AREAS[a.area]} · <b>{a.tecnicos?.nombre}</b> · Destajo {a.importe_destajo > 0 ? money2(a.importe_destajo) : 'sin tarifa'}
-                    {a.fecha_inicio && ` · Inicio ${fechaHora(a.fecha_inicio)}`}{a.fecha_fin && ` · Fin ${fechaHora(a.fecha_fin)}`}{a.horas != null && ` · ${num(a.horas)} h`}
+                    {a.fecha_inicio && ` · Inicio ${fechaHora(a.fecha_inicio)}`}{a.fecha_fin && ` · Fin ${fechaHora(a.fecha_fin)}`}{a.horas != null && ` · ${Number(a.horas) % 0.5 === 0 && Number(a.horas) > 0 && Number(a.horas) <= 12 ? piezasTxt(Number(a.horas)) : `${num(a.horas)} h`}`}
                   </div>
                   {a.motivo_rechazo && a.estado !== 'validada' && <div className="mt-0.5 text-xs text-red-600">Motivo: {a.motivo_rechazo}</div>}
                   {(() => {
