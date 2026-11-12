@@ -55,7 +55,7 @@ export function NuevaActividad({ ordenId, onDone }: { ordenId?: number; onDone: 
   const [f, setF] = useState({ orden_id: ordenId ? String(ordenId) : '', tarifa_id: '', area: 'hojalateria', actividad: '', pieza: '', tecnico_id: '' })
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    supabase.from('tarifas_destajo').select('*').eq('activo', true).order('area').order('actividad').then(({ data }) => setTarifas((data ?? []) as Tarifa[]))
+    supabase.from('tarifas_destajo').select('*').eq('activo', true).order('area').order('importe').order('actividad').then(({ data }) => setTarifas((data ?? []) as Tarifa[]))
     supabase.from('tecnicos').select('*').eq('activo', true).order('nombre').then(({ data }) => setTecnicos((data ?? []) as Tecnico[]))
     if (!ordenId) supabase.from('v_ordenes').select('id,folio,marca,modelo,placas').not('etapa', 'in', '(entregado,cancelado)').order('folio').then(({ data }) => setOrdenes(data ?? []))
   }, [ordenId])

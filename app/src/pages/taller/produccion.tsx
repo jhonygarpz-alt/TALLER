@@ -202,7 +202,7 @@ export function TecnicosTarifas() {
   const cargar = useCallback(async () => {
     const [t, a, u] = await Promise.all([
       supabase.from('tecnicos').select('*').order('nombre'),
-      supabase.from('tarifas_destajo').select('*').order('area').order('actividad'),
+      supabase.from('tarifas_destajo').select('*').order('area').order('importe').order('actividad'),
       supabase.from('perfiles').select('id,nombre,rol').eq('activo', true).order('nombre'),
     ])
     setTecnicos((t.data ?? []) as Tecnico[]); setTarifas((a.data ?? []) as Tarifa[])
