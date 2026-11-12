@@ -7,7 +7,7 @@ import { Miniatura } from '../components/Fotos'
 import { Aviso, Hoja, botonPrimario, entrada } from '../movil/ui'
 import { pctTrabajo, registrarAvance, type Avance, type Trabajo } from './datos'
 
-export const ICONO_AREA: Record<string, typeof Wrench> = { hojalateria: Hammer, pintura: Paintbrush, detallado: Sparkles, mecanica: Wrench, otros: Wrench }
+export const ICONO_AREA: Record<string, typeof Wrench> = { hojalateria: Hammer, pintura: Paintbrush, armado: Wrench, detallado: Sparkles, mecanica: Wrench, otros: Wrench }
 export const ESTADO_TEC: Record<string, [string, string]> = {
   asignada: ['Por hacer', 'bg-sky-100 text-sky-800'], en_proceso: ['En proceso', 'bg-amber-100 text-amber-800'],
   terminada: ['En revisión', 'bg-violet-100 text-violet-700'], validada: ['Validado', 'bg-emerald-100 text-emerald-800'], cancelada: ['Cancelado', 'bg-slate-200 text-slate-600'],

@@ -68,7 +68,7 @@ export default function MisTrabajos() {
           <div className="text-sm text-cyan-100/80">{hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'},</div>
           <h1 className="text-[26px] leading-tight font-extrabold">{fichas?.[0]?.nombre?.split(' ')[0] ?? perfil?.nombre?.split(' ')[0]}</h1>
           <div className="mt-1 flex gap-1.5">{areas.map(a => (
-            <span key={a} className="flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold">{a === 'pintura' ? <Paintbrush className="h-3.5 w-3.5" /> : <Hammer className="h-3.5 w-3.5" />}{a === 'pintura' ? 'Pintor' : a === 'hojalateria' ? 'Hojalatero' : a}</span>
+            <span key={a} className="flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold">{a === 'pintura' ? <Paintbrush className="h-3.5 w-3.5" /> : <Hammer className="h-3.5 w-3.5" />}{a === 'pintura' ? 'Pintor' : a === 'hojalateria' ? 'Hojalatero' : a === 'armado' ? 'Armador' : a}</span>
           ))}</div>
         </div>
       </header>

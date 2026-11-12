@@ -45,7 +45,7 @@ export const ESTATUS_CONTACTO: Record<string, { label: string; badge: string }> 
   cancelada:          { label: 'Cancelada',          badge: 'bg-slate-100 text-slate-500' },
 }
 
-export const AREAS: Record<string, string> = { mecanica: 'Mecánica', hojalateria: 'Hojalatería', pintura: 'Pintura', detallado: 'Detallado', otros: 'Otros' }
+export const AREAS: Record<string, string> = { mecanica: 'Mecánica', hojalateria: 'Hojalatería', pintura: 'Pintura', armado: 'Armado', detallado: 'Detallado', otros: 'Otros' }
 export const CONCEPTOS: Record<string, string> = { mano_obra: 'Mano de obra', refaccion: 'Refacción', pintura: 'Pintura', material: 'Material', externo: 'Servicio externo' }
 export const TIPOS_MATERIAL: Record<string, string> = { pintura: 'Pintura', material: 'Material / consumible', refaccion: 'Refacción', herramienta: 'Herramienta' }
 
