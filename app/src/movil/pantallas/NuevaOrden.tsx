@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Check, Loader2, Search, X } from 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { subirFoto } from '../../lib/storage'
-import { errorTexto } from '../../lib/format'
+import { errorTexto, esDomingo, MSG_DOMINGO, sumarDiasLaborables } from '../../lib/format'
 import { CHECKLIST_RECEPCION } from '../../pages/vehiculos/Recepcion'
 import { Campo, EncabezadoClaro, Vacio, entrada } from '../ui'
 import { RejillaEvidencia, fotosVacias, listaFotos, totalFotos, type FotosGuiadas } from '../Evidencia'
@@ -49,8 +49,7 @@ export default function NuevaOrden() {
 
   const tiposFiltrados = useMemo(() => tipos.filter(t => f.tipo === 'particular' ? t.aseguradora_id === null : String(t.aseguradora_id) === f.aseguradora_id), [tipos, f.tipo, f.aseguradora_id])
   function elegirTipoRep(t: TipoRep) {
-    const d = new Date(); d.setDate(d.getDate() + t.dias_objetivo)
-    setF(p => ({ ...p, tipo_reparacion_id: String(t.id), fecha_compromiso: d.toLocaleDateString('en-CA') }))
+    setF(p => ({ ...p, tipo_reparacion_id: String(t.id), fecha_compromiso: sumarDiasLaborables(new Date(), t.dias_objetivo) }))
   }
 
   async function buscarPlacas() {
@@ -70,6 +69,7 @@ export default function NuevaOrden() {
       if (f.tipo === 'aseguradora' && !asig && !asigNueva) return 'Elige la asignación de la aseguradora (o registra una nueva)'
       if (f.tipo === 'aseguradora' && asigNueva && !f.siniestro.trim()) return 'Captura el número de siniestro de la asignación nueva'
       if (!f.fecha_compromiso) return 'Elige el tipo de reparación o la fecha compromiso'
+      if (esDomingo(f.fecha_compromiso)) return MSG_DOMINGO
     }
     if (p === 2) {
       if (!f.marca.trim() || !f.modelo.trim()) return 'Captura marca y modelo'
@@ -182,7 +182,7 @@ export default function NuevaOrden() {
           <Campo label="Tipo de reparación"><select className={entrada} value={f.tipo_reparacion_id} onChange={e => { const t = tipos.find(x => String(x.id) === e.target.value); if (t) elegirTipoRep(t); else setF(p => ({ ...p, tipo_reparacion_id: '' })) }}>
             <option value="">Selecciona…</option>{tiposFiltrados.map(t => <option key={t.id} value={t.id}>{t.nombre} ({t.dias_objetivo} días)</option>)}</select></Campo>
           <Campo label="Folio de la orden" ayuda="Opcional. Déjalo vacío para usar el consecutivo automático (OT-…)."><input className={`${entrada} uppercase`} maxLength={30} value={f.folio} onChange={set('folio')} placeholder="Automático" /></Campo>
-          <Campo label="Fecha compromiso de entrega *" ayuda="Se calcula sola con el tipo de reparación; puedes cambiarla."><input className={entrada} type="date" value={f.fecha_compromiso} onChange={set('fecha_compromiso')} /></Campo>
+          <Campo label="Fecha compromiso de entrega *" ayuda="Se calcula sola con el tipo de reparación (sin contar domingos); puedes cambiarla, pero no a domingo."><input className={entrada} type="date" value={f.fecha_compromiso} onChange={set('fecha_compromiso')} /></Campo>
           <Campo label="Asesor responsable"><select className={entrada} value={f.asesor_id} onChange={set('asesor_id')}><option value="">Sin asignar</option>{asesores.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Campo>
         </>}
 

@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useAlertas } from '../../lib/alertas'
 import { subirFoto } from '../../lib/storage'
-import { errorTexto, fecha } from '../../lib/format'
+import { errorTexto, esDomingo, fecha, MSG_DOMINGO, sumarDiasLaborables } from '../../lib/format'
 import { ErrorMsg, Field, PageHeader, SinPermiso } from '../../components/ui'
 import { SelectorAsignacion, asegurarAsignacion, type AsignacionSel } from '../../components/SelectorAsignacion'
 
@@ -70,8 +70,7 @@ export default function Recepcion() {
 
   function elegirTipoRep(id: string) {
     const t = tipos.find(x => String(x.id) === id)
-    const d = new Date(); if (t) d.setDate(d.getDate() + t.dias_objetivo)
-    setF(p => ({ ...p, tipo_reparacion_id: id, fecha_compromiso: t ? d.toLocaleDateString('en-CA') : p.fecha_compromiso }))
+    setF(p => ({ ...p, tipo_reparacion_id: id, fecha_compromiso: t ? sumarDiasLaborables(new Date(), t.dias_objetivo) : p.fecha_compromiso }))
   }
 
   async function buscarPlacas(porId?: string) {
@@ -102,6 +101,7 @@ export default function Recepcion() {
       if (f.tipo === 'aseguradora' && !asig && !asigNueva) return 'Elige la asignación de la aseguradora (o registra una nueva si aún no está capturada)'
       if (f.tipo === 'aseguradora' && asigNueva && !f.siniestro.trim()) return 'Captura el número de siniestro de la asignación nueva'
       if (!f.fecha_compromiso) return 'Indica la fecha compromiso de entrega (o elige el tipo de reparación)'
+      if (esDomingo(f.fecha_compromiso)) return MSG_DOMINGO
     }
     if (p === 2) {
       if (!f.cliente_nombre.trim()) return 'Indica el nombre del propietario'
@@ -215,7 +215,7 @@ export default function Recepcion() {
               </select>
             </Field>
             <Field label="Folio de la orden" hint="Opcional. Déjalo vacío para usar el consecutivo automático (OT-…)."><input className="input uppercase" maxLength={30} value={f.folio} onChange={set('folio')} placeholder="Automático" /></Field>
-            <Field label="Fecha compromiso de entrega *"><input className="input" type="date" value={f.fecha_compromiso} onChange={set('fecha_compromiso')} /></Field>
+            <Field label="Fecha compromiso de entrega *" hint={esDomingo(f.fecha_compromiso) ? <span className="text-red-600">{MSG_DOMINGO}</span> : 'Se calcula sin contar domingos.'}><input className="input" type="date" value={f.fecha_compromiso} onChange={set('fecha_compromiso')} /></Field>
           </div>
           <Field label="Asesor responsable">
             <select className="input" value={f.asesor_id} onChange={set('asesor_id')}><option value="">Sin asignar</option>{asesores.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select>

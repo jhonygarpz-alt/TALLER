@@ -104,3 +104,15 @@ export function errorTexto(e: unknown): string {
   if (m.includes('duplicate key')) return 'Ya existe un registro con esos datos.'
   return m
 }
+
+/** El domingo no es laborable: las fechas compromiso no pueden caer en domingo */
+export const esDomingo = (iso: string | null | undefined) => !!iso && new Date(iso + 'T12:00:00').getDay() === 0
+export const MSG_DOMINGO = 'La fecha compromiso cae en domingo, que no es laborable. Elige otro día.'
+/** Suma días de trabajo a una fecha sin contar domingos (el resultado nunca es domingo) */
+export function sumarDiasLaborables(desde: Date, dias: number) {
+  const d = new Date(desde)
+  let n = 0
+  while (n < dias) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0) n++ }
+  if (d.getDay() === 0) d.setDate(d.getDate() + 1)
+  return d.toLocaleDateString('en-CA')
+}

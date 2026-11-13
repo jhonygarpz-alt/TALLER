@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
-import { errorTexto } from '../../lib/format'
+import { errorTexto, esDomingo, MSG_DOMINGO, sumarDiasLaborables } from '../../lib/format'
 import type { VOrden } from '../../lib/tipos'
 import { ErrorMsg, Field, Modal } from '../../components/ui'
 
@@ -42,9 +42,8 @@ export default function EditarOrden({ o, onClose, onGuardado }: { o: VOrden; onC
   function cambiarTipo(id: string) {
     const t = tipos.find(x => String(x.id) === id)
     let compromiso = orden.fecha_compromiso
-    if (t && confirm(`¿Recalcular la fecha compromiso con el plazo de "${t.nombre}" (${t.dias_objetivo} días desde el ingreso)?`)) {
-      const d = new Date(o.fecha_ingreso); d.setDate(d.getDate() + t.dias_objetivo)
-      compromiso = d.toLocaleDateString('en-CA')
+    if (t && confirm(`¿Recalcular la fecha compromiso con el plazo de "${t.nombre}" (${t.dias_objetivo} días desde el ingreso, sin contar domingos)?`)) {
+      compromiso = sumarDiasLaborables(new Date(o.fecha_ingreso), t.dias_objetivo)
     }
     setOrden(p => ({ ...p, tipo_reparacion_id: id, fecha_compromiso: compromiso }))
   }
@@ -52,6 +51,7 @@ export default function EditarOrden({ o, onClose, onGuardado }: { o: VOrden; onC
   async function guardar(e: FormEvent) {
     e.preventDefault()
     if (!orden.fecha_compromiso) return setError('La fecha compromiso es obligatoria')
+    if (esDomingo(orden.fecha_compromiso) && orden.fecha_compromiso !== o.fecha_compromiso) return setError(MSG_DOMINGO)
     if (!orden.danos_reportados.trim()) return setError('Describe los daños reportados')
     if (!veh.marca.trim() || !veh.modelo.trim() || !cli.nombre.trim()) return setError('Marca, modelo y nombre del propietario son obligatorios')
     if (!orden.folio.trim()) return setError('El folio no puede quedar vacío')
@@ -89,7 +89,7 @@ export default function EditarOrden({ o, onClose, onGuardado }: { o: VOrden; onC
               <option value="">—</option>{tiposOrden.map(t => <option key={t.id} value={t.id}>{t.nombre} ({t.dias_objetivo} días)</option>)}
             </select>
           </Field>
-          <Field label="Fecha compromiso *"><input className="input" type="date" required value={orden.fecha_compromiso} onChange={setO('fecha_compromiso')} /></Field>
+          <Field label="Fecha compromiso *" hint={esDomingo(orden.fecha_compromiso) ? <span className="text-red-600">{MSG_DOMINGO}</span> : undefined}><input className="input" type="date" required value={orden.fecha_compromiso} onChange={setO('fecha_compromiso')} /></Field>
           <Field label="Asesor responsable"><select className="input" value={orden.asesor_id} onChange={setO('asesor_id')}><option value="">Sin asignar</option>{asesores.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Field>
           <Field label="Kilometraje"><input className="input" type="number" min={0} value={orden.kilometraje} onChange={setO('kilometraje')} /></Field>
           <Field label="Prioridad"><select className="input" value={orden.prioridad} onChange={setO('prioridad')}><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></Field>
