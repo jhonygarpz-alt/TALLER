@@ -5,6 +5,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { subirFoto } from '../../lib/storage'
 import { errorTexto, esDomingo, MSG_DOMINGO, sumarDiasLaborables } from '../../lib/format'
+import { useBorrador } from '../../lib/borrador'
+import { AvisoBorrador, BorradorGuardado, resumenBorrador } from '../../components/AvisoBorrador'
 import { CHECKLIST_RECEPCION } from '../../pages/vehiculos/Recepcion'
 import { Campo, EncabezadoClaro, Vacio, entrada } from '../ui'
 import { RejillaEvidencia, fotosVacias, listaFotos, totalFotos, type FotosGuiadas } from '../Evidencia'
@@ -37,6 +39,16 @@ export default function NuevaOrden() {
     kilometraje: '', combustible: '1/2', danos_reportados: '', objetos: '', asesor_id: perfil?.id ?? '', vin: '',
   })
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF(p => ({ ...p, [k]: e.target.value }))
+
+  // Borrador: lo capturado (incluidas las fotos) se guarda en este celular y se recupera si se cierra la app
+  type Borrador = { f: typeof f; paso: number; checklist: Record<string, string>; asig: AsignacionSel | null; asigNueva: boolean; fotos: FotosGuiadas; existente: typeof existente; buscado: boolean }
+  const datosBorrador = useMemo<Borrador>(() => ({ f, paso, checklist, asig, asigNueva, fotos, existente, buscado }), [f, paso, checklist, asig, asigNueva, fotos, existente, buscado])
+  const conContenido = paso > 1 || !!(f.folio || f.siniestro || f.placas || f.marca || f.cliente_nombre || f.danos_reportados || asig || totalFotos(fotos))
+  const borrador = useBorrador<Borrador>(perfil?.id ? `recepcion-movil:${perfil.id}` : null, datosBorrador, conContenido)
+  function continuarBorrador() {
+    const b = borrador.restaurar(); if (!b) return
+    setF(b.f); setPaso(b.paso); setChecklist(b.checklist); setAsig(b.asig); setAsigNueva(b.asigNueva); setFotos(b.fotos ?? fotosVacias('recepcion')); setExistente(b.existente); setBuscado(b.buscado)
+  }
 
   useEffect(() => {
     supabase.from('aseguradoras').select('id,nombre').eq('activo', true).then(({ data }) => {
@@ -134,6 +146,7 @@ export default function NuevaOrden() {
         setGuardando(`Subiendo foto ${i + 1} de ${lista.length}…`)
         try { await subirFoto(file, orden.id, 'recepcion', null, desc) } catch { fallidas++ }
       }
+      await borrador.limpiar()
       if (fallidas) alert(`La orden ${orden.folio} se creó, pero ${fallidas} foto(s) no se subieron. Agrégalas desde la orden (pestaña Fotos).`)
       nav(`/orden/${orden.id}`, { replace: true })
     } catch (e) {
@@ -145,7 +158,7 @@ export default function NuevaOrden() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <EncabezadoClaro titulo="Recepción de vehículo" sub="Genera una nueva orden de trabajo" atras={() => (confirm('¿Salir sin guardar la orden?') ? nav(-1) : null)}>
+      <EncabezadoClaro titulo="Recepción de vehículo" sub="Genera una nueva orden de trabajo" atras={() => (!conContenido || confirm('¿Salir? Tu avance queda guardado en este celular y podrás continuarlo después.') ? nav(-1) : null)}>
         <ol className="mt-5 grid grid-cols-4 gap-1">
           {PASOS.map((nombre, i) => {
             const n = i + 1; const hecho = n < paso; const actual = n === paso
@@ -160,6 +173,8 @@ export default function NuevaOrden() {
       </EncabezadoClaro>
 
       <div className="space-y-5 px-4 pt-2 pb-[calc(110px+env(safe-area-inset-bottom))]">
+        {borrador.pendiente && <AvisoBorrador movil guardado={borrador.pendiente.guardado} paso={borrador.pendiente.datos.paso} resumen={resumenBorrador(borrador.pendiente.datos.f)} onContinuar={continuarBorrador} onDescartar={borrador.descartar} />}
+        <BorradorGuardado ultimo={borrador.ultimo} />
         <div className="space-y-5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
 
         {paso === 1 && <>

@@ -7,6 +7,8 @@ import { useAlertas } from '../../lib/alertas'
 import { subirFoto } from '../../lib/storage'
 import { errorTexto, esDomingo, fecha, MSG_DOMINGO, sumarDiasLaborables } from '../../lib/format'
 import { ErrorMsg, Field, PageHeader, SinPermiso } from '../../components/ui'
+import { useBorrador } from '../../lib/borrador'
+import { AvisoBorrador, BorradorGuardado, resumenBorrador } from '../../components/AvisoBorrador'
 import { SelectorAsignacion, asegurarAsignacion, type AsignacionSel } from '../../components/SelectorAsignacion'
 
 export const CHECKLIST_RECEPCION = [
@@ -44,6 +46,16 @@ export default function Recepcion() {
   })
   const [checklist, setChecklist] = useState<Record<string, string>>(Object.fromEntries(CHECKLIST_RECEPCION.map(i => [i, 'bien'])))
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF(p => ({ ...p, [k]: e.target.value }))
+
+  // Borrador: todo lo capturado se guarda solo en este equipo y se recupera si se cierra o recarga la página
+  type Borrador = { f: typeof f; paso: number; checklist: Record<string, string>; asig: AsignacionSel | null; asigNueva: boolean; fotos: File[]; existente: typeof existente; buscado: boolean }
+  const datosBorrador = useMemo<Borrador>(() => ({ f, paso, checklist, asig, asigNueva, fotos, existente, buscado }), [f, paso, checklist, asig, asigNueva, fotos, existente, buscado])
+  const conContenido = paso > 1 || !!(f.folio || f.siniestro || f.placas || f.marca || f.cliente_nombre || f.danos_reportados || asig || fotos.length)
+  const borrador = useBorrador<Borrador>(perfil?.id ? `recepcion-web:${perfil.id}` : null, datosBorrador, conContenido)
+  function continuarBorrador() {
+    const b = borrador.restaurar(); if (!b) return
+    setF(b.f); setPaso(b.paso); setChecklist(b.checklist); setAsig(b.asig); setAsigNueva(b.asigNueva); setFotos(b.fotos ?? []); setExistente(b.existente); setBuscado(b.buscado)
+  }
 
   useEffect(() => {
     supabase.from('aseguradoras').select('id,nombre').eq('activo', true).then(({ data }) => {
@@ -157,6 +169,7 @@ export default function Recepcion() {
       for (const file of fotos) {
         try { await subirFoto(file, orden.id, 'recepcion') } catch { fallidas.push(file.name) }
       }
+      await borrador.limpiar()
       al.recargar()
       if (fallidas.length) alert(`La orden se creó, pero ${fallidas.length} foto(s) no se pudieron subir. Agrégalas desde el expediente.`)
       nav(`/ordenes/${orden.id}`)
@@ -174,6 +187,7 @@ export default function Recepcion() {
       <Link to="/ordenes" className="text-sm font-medium text-brand-700 hover:underline">← Órdenes de trabajo</Link>
       <PageHeader title="Recepción de vehículo" subtitle={asignacionId ? `Desde asignación · siniestro ${f.siniestro}` : 'Genera una nueva orden de trabajo'} />
 
+      {borrador.pendiente && <AvisoBorrador guardado={borrador.pendiente.guardado} paso={borrador.pendiente.datos.paso} resumen={resumenBorrador(borrador.pendiente.datos.f)} onContinuar={continuarBorrador} onDescartar={borrador.descartar} />}
       <ol className="mb-6 grid grid-cols-4 gap-2">
         {pasos.map((p, i) => (
           <li key={p} className="flex flex-col items-center gap-1 text-center">
@@ -186,6 +200,7 @@ export default function Recepcion() {
       </ol>
 
       <div className="card space-y-4">
+        <BorradorGuardado ultimo={borrador.ultimo} />
         <ErrorMsg error={error} />
 
         {paso === 1 && (<>
