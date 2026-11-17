@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/auth'
 import { errorTexto, fechaHora, money2, num } from '../../lib/format'
 import { Card, Empty, ErrorMsg, Field } from '../../components/ui'
 import Solicitudes from '../../components/Solicitudes'
+import MaterialesUnidad from '../../components/MaterialesUnidad'
 import { Galeria } from '../../components/Fotos'
 import type { TabProps } from './Expediente'
 
@@ -21,6 +22,7 @@ export default function Materiales({ o, recargar }: TabProps) {
   const [pint, setPint] = useState<Pintura | null>(null)
   const [f, setF] = useState({ pieza: '', destino: 'resguardo', responsable: '', notas: '' })
   const [error, setError] = useState<string | null>(null)
+  const [ver, setVer] = useState(0)
   const cerrada = o.etapa === 'entregado' || o.etapa === 'cancelado'
   const editarPiezas = puede('ordenes.gestionar') || puede('almacen.gestionar') || puede('actividades.asignar')
 
@@ -47,8 +49,12 @@ export default function Materiales({ o, recargar }: TabProps) {
   const desv = pint && pint.costo_presupuestado > 0 ? ((pint.costo_real - pint.costo_presupuestado) / pint.costo_presupuestado) * 100 : null
   return (
     <div className="space-y-5">
+      <Card title="Materiales y refacciones de esta unidad" action={<span className="text-xs text-slate-500">Entregas de almacén, compras ligadas a la unidad y gastos directos</span>}>
+        <MaterialesUnidad ordenId={o.id} actualizar={ver} />
+      </Card>
+
       <Card title="Solicitudes de material de esta orden">
-        <Solicitudes ordenId={o.id} cerrada={o.etapa === 'cancelado'} onCambio={() => { cargar(); recargar() }} />
+        <Solicitudes ordenId={o.id} cerrada={o.etapa === 'cancelado'} onCambio={() => { cargar(); recargar(); setVer(v => v + 1) }} />
       </Card>
 
       <Card title="Control de pintura: presupuestado vs real">

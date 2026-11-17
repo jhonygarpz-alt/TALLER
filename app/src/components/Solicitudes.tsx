@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { revertir } from '../lib/revertir'
 import { useAuth } from '../lib/auth'
 import { useAlertas } from '../lib/alertas'
-import { ESTADO_SOLICITUD, TIPOS_MATERIAL, errorTexto, fechaHora, money2, num } from '../lib/format'
+import { ESTADO_SOLICITUD, TIPOS_MATERIAL, errorTexto, fechaHora, money2, num, SECCIONES_MAT, seccionPorTipo } from '../lib/format'
 import type { Material } from '../lib/tipos'
 import { Badge, Empty, ErrorMsg, Field, Modal } from './ui'
 
@@ -23,7 +23,7 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
   const [materiales, setMateriales] = useState<Material[]>([])
   const [ordenes, setOrdenes] = useState<{ id: number; folio: string; marca: string; modelo: string }[]>([])
   const [destino, setDestino] = useState<'orden' | 'general'>('orden')
-  const [f, setF] = useState({ orden_id: ordenId ? String(ordenId) : '', centro_costo: '', material_id: '', cantidad: '', notas: '' })
+  const [f, setF] = useState({ orden_id: ordenId ? String(ordenId) : '', centro_costo: '', material_id: '', cantidad: '', notas: '', seccion: '' })
   const [error, setError] = useState<string | null>(null)
   const { puede } = useAuth()
   const [alta, setAlta] = useState(false)
@@ -47,8 +47,10 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
 
   async function submit(e: FormEvent) {
     e.preventDefault()
+    const paraOrden = destino === 'orden'
+    const seccion = f.seccion || seccionPorTipo(mat?.tipo)
     const { error } = await supabase.from('solicitudes_material').insert({
-      orden_id: destino === 'orden' ? Number(f.orden_id) : null, centro_costo: destino === 'general' ? f.centro_costo.trim() : null,
+      orden_id: paraOrden ? Number(f.orden_id) : null, centro_costo: !paraOrden ? f.centro_costo.trim() : null, seccion: paraOrden ? seccion : null,
       material_id: Number(f.material_id), cantidad_solicitada: Number(f.cantidad), notas: f.notas || null,
     })
     if (error) return setError(errorTexto(error))
@@ -74,7 +76,7 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
           <span className="label !mb-0">Material *</span>
           {puede('almacen.gestionar') && !alta && <button type="button" className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => setAlta(true)}>+ Nuevo material</button>}
         </div>
-        <select className="input" required value={f.material_id} onChange={e => setF({ ...f, material_id: e.target.value })}>
+        <select className="input" required value={f.material_id} onChange={e => { const m = materiales.find(x => String(x.id) === e.target.value); setF({ ...f, material_id: e.target.value, seccion: m ? seccionPorTipo(m.tipo) : f.seccion }) }}>
           <option value="">{materiales.length ? 'Selecciona…' : 'No hay materiales en el catálogo'}</option>
           {Object.entries(TIPOS_MATERIAL).map(([k, v]) => {
             const lista = materiales.filter(m => m.tipo === k)
@@ -103,6 +105,7 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
           </div>
         )}
       </div>
+      {(destino === 'orden' || ordenId) && <Field label="Sección del gasto *"><select className="input" value={f.seccion || seccionPorTipo(mat?.tipo)} onChange={e => setF({ ...f, seccion: e.target.value })}>{Object.entries(SECCIONES_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>}
       <Field label={`Cantidad *${mat ? ` (${mat.unidad})` : ''}`}><input className="input" type="number" step="0.001" min="0.001" required value={f.cantidad} onChange={e => setF({ ...f, cantidad: e.target.value })} /></Field>
       <Field label="Notas"><input className="input" value={f.notas} onChange={e => setF({ ...f, notas: e.target.value })} /></Field>
       {mat && Number(f.cantidad) > Number(mat.existencia) && <p className="text-xs text-amber-700 sm:col-span-2">La existencia actual ({num(mat.existencia, 3)} {mat.unidad}) es menor a lo solicitado; almacén no podrá entregar hasta recibir compra.</p>}

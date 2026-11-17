@@ -32,7 +32,7 @@ export async function cargarReporte(ordenId: number, _elaboro?: string): Promise
   const [o, rent, sol, cos, des, act, fac] = await Promise.all([
     supabase.from('v_ordenes').select('folio,tipo,aseguradora_nombre,siniestro,marca,modelo,anio,color,placas').eq('id', ordenId).single(),
     supabase.from('v_rentabilidad').select('autorizado,adicional').eq('orden_id', ordenId).maybeSingle(),
-    supabase.from('solicitudes_material').select('cantidad_entregada,costo_total,centro_costo,materiales(descripcion,unidad,tipo),actividades(area)').eq('orden_id', ordenId).eq('estado', 'entregada').order('id'),
+    supabase.from('solicitudes_material').select('cantidad_entregada,costo_total,centro_costo,seccion,materiales(descripcion,unidad,tipo),actividades(area)').eq('orden_id', ordenId).eq('estado', 'entregada').order('id'),
     supabase.from('orden_costos').select('tipo,concepto,proveedor,monto').eq('orden_id', ordenId).order('fecha').order('id'),
     supabase.from('destajos').select('importe,actividades(area),tecnicos(nombre)').eq('orden_id', ordenId).neq('estado', 'cancelado'),
     supabase.from('actividades').select('area,actividad,pieza,tecnicos(nombre)').eq('orden_id', ordenId).neq('estado', 'cancelada').order('id'),
@@ -41,7 +41,7 @@ export async function cargarReporte(ordenId: number, _elaboro?: string): Promise
   if (o.error) throw o.error
   for (const q of [rent, sol, cos, des, act, fac]) if (q.error) throw q.error
   const ord = o.data
-  type Sol = { cantidad_entregada: number | null; costo_total: number | null; centro_costo: string | null; materiales: { descripcion: string; unidad: string; tipo: string } | null; actividades: { area: string } | null }
+  type Sol = { cantidad_entregada: number | null; costo_total: number | null; centro_costo: string | null; seccion: string | null; materiales: { descripcion: string; unidad: string; tipo: string } | null; actividades: { area: string } | null }
   type Cos = { tipo: string; concepto: string; proveedor: string | null; monto: number }
   type Des = { importe: number; actividades: { area: string } | null; tecnicos: { nombre: string } | null }
   type Act = { area: string; actividad: string; pieza: string | null; tecnicos: { nombre: string } | null }
@@ -50,10 +50,11 @@ export async function cargarReporte(ordenId: number, _elaboro?: string): Promise
   const destajos = (des.data ?? []) as unknown as Des[]
   const acts = (act.data ?? []) as unknown as Act[]
 
+  const esRef = (s: Sol) => s.seccion ? s.seccion === 'refaccion' : s.materiales?.tipo === 'refaccion'
   // 1) Refacciones (sustitución) y piezas trabajadas (reparación / desmontaje-montaje)
   const piezas: FilaCuerpo[] = []
   const vistos = new Set<string>()
-  for (const s of sols.filter(s => s.materiales?.tipo === 'refaccion')) piezas.push({ texto: up(s.materiales?.descripcion), sust: true, ref: r2(Number(s.costo_total ?? 0)) })
+  for (const s of sols.filter(esRef)) piezas.push({ texto: up(s.materiales?.descripcion), sust: true, ref: r2(Number(s.costo_total ?? 0)) })
   for (const c of costos.filter(c => c.tipo === 'refaccion')) piezas.push({ texto: up(c.concepto), sust: true, ref: r2(Number(c.monto)) })
   for (const p of piezas) vistos.add(p.texto)
   for (const a of acts.filter(a => AREAS_HOJ.includes(a.area))) {
@@ -64,13 +65,13 @@ export async function cargarReporte(ordenId: number, _elaboro?: string): Promise
   }
 
   // 2) Materiales de hojalatería y de pintura (entregas de almacén + compras directas)
-  const esPintura = (s: Sol) => s.materiales?.tipo === 'pintura' || s.actividades?.area === 'pintura' || /pint/i.test(s.centro_costo ?? '')
+  const esPintura = (s: Sol) => s.seccion ? s.seccion === 'pintura' : (s.materiales?.tipo === 'pintura' || s.actividades?.area === 'pintura' || /pint/i.test(s.centro_costo ?? ''))
   const filaMat = (s: Sol): FilaCuerpo => {
     const cant = Number(s.cantidad_entregada ?? 0)
     const unidad = up(s.materiales?.unidad)
     return { texto: `${cant ? `${+cant.toFixed(2)} ${unidad === 'PZA' ? '' : unidad} `.replace(/\s+/g, ' ') : ''}${up(s.materiales?.descripcion)}`.trim(), mat: r2(Number(s.costo_total ?? 0)) }
   }
-  const matsMaterial = sols.filter(s => s.materiales?.tipo !== 'refaccion')
+  const matsMaterial = sols.filter(s => !esRef(s))
   const matHoj = [...matsMaterial.filter(s => !esPintura(s)).map(filaMat), ...costos.filter(c => c.tipo === 'material').map(c => ({ texto: up(c.concepto), mat: r2(Number(c.monto)) }))]
   const matPin = matsMaterial.filter(esPintura).map(filaMat)
 

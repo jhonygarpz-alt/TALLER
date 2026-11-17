@@ -6,6 +6,7 @@ import { useAuth } from '../../lib/auth'
 import { AREAS, CONCEPTOS, ESTADO_PRESUPUESTO, errorTexto, fechaHora, money, money2, num } from '../../lib/format'
 import { Badge, Card, Empty, ErrorMsg, Field, TableWrap } from '../../components/ui'
 import type { TabProps } from './Expediente'
+import MaterialesUnidad from '../../components/MaterialesUnidad'
 
 interface Partida { id: number; area: string; concepto: string; descripcion: string; cantidad: number; unidad: string; precio_unit: number; costo_unit: number }
 interface Pres { id: number; numero: number; es_ampliacion: boolean; estado: string; autorizado_por: string | null; referencia_aut: string | null; fecha_autorizacion: string | null; notas: string | null; created_at: string; presupuesto_partidas: Partida[] }
@@ -121,6 +122,11 @@ export default function Presupuesto({ o, recargar }: TabProps) {
           )}
         </Card>
       )}
+
+      <Card title="Materiales de hojalatería, materiales de pintura y refacciones de esta reparación" action={<span className="text-xs text-slate-500">Lo realmente usado en la unidad contra lo presupuestado</span>}>
+        <MaterialesUnidad ordenId={o.id} actualizar={pres} />
+        <p className="mt-2 text-xs text-slate-400">Para presupuestarlos agrega partidas con concepto «Material» (hojalatería), «Pintura» o «Refacción». Los importes reales vienen de las entregas de almacén y de las compras ligadas a esta unidad.</p>
+      </Card>
     </div>
   )
 }

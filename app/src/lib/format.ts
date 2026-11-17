@@ -116,3 +116,7 @@ export function sumarDiasLaborables(desde: Date, dias: number) {
   if (d.getDay() === 0) d.setDate(d.getDate() + 1)
   return d.toLocaleDateString('en-CA')
 }
+
+/** Sección del gasto de material de una unidad */
+export const SECCIONES_MAT: Record<string, string> = { hojalateria: 'Materiales de hojalatería', pintura: 'Materiales de pintura', refaccion: 'Refacciones' }
+export const seccionPorTipo = (tipo?: string | null) => tipo === 'pintura' ? 'pintura' : tipo === 'refaccion' ? 'refaccion' : 'hojalateria'
