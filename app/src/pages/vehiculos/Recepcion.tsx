@@ -110,7 +110,7 @@ export default function Recepcion() {
   function validar(p: number): string | null {
     if (p === 1) {
       if (f.tipo === 'aseguradora' && !f.aseguradora_id) return 'Elige la aseguradora'
-      if (f.tipo === 'aseguradora' && !asig && !asigNueva) return 'Elige la asignación de la aseguradora (o registra una nueva si aún no está capturada)'
+      if (f.tipo === 'aseguradora' && !asig && !asigNueva) return 'Elige la asignación en la lista (búscala por siniestro o placas). Si no aparece, usa «No está en la lista: registrar asignación nueva».'
       if (f.tipo === 'aseguradora' && asigNueva && !f.siniestro.trim()) return 'Captura el número de siniestro de la asignación nueva'
       if (!f.fecha_compromiso) return 'Indica la fecha compromiso de entrega (o elige el tipo de reparación)'
       if (esDomingo(f.fecha_compromiso)) return MSG_DOMINGO

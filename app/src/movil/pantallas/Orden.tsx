@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ArrowLeftRight, ArrowRight, Camera, Check, CheckCircle2, ClipboardList, ExternalLink, FileText, Fuel, History, ImagePlus, Loader2, MessageCircle, MoreVertical, Phone, Play, RotateCcw, Share2, Shield, Smartphone, Truck, User, Users, Wrench } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, ArrowRight, Camera, Check, CheckCircle2, ClipboardList, ExternalLink, FileText, Fuel, History, ImagePlus, Loader2, MessageCircle, MoreVertical, Phone, Play, Plus, RotateCcw, Share2, Shield, Smartphone, Truck, User, Users, Wrench } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { subirFoto, useUrlFirmada, type CategoriaFoto } from '../../lib/storage'
@@ -9,6 +9,7 @@ import type { VOrden } from '../../lib/tipos'
 import { ligaInvitacion } from '../../lib/invitacion'
 import { CHECKLIST_CALIDAD } from '../../pages/expediente/Entrega'
 import { Miniatura, type FotoRow } from '../../components/Fotos'
+import AsignarTrabajo from '../AsignarTrabajo'
 import { Aviso, BadgeEtapa, Cargando, Campo, Hoja, Vacio, botonPrimario, botonSecundario, entrada } from '../ui'
 
 const FLUJO: Etapa[] = ETAPAS_TABLERO.filter(e => e !== 'entregado')
@@ -354,6 +355,15 @@ export function Trabajos({ acts, orden, onCambio, miPerfil }: { acts: Act[]; ord
   const [error, setError] = useState<string | null>(null)
   const [evidencia, setEvidencia] = useState<{ a: Act; terminar: boolean } | null>(null)
   const [ocupado, setOcupado] = useState<number | null>(null)
+  const [asignar, setAsignar] = useState(false)
+  const [ok, setOk] = useState<string | null>(null)
+  const puedeAsignar = puede('actividades.asignar') && !['entregado', 'cancelado'].includes(orden.etapa)
+  const botonAsignar = puedeAsignar && (
+    <button onClick={() => setAsignar(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-700 to-brand-600 py-3.5 font-bold text-white shadow-md active:scale-[.98]">
+      <Plus className="h-5 w-5" /> Asignar trabajo
+    </button>
+  )
+  const hojaAsignar = asignar && <AsignarTrabajo ordenId={orden.id} folio={orden.folio} onClose={() => setAsignar(false)} onListo={() => { setAsignar(false); setOk('Trabajo asignado. El técnico recibe el aviso en su app.'); onCambio() }} />
   async function accion(a: Act, acc: string) {
     const horas: number | null = null; let motivo: string | null = null
     if (acc === 'rechazar') { motivo = prompt('¿Qué hay que corregir? (retrabajo)'); if (!motivo) return }
@@ -364,10 +374,18 @@ export function Trabajos({ acts, orden, onCambio, miPerfil }: { acts: Act[]; ord
     if (error) return setError(errorTexto(error))
     onCambio()
   }
-  if (!acts.length) return <Vacio icono={Wrench}>No hay trabajos asignados en esta orden. Se asignan desde el sistema web (Trabajos y avance).</Vacio>
+  if (!acts.length) return (
+    <div className="space-y-3">
+      {ok && <Aviso tipo="ok" onClose={() => setOk(null)}>{ok}</Aviso>}
+      <Vacio icono={Wrench}>No hay trabajos asignados en esta orden.{puedeAsignar ? ' Asigna el primero a un hojalatero, pintor o pulidor.' : ''}</Vacio>
+      {botonAsignar}{hojaAsignar}
+    </div>
+  )
   return (
     <div className="space-y-3">
+      {ok && <Aviso tipo="ok" onClose={() => setOk(null)}>{ok}</Aviso>}
       {error && <Aviso onClose={() => setError(null)}>{error}</Aviso>}
+      {botonAsignar}
       {acts.map(a => {
         const mio = !!miPerfil && a.tecnicos?.perfil_id === miPerfil
         const puedeAvanzar = mio || puede('actividades.asignar')
@@ -393,6 +411,7 @@ export function Trabajos({ acts, orden, onCambio, miPerfil }: { acts: Act[]; ord
           </div>
         )
       })}
+      {hojaAsignar}
       {evidencia && <HojaFotos ordenId={orden.id} refId={evidencia.a.id} categoriaInicial="actividad" titulo={evidencia.terminar ? 'Terminar: foto de evidencia' : undefined}
         onClose={() => setEvidencia(null)} onListo={() => { const e = evidencia; setEvidencia(null); if (e.terminar) accion(e.a, 'terminar'); else onCambio() }} />}
     </div>

@@ -78,7 +78,7 @@ export default function NuevaOrden() {
 
   function validar(p: number): string | null {
     if (p === 1) {
-      if (f.tipo === 'aseguradora' && !asig && !asigNueva) return 'Elige la asignación de la aseguradora (o registra una nueva)'
+      if (f.tipo === 'aseguradora' && !asig && !asigNueva) return 'Toca la asignación en la lista para elegirla (búscala por siniestro o placas). Si no aparece, usa «No está en la lista: registrar asignación nueva».'
       if (f.tipo === 'aseguradora' && asigNueva && !f.siniestro.trim()) return 'Captura el número de siniestro de la asignación nueva'
       if (!f.fecha_compromiso) return 'Elige el tipo de reparación o la fecha compromiso'
       if (esDomingo(f.fecha_compromiso)) return MSG_DOMINGO

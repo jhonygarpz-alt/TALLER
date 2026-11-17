@@ -8,12 +8,20 @@ export interface AsignacionSel {
   anio: number | null; placas: string | null; fecha_asignacion: string | null; estatus: string
 }
 
-/** Asignaciones pendientes de ingresar (sin orden) de una aseguradora */
+/**
+ * Asignaciones pendientes de ingresar (sin orden) de una aseguradora: TODAS, de la más reciente a la más antigua
+ * (antes solo se veían las 30 más recientes y las de semanas anteriores no aparecían en la lista).
+ */
 export async function buscarAsignaciones(aseguradoraId: string, q: string) {
   let query = supabase.from('asignaciones').select('id,siniestro,asegurado,telefono,marca,modelo,anio,placas,fecha_asignacion,estatus')
-    .eq('aseguradora_id', aseguradoraId).not('estatus', 'in', '(ingresado,cancelada)').order('fecha_asignacion', { ascending: false }).limit(30)
+    .eq('aseguradora_id', aseguradoraId).not('estatus', 'in', '(ingresado,cancelada)').order('fecha_asignacion', { ascending: false }).order('id', { ascending: false }).limit(1000)
   const s = limpiaBusqueda(q)
-  if (s) query = query.or(['siniestro', 'placas', 'asegurado', 'marca', 'modelo'].map(c => `${c}.ilike.%${s}%`).join(','))
+  if (s) {
+    // Placas sin importar guiones o espacios (MGW072B encuentra MGW-072-B) y siniestro sin espacios
+    const compacto = s.replace(/[\s-]/g, '')
+    const placas = compacto.split('').join('%')
+    query = query.or([...['siniestro', 'placas', 'asegurado', 'marca', 'modelo'].map(c => `${c}.ilike.%${s}%`), `siniestro.ilike.%${compacto}%`, `placas.ilike.%${placas}%`].join(','))
+  }
   const { data } = await query
   return (data ?? []) as AsignacionSel[]
 }
@@ -79,6 +87,7 @@ export function SelectorAsignacion({ aseguradoraId, seleccion, nueva, onElegir, 
           className={`w-full border border-slate-200 bg-white pr-9 pl-9 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 ${movil ? 'rounded-2xl py-3.5 text-base' : 'rounded-lg py-2.5'}`} />
         {q && <button type="button" onClick={() => setQ('')} className="absolute top-1/2 right-2 -translate-y-1/2 p-1 text-slate-400" aria-label="Borrar"><X className="h-4 w-4" /></button>}
       </div>
+      {rows && rows.length > 0 && <div className="px-1 text-[12px] text-slate-500">{q ? `${rows.length} coincidencia${rows.length === 1 ? '' : 's'}` : `${rows.length} asignaciones pendientes · desliza para ver las anteriores o búscala arriba`}</div>}
       <div className={`max-h-72 divide-y divide-slate-100 overflow-y-auto border border-slate-200 bg-white ${caja}`}>
         {!rows ? <div className="p-4 text-center text-sm text-slate-400">Cargando asignaciones…</div>
           : rows.length === 0 ? <div className="flex flex-col items-center gap-1 p-4 text-center text-sm text-slate-500"><ClipboardList className="h-6 w-6 text-slate-300" />{q ? 'Ninguna asignación pendiente coincide' : 'No hay asignaciones pendientes'}</div>
