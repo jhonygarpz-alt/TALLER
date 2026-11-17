@@ -68,6 +68,7 @@ export function NuevaActividad({ ordenId, onDone }: { ordenId?: number; onDone: 
   const [proveedores, setProveedores] = useState<{ id: number; nombre: string }[]>([])
   const [f, setF] = useState({ orden_id: ordenId ? String(ordenId) : '', tarifa_id: '', area: 'hojalateria', actividad: '', pieza: '', tecnico_id: '', proveedor_id: '', costo: '' })
   const [externo, setExterno] = useState(false)
+  const [otroImporte, setOtroImporte] = useState(false)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     supabase.from('tarifas_destajo').select('*').eq('activo', true).order('area').order('importe').order('actividad').then(({ data }) => setTarifas((data ?? []) as Tarifa[]))
@@ -76,18 +77,24 @@ export function NuevaActividad({ ordenId, onDone }: { ordenId?: number; onDone: 
     if (!ordenId) supabase.from('v_ordenes').select('id,folio,marca,modelo,placas').not('etapa', 'in', '(entregado,cancelado)').order('folio').then(({ data }) => setOrdenes(data ?? []))
   }, [ordenId])
   const tarifa = tarifas.find(t => String(t.id) === f.tarifa_id)
+  const importesConcepto = [...new Set(tarifas.filter(t => /^concepto/i.test(t.actividad.trim())).map(t => Number(t.importe)))].sort((a, b) => a - b)
   const tecs = tecnicos.filter(t => !tarifa || t.area === tarifa.area || true)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    if (!tarifa && !f.actividad.trim()) return setError('Elige una tarifa o describe la actividad')
-    if (externo && !f.proveedor_id) return setError('Elige el proveedor que hará el trabajo')
-    if (!externo && !f.tecnico_id) return setError('Elige el técnico responsable')
+    if (externo) {
+      if (!f.proveedor_id) return setError('Elige el proveedor que hará el servicio')
+      if (!(Number(f.costo) > 0)) return setError('Elige el importe por concepto')
+    } else {
+      if (!tarifa && !f.actividad.trim()) return setError('Elige una tarifa o describe la actividad')
+      if (!f.tecnico_id) return setError('Elige el técnico responsable')
+    }
+    const t = externo ? undefined : tarifa
     const { error } = await supabase.from('actividades').insert({
-      orden_id: Number(f.orden_id), tarifa_id: tarifa ? tarifa.id : null, area: tarifa?.area ?? f.area,
-      actividad: f.actividad.trim() || tarifa?.actividad, pieza: f.pieza || null,
+      orden_id: Number(f.orden_id), tarifa_id: t ? t.id : null, area: t?.area ?? f.area,
+      actividad: f.actividad.trim() || t?.actividad || (externo ? `CONCEPTO ${money2(Number(f.costo))}` : undefined), pieza: f.pieza || null,
       tecnico_id: externo ? null : Number(f.tecnico_id), proveedor_id: externo ? Number(f.proveedor_id) : null,
-      costo_proveedor: externo && f.costo ? Number(f.costo) : null,
+      costo_proveedor: externo ? Number(f.costo) : null,
     })
     if (error) return setError(errorTexto(error))
     onDone()
@@ -109,33 +116,42 @@ export function NuevaActividad({ ordenId, onDone }: { ordenId?: number; onDone: 
           ))}
         </div>
       </Field>
-      <Field label={externo ? 'Tipo de trabajo (catálogo)' : 'Tarifa de destajo'} className="sm:col-span-2" hint={externo ? 'Los trabajos de proveedor no generan destajo.' : tarifa ? `Importe de destajo: ${money2(tarifa.importe)}` : 'Sin tarifa la actividad no genera destajo. Configura tarifas en Taller → Técnicos y tarifas.'}>
+      {externo ? <>
+        <Field label="Proveedor *" className="sm:col-span-2" hint={proveedores.length === 0 ? 'No hay proveedores. Agrégalos en Compras → Proveedores.' : undefined}>
+          <select className="input" value={f.proveedor_id} onChange={e => setF({ ...f, proveedor_id: e.target.value })}>
+            <option value="">Selecciona…</option>{proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre.trim()}</option>)}
+          </select>
+        </Field>
+        <Field label="Descripción del servicio" className="sm:col-span-2"><input className="input" value={f.actividad} onChange={e => setF({ ...f, actividad: e.target.value })} placeholder="Ej. Reparación de rin, alineación, cristal…" /></Field>
+        <Field label="Área"><select className="input" value={f.area} onChange={e => setF({ ...f, area: e.target.value })}>{Object.entries(AREAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+        <Field label="Pieza"><input className="input" value={f.pieza} onChange={e => setF({ ...f, pieza: e.target.value })} placeholder="Ej. Rin delantero derecho" /></Field>
+        <Field label="Importe por concepto *" className={otroImporte ? '' : 'sm:col-span-2'} hint="Pago por servicio: no genera destajo. Al validar el trabajo se registra como servicio externo en los costos de la orden.">
+          <select className="input" value={otroImporte ? 'otro' : f.costo} onChange={e => { const v = e.target.value; setOtroImporte(v === 'otro'); setF({ ...f, costo: v === 'otro' ? '' : v }) }}>
+            <option value="">Selecciona…</option>
+            {importesConcepto.map(n => <option key={n} value={n}>CONCEPTO {money2(n)}</option>)}
+            <option value="otro">Otro importe…</option>
+          </select>
+        </Field>
+        {otroImporte && <Field label="Otro importe *"><input className="input" type="number" min="0" step="0.01" autoFocus value={f.costo} onChange={e => setF({ ...f, costo: e.target.value })} placeholder="0.00" /></Field>}
+      </> : <>
+      <Field label="Tarifa de destajo" className="sm:col-span-2" hint={tarifa ? `Importe de destajo: ${money2(tarifa.importe)}` : 'Sin tarifa la actividad no genera destajo. Configura tarifas en Taller → Técnicos y tarifas.'}>
         <select className="input" value={f.tarifa_id} onChange={e => setF({ ...f, tarifa_id: e.target.value })}>
-          <option value="">{externo ? 'Ninguno (descríbelo abajo)' : 'Sin tarifa (no genera destajo)'}</option>
+          <option value="">Sin tarifa (no genera destajo)</option>
           {Object.entries(AREAS).map(([k, v]) => {
             const ts = tarifas.filter(t => t.area === k)
-            return ts.length ? <optgroup key={k} label={v}>{ts.map(t => <option key={t.id} value={t.id}>{t.actividad}{externo ? '' : ` — ${money2(t.importe)}`}</option>)}</optgroup> : null
+            return ts.length ? <optgroup key={k} label={v}>{ts.map(t => <option key={t.id} value={t.id}>{t.actividad} — {money2(t.importe)}</option>)}</optgroup> : null
           })}
         </select>
       </Field>
       {!tarifa && <Field label="Área"><select className="input" value={f.area} onChange={e => setF({ ...f, area: e.target.value })}>{Object.entries(AREAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>}
       <Field label={tarifa ? 'Detalle de la actividad (opcional)' : 'Actividad *'}><input className="input" value={f.actividad} onChange={e => setF({ ...f, actividad: e.target.value })} placeholder={tarifa?.actividad ?? 'Ej. Pulido general'} /></Field>
       <Field label="Pieza intervenida"><input className="input" value={f.pieza} onChange={e => setF({ ...f, pieza: e.target.value })} placeholder="Ej. Salpicadera derecha" /></Field>
-      {externo ? <>
-        <Field label="Proveedor *" hint={proveedores.length === 0 ? 'No hay proveedores. Agrégalos en Compras → Proveedores.' : undefined}>
-          <select className="input" value={f.proveedor_id} onChange={e => setF({ ...f, proveedor_id: e.target.value })}>
-            <option value="">Selecciona…</option>{proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre.trim()}</option>)}
-          </select>
-        </Field>
-        <Field label="Costo acordado con el proveedor" hint="Al validar el trabajo se registra como servicio externo en los costos de la orden.">
-          <input className="input" type="number" min="0" step="0.01" value={f.costo} onChange={e => setF({ ...f, costo: e.target.value })} placeholder="0.00" />
-        </Field>
-      </> : (
       <Field label="Técnico responsable *">
         <select className="input" value={f.tecnico_id} onChange={e => setF({ ...f, tecnico_id: e.target.value })}>
           <option value="">Selecciona…</option>{tecs.map(t => <option key={t.id} value={t.id}>{t.nombre} ({AREAS[t.area]})</option>)}
         </select>
-      </Field>)}
+      </Field>
+      </>}
       {!externo && tecnicos.length === 0 && <p className="text-xs text-amber-700 sm:col-span-2">No hay técnicos registrados. Agrégalos en Taller → Técnicos y tarifas.</p>}
       <div className="flex justify-end gap-2 sm:col-span-2">
         <button type="button" className="btn btn-secondary" onClick={onDone}>Cancelar</button>
@@ -216,7 +232,7 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
                   <div className="mt-0.5 text-xs text-slate-500">
                     {mostrarOrden && a.ordenes && <><Link className="font-semibold text-brand-700 hover:underline" to={`/ordenes/${a.orden_id}?tab=trabajos`}>{a.ordenes.folio}</Link> · {a.ordenes.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'} · </>}
                     {AREAS[a.area]} · {a.proveedor_id
-                      ? <><Badge cls="bg-violet-100 text-violet-700">Proveedor</Badge> <b>{responsable(a)}</b> · Costo {Number(a.costo_proveedor) > 0 ? money2(Number(a.costo_proveedor)) : 'sin capturar'}</>
+                      ? <><Badge cls="bg-violet-100 text-violet-700">Proveedor</Badge> <b>{responsable(a)}</b> · Servicio {Number(a.costo_proveedor) > 0 ? money2(Number(a.costo_proveedor)) : 'sin importe'}</>
                       : <><b>{a.tecnicos?.nombre}</b> · Destajo {a.importe_destajo > 0 ? money2(a.importe_destajo) : 'sin tarifa'}</>}
                     {a.fecha_inicio && ` · Inicio ${fechaHora(a.fecha_inicio)}`}{a.fecha_fin && ` · Fin ${fechaHora(a.fecha_fin)}`}{a.horas != null && ` · ${Number(a.horas) % 0.5 === 0 && Number(a.horas) > 0 && Number(a.horas) <= 12 ? piezasTxt(Number(a.horas)) : `${num(a.horas)} h`}`}
                   </div>

@@ -25,6 +25,7 @@ export default function AsignarTrabajo({ ordenId, folio, onClose, onListo }: { o
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [proveedorId, setProveedorId] = useState('')
   const [costo, setCosto] = useState('')
+  const [otroImporte, setOtroImporte] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -38,6 +39,7 @@ export default function AsignarTrabajo({ ordenId, folio, onClose, onListo }: { o
   const areas = useMemo(() => Object.keys(AREAS).filter(a => tecnicos.some(t => t.area === a) || tarifas.some(t => t.area === a)), [tecnicos, tarifas])
   const tecsArea = tecnicos.filter(t => verTodos || t.area === area)
   const tarifasArea = tarifas.filter(t => t.area === area)
+  const importesConcepto = [...new Set(tarifas.filter(t => /^concepto/i.test(t.actividad.trim())).map(t => Number(t.importe)))].sort((a, b) => a - b)
   const tarifa = tarifas.find(t => String(t.id) === tarifaId)
   const tecnico = tecnicos.find(t => String(t.id) === tecnicoId)
 
@@ -46,13 +48,14 @@ export default function AsignarTrabajo({ ordenId, folio, onClose, onListo }: { o
   async function asignar(e: FormEvent) {
     e.preventDefault(); setError(null)
     if (externo ? !proveedorId : !tecnicoId) return setError(externo ? 'Elige al proveedor que hará el trabajo' : 'Elige al técnico que hará el trabajo')
-    if (!detalle.trim() && (externo || !tarifa)) return setError(externo ? 'Escribe qué trabajo hará el proveedor' : 'Elige una tarifa o escribe qué trabajo es')
+    if (externo && !(Number(costo) > 0)) return setError('Elige el importe por concepto')
+    if (!externo && !detalle.trim() && !tarifa) return setError('Elige una tarifa o escribe qué trabajo es')
     setGuardando(true)
     const { error } = await supabase.from('actividades').insert({
       orden_id: ordenId, tarifa_id: tarifa && !externo ? tarifa.id : null, area: (!externo && tarifa?.area) || area,
-      actividad: detalle.trim() || (!externo ? tarifa?.actividad : undefined), pieza: pieza.trim() || null,
+      actividad: detalle.trim() || (!externo ? tarifa?.actividad : `CONCEPTO ${money2(Number(costo))}`), pieza: pieza.trim() || null,
       tecnico_id: externo ? null : Number(tecnicoId), proveedor_id: externo ? Number(proveedorId) : null,
-      costo_proveedor: externo && costo ? Number(costo) : null,
+      costo_proveedor: externo ? Number(costo) : null,
     })
     setGuardando(false)
     if (error) return setError(errorTexto(error))
@@ -100,8 +103,13 @@ export default function AsignarTrabajo({ ordenId, folio, onClose, onListo }: { o
         </Campo>
 
         {externo ? (
-          <Campo label="3. Costo acordado con el proveedor" ayuda="Al validar el trabajo se registra en los costos de la orden como servicio externo. No genera destajo.">
-            <input className={entrada} type="number" inputMode="decimal" min="0" step="0.01" value={costo} onChange={e => setCosto(e.target.value)} placeholder="0.00" />
+          <Campo label="3. Importe por concepto *" ayuda="Pago por servicio: no genera destajo. Al validar el trabajo se registra en los costos de la orden como servicio externo.">
+            <select className={entrada} value={otroImporte ? 'otro' : costo} onChange={e => { const v = e.target.value; setOtroImporte(v === 'otro'); setCosto(v === 'otro' ? '' : v) }}>
+              <option value="">Selecciona…</option>
+              {importesConcepto.map(n => <option key={n} value={n}>CONCEPTO {money2(n)}</option>)}
+              <option value="otro">Otro importe…</option>
+            </select>
+            {otroImporte && <input className={`${entrada} mt-2`} type="number" inputMode="decimal" min="0" step="0.01" value={costo} onChange={e => setCosto(e.target.value)} placeholder="Escribe el importe" />}
           </Campo>
         ) : (
         <Campo label="3. Tarifa de destajo" ayuda={tarifa ? `Destajo: ${money2(tarifa.importe)} (se genera al validar el trabajo)` : 'Sin tarifa el trabajo no genera destajo.'}>
@@ -112,7 +120,7 @@ export default function AsignarTrabajo({ ordenId, folio, onClose, onListo }: { o
         </Campo>)}
 
         <Campo label="4. Pieza o piezas a trabajar"><input className={entrada} value={pieza} onChange={e => setPieza(e.target.value)} placeholder="Ej. Salpicadera izq. y puerta del. izq." /></Campo>
-        <Campo label={tarifa && !externo ? 'Detalle del trabajo (opcional)' : 'Qué trabajo es *'}><input className={entrada} value={detalle} onChange={e => setDetalle(e.target.value)} placeholder={tarifa?.actividad.trim() ?? 'Ej. Preparar y pintar'} /></Campo>
+        <Campo label={externo ? 'Descripción del servicio (opcional)' : tarifa ? 'Detalle del trabajo (opcional)' : 'Qué trabajo es *'}><input className={entrada} value={detalle} onChange={e => setDetalle(e.target.value)} placeholder={tarifa?.actividad.trim() ?? 'Ej. Preparar y pintar'} /></Campo>
 
         <button className={botonPrimario} disabled={guardando}>{guardando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />} Asignar trabajo</button>
       </form>
