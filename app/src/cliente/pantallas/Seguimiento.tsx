@@ -65,7 +65,7 @@ export default function Seguimiento({ token, onSalir }: { token: string; onSalir
 
   return (
     <div className="pb-[calc(env(safe-area-inset-bottom)+24px)]">
-      <header className="relative overflow-hidden rounded-b-[28px] bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 px-5 pt-[calc(env(safe-area-inset-top)+14px)] pb-16 text-white">
+      <header className="relative overflow-hidden rounded-b-[28px] bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 px-5 pt-[calc(var(--sat)+14px)] pb-16 text-white">
         <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden className="pointer-events-none absolute right-0 bottom-0 h-40 w-[62%] object-cover object-[72%_55%] opacity-80 [mask-image:linear-gradient(to_left,black_40%,transparent)]" />
         <div className="relative flex items-center justify-between">
           {logo ? <img src={logo} alt={d.taller?.nombre} className="h-10 rounded-xl bg-white object-contain px-1" /> : <span className="font-bold">{d.taller?.nombre}</span>}

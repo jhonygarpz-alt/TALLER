@@ -7,7 +7,7 @@ import { ETAPAS, type Etapa } from '../lib/format'
 export function Barra({ titulo, sub, atras, accion }: { titulo: string; sub?: ReactNode; atras?: boolean | string; accion?: ReactNode }) {
   const nav = useNavigate()
   return (
-    <header className="sticky top-0 z-30 overflow-hidden bg-gradient-to-r from-navy-950 to-navy-800 pt-[env(safe-area-inset-top)] text-white shadow-lg shadow-black/10">
+    <header className="sticky top-0 z-30 overflow-hidden bg-gradient-to-r from-navy-950 to-navy-800 pt-[var(--sat)] text-white shadow-lg shadow-black/10">
       <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden className="pointer-events-none absolute inset-y-0 right-0 h-full w-1/2 object-cover object-[70%_50%] opacity-60 [mask-image:linear-gradient(to_left,black_30%,transparent)]" />
       <div className="relative flex h-14 items-center gap-1 px-2">
         {atras ? (
@@ -45,7 +45,7 @@ export function EncabezadoClaro({ titulo, sub, icono: Icono = ClipboardList, atr
   const nav = useNavigate()
   const volver = () => (typeof atras === 'function' ? atras() : typeof atras === 'string' ? nav(atras) : nav(-1))
   return (
-    <header className="relative overflow-hidden bg-gradient-to-b from-brand-50 via-white to-slate-50 pt-[env(safe-area-inset-top)]">
+    <header className="relative overflow-hidden bg-gradient-to-b from-brand-50 via-white to-slate-50 pt-[var(--sat)]">
       <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden className="pointer-events-none absolute top-0 right-0 h-[104px] w-[72%] object-cover object-[70%_45%] opacity-90 [mask-image:linear-gradient(to_left,black_40%,transparent),linear-gradient(to_bottom,black_50%,transparent)] [mask-composite:intersect]" />
       <div className="relative px-4 pt-2 pb-3">
         <div className="flex h-11 items-center justify-between">

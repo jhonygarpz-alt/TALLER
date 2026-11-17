@@ -199,7 +199,7 @@ export default function Orden() {
 function BarraBlanca({ titulo, derecha }: { titulo: string; derecha?: ReactNode }) {
   const nav = useNavigate()
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/95 pt-[env(safe-area-inset-top)] backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/95 pt-[var(--sat)] backdrop-blur">
       <div className="flex h-14 items-center gap-1 px-2">
         <button onClick={() => (window.history.length > 1 ? nav(-1) : nav('/ordenes'))} className="flex h-11 w-11 items-center justify-center rounded-full text-slate-800 active:bg-slate-100" aria-label="Regresar"><ArrowLeft className="h-6 w-6" /></button>
         <h1 className="flex-1 text-[19px] font-extrabold text-slate-900">{titulo}</h1>
@@ -342,7 +342,7 @@ export function VisorFoto({ foto, onClose }: { foto: FotoRow; onClose: () => voi
   const url = useUrlFirmada(foto.path)
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black" onClick={onClose}>
-      <div className="flex items-center justify-between p-4 pt-[calc(env(safe-area-inset-top)+12px)] text-white"><span className="text-sm">{foto.descripcion || NOMBRE_CAT[foto.categoria]}</span><span className="text-xs text-white/60">{fechaHora(foto.created_at)}</span></div>
+      <div className="flex items-center justify-between p-4 pt-[calc(var(--sat)+12px)] text-white"><span className="text-sm">{foto.descripcion || NOMBRE_CAT[foto.categoria]}</span><span className="text-xs text-white/60">{fechaHora(foto.created_at)}</span></div>
       <div className="flex flex-1 items-center justify-center">{url ? <img src={url} alt="" className="max-h-full max-w-full object-contain" /> : <Loader2 className="h-8 w-8 animate-spin text-white" />}</div>
       <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+16px)] text-center text-sm text-white/70">Toca para cerrar</div>
     </div>

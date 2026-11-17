@@ -61,7 +61,7 @@ export default function Ordenes() {
   const elegir = (id: string) => { const n = new URLSearchParams(); n.set('filtro', id); setSp(n, { replace: true }) }
   return (
     <div>
-      <header className="relative overflow-hidden rounded-b-[28px] bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 pt-[env(safe-area-inset-top)] pb-7 text-white">
+      <header className="relative overflow-hidden rounded-b-[28px] bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 pt-[var(--sat)] pb-7 text-white">
         <img src={`${import.meta.env.BASE_URL}img/banner-taller.webp`} alt="" aria-hidden className="pointer-events-none absolute right-0 bottom-0 h-36 w-[62%] object-cover object-[72%_55%] opacity-90 [mask-image:linear-gradient(to_left,black_45%,transparent)]" />
         <div className="relative flex h-14 items-center justify-between px-4">
           <button onClick={() => setRecarga(r => r + 1)} className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full active:bg-white/15" aria-label="Actualizar"><RefreshCw className="h-5 w-5" /></button>
@@ -76,7 +76,7 @@ export default function Ordenes() {
         </div>
       </header>
 
-      <div className="sticky top-0 z-20 -mt-4 space-y-3 bg-gradient-to-b from-slate-50 via-slate-50 to-slate-50/90 px-4 pt-[calc(env(safe-area-inset-top)+4px)] pb-2 backdrop-blur">
+      <div className="sticky top-0 z-20 -mt-4 space-y-3 bg-gradient-to-b from-slate-50 via-slate-50 to-slate-50/90 px-4 pt-[calc(var(--sat)+4px)] pb-2 backdrop-blur">
         <div className="relative">
           <Search className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-slate-400" />
           <input ref={input} value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar OT, vehículo, placas o cliente…" enterKeyHint="search"

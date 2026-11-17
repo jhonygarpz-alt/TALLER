@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { BandaEstado } from '../lib/barraEstado'
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Bell, CalendarDays, CarFront, ClipboardList, House, LayoutGrid, LogOut, RefreshCw, UserRound, BarChart3, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -14,24 +15,6 @@ import Reportes from './pantallas/Reportes'
 import Ajustes from './pantallas/Ajustes'
 
 const BASE = import.meta.env.BASE_URL
-/**
- * Altura de la barra de estado del celular (hora, señal, batería). En iPhone con la app instalada
- * a veces el navegador reporta 0 aunque el contenido quede debajo de la barra: en ese caso se usa 47px.
- */
-function useBarraEstado() {
-  useEffect(() => {
-    const raiz = document.documentElement
-    const m = document.createElement('div')
-    m.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top);visibility:hidden'
-    document.body.appendChild(m)
-    const alto = m.getBoundingClientRect().height
-    m.remove()
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
-    const instalada = window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true
-    raiz.style.setProperty('--sat', alto > 0 ? `${alto}px` : ios && instalada ? '47px' : '0px')
-  }, [])
-}
-
 const leerPeriodo = (): Periodo => { try { return (localStorage.getItem('gerencia.periodo') as Periodo) || 'hoy' } catch { return 'hoy' } }
 
 export interface PropsPantalla { datos: Tablero; periodo: Periodo }
@@ -163,7 +146,6 @@ const TITULOS: Record<string, [string, string]> = {
 }
 
 function Contenido() {
-  useBarraEstado()
   const { pathname } = useLocation()
   const [periodo, setP] = useState<Periodo>(leerPeriodo)
   const setPeriodo = (p: Periodo) => { setP(p); try { localStorage.setItem('gerencia.periodo', p) } catch { /* sin almacenamiento */ } }
@@ -174,7 +156,7 @@ function Contenido() {
     : el(datos)
   return (
     <div className="mx-auto min-h-screen max-w-lg bg-[#f1f7f9] text-[#193344]" style={{ fontFamily: "'Plus Jakarta Sans', Inter, system-ui, sans-serif" }}>
-      <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[var(--sat)] bg-[#f1f7f9]/95 backdrop-blur" />
+      <BandaEstado translucida={false} />
       <Encabezado />
       {titulo
         ? <div className="px-5 pt-1 pb-3"><h1 className="text-[26px] font-bold tracking-[-.02em]">{titulo[0]}</h1><p className="text-[14px] text-[#4f6672]">{titulo[1]}</p></div>

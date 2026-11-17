@@ -48,7 +48,7 @@ export default function Encuesta({ token }: { token: string }) {
   const chip = (on: boolean) => `rounded-full px-4 py-2 text-sm font-semibold ring-1 transition ${on ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-slate-600 ring-slate-200'}`
   return (
     <div className="min-h-screen bg-slate-50 pb-[calc(env(safe-area-inset-bottom)+110px)]">
-      <header className="bg-gradient-to-br from-navy-950 to-navy-800 px-4 pt-[calc(env(safe-area-inset-top)+8px)] pb-6 text-white">
+      <header className="bg-gradient-to-br from-navy-950 to-navy-800 px-4 pt-[calc(var(--sat)+8px)] pb-6 text-white">
         <button onClick={() => nav(-1)} className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full active:bg-white/15" aria-label="Regresar"><ArrowLeft className="h-6 w-6" /></button>
         <h1 className="mt-2 text-2xl font-extrabold">¿Cómo te atendimos?</h1>
         <p className="text-sm text-cyan-100/80">Servicio {o.folio} · tu opinión nos ayuda a mejorar</p>

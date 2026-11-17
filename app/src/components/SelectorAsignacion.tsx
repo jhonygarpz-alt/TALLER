@@ -57,9 +57,13 @@ export function SelectorAsignacion({ aseguradoraId, seleccion, nueva, onElegir, 
   useEffect(() => {
     if (!aseguradoraId || seleccion || nueva) return
     setRows(null)
-    const t = setTimeout(() => buscarAsignaciones(aseguradoraId, q).then(setRows), q ? 300 : 0)
+    const t = setTimeout(() => buscarAsignaciones(aseguradoraId, q).then(r => {
+      setRows(r)
+      // Si la búsqueda deja una sola asignación, se elige sola (antes había que tocarla y no era obvio)
+      if (q.trim().length >= 3 && r.length === 1) onElegir(r[0])
+    }), q ? 400 : 0)
     return () => clearTimeout(t)
-  }, [aseguradoraId, q, seleccion, nueva])
+  }, [aseguradoraId, q, seleccion, nueva]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const caja = movil ? 'rounded-2xl' : 'rounded-xl'
   if (seleccion) return (
@@ -87,7 +91,7 @@ export function SelectorAsignacion({ aseguradoraId, seleccion, nueva, onElegir, 
           className={`w-full border border-slate-200 bg-white pr-9 pl-9 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 ${movil ? 'rounded-2xl py-3.5 text-base' : 'rounded-lg py-2.5'}`} />
         {q && <button type="button" onClick={() => setQ('')} className="absolute top-1/2 right-2 -translate-y-1/2 p-1 text-slate-400" aria-label="Borrar"><X className="h-4 w-4" /></button>}
       </div>
-      {rows && rows.length > 0 && <div className="px-1 text-[12px] text-slate-500">{q ? `${rows.length} coincidencia${rows.length === 1 ? '' : 's'}` : `${rows.length} asignaciones pendientes · desliza para ver las anteriores o búscala arriba`}</div>}
+      {rows && rows.length > 0 && <div className="px-1 text-[12px] text-slate-500">{q ? `${rows.length} coincidencia${rows.length === 1 ? '' : 's'} · toca «Elegir»` : `${rows.length} asignaciones pendientes · toca «Elegir» en la del vehículo (o búscala arriba)`}</div>}
       <div className={`max-h-72 divide-y divide-slate-100 overflow-y-auto border border-slate-200 bg-white ${caja}`}>
         {!rows ? <div className="p-4 text-center text-sm text-slate-400">Cargando asignaciones…</div>
           : rows.length === 0 ? <div className="flex flex-col items-center gap-1 p-4 text-center text-sm text-slate-500"><ClipboardList className="h-6 w-6 text-slate-300" />{q ? 'Ninguna asignación pendiente coincide' : 'No hay asignaciones pendientes'}</div>
@@ -97,7 +101,10 @@ export function SelectorAsignacion({ aseguradoraId, seleccion, nueva, onElegir, 
                 <div className="truncate text-sm font-semibold text-slate-900">{a.siniestro}</div>
                 <div className="truncate text-xs text-slate-500">{a.asegurado} · {[a.marca, a.modelo, a.anio].filter(Boolean).join(' ')} {a.placas && `· ${a.placas}`}</div>
               </div>
-              <span className="shrink-0 text-[11px] text-slate-400">{fecha(a.fecha_asignacion)}</span>
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <span className="rounded-full bg-brand-600 px-3 py-1 text-xs font-bold text-white">Elegir</span>
+                <span className="text-[11px] text-slate-400">{fecha(a.fecha_asignacion)}</span>
+              </span>
             </button>
           ))}
       </div>

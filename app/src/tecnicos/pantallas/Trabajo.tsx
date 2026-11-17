@@ -62,7 +62,7 @@ export default function TrabajoDetalle() {
       <div className="relative">
         <Miniatura auto={v ?? undefined} path={portada} className="h-56 w-full rounded-none" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/55" />
-        <button onClick={() => (window.history.length > 1 ? nav(-1) : nav('/'))} className="absolute top-[calc(env(safe-area-inset-top)+10px)] left-3 flex h-11 w-11 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur" aria-label="Regresar"><ArrowLeft className="h-6 w-6" /></button>
+        <button onClick={() => (window.history.length > 1 ? nav(-1) : nav('/'))} className="absolute top-[calc(var(--sat)+10px)] left-3 flex h-11 w-11 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur" aria-label="Regresar"><ArrowLeft className="h-6 w-6" /></button>
         <div className="absolute inset-x-4 bottom-3 text-white">
           <div className="text-2xl font-extrabold drop-shadow">{v?.marca} {v?.modelo} {v?.anio ?? ''}</div>
           <div className="text-sm opacity-90">{v?.placas ?? 's/placas'}{v?.color && ` · ${v.color}`} · {t.ordenes?.folio}{t.ordenes?.os_bitacora && ` · OS ${t.ordenes.os_bitacora}`}</div>
