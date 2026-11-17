@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowDownUp, Car, ChevronLeft, ChevronRight, Columns3, Download, LayoutGrid, Rows3, Search, SlidersHorizontal, X } from 'lucide-react'
+import { ArrowDownUp, CalendarDays, Car, ChevronLeft, ChevronRight, Columns3, Download, LayoutGrid, Rows3, Search, SlidersHorizontal, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useAlertas } from '../../lib/alertas'
@@ -28,7 +28,10 @@ export function ListaOrdenes() {
   const nav = useNavigate()
   const al = useAlertas()
   const { puede } = useAuth()
-  const filtro = sp.get('filtro') ?? (sp.get('q') ? 'todos' : 'activos')
+  // Fecha de ingreso (en la URL para poder compartir el enlace). Con fechas, por defecto se busca en TODAS las órdenes.
+  const desde = sp.get('ingreso_desde') ?? ''
+  const hasta = sp.get('ingreso_hasta') ?? ''
+  const filtro = sp.get('filtro') ?? (sp.get('q') || desde || hasta ? 'todos' : 'activos')
   const q = sp.get('q') ?? ''
   const [busca, setBusca] = useState(q)
   const [rows, setRows] = useState<VOrden[]>([])
@@ -37,8 +40,12 @@ export function ListaOrdenes() {
   const [vista, setVistaS] = useState<Vista>(leerVista)
   const [tecnico, setTecnico] = useState('')
   const [aseg, setAseg] = useState('')
-  const [desde, setDesde] = useState('')
-  const [hasta, setHasta] = useState('')
+  const setFechas = (d: string, h: string) => {
+    const n = new URLSearchParams(sp)
+    if (d) n.set('ingreso_desde', d); else n.delete('ingreso_desde')
+    if (h) n.set('ingreso_hasta', h); else n.delete('ingreso_hasta')
+    setSp(n)
+  }
   const [orden, setOrden] = useState<Orden>('reciente')
   const [pagina, setPagina] = useState(0)
   const [avance, setAvance] = useState<Record<number, number>>({})
@@ -58,6 +65,8 @@ export function ListaOrdenes() {
     else if (filtro === 'retrasados') query = query.not('etapa', 'in', '(entregado,cancelado)').lt('fecha_compromiso', hoyISO())
     else if (filtro === 'particulares') query = query.eq('tipo', 'particular').not('etapa', 'in', '(entregado,cancelado)')
     else if (filtro === 'aseguradora') query = query.eq('tipo', 'aseguradora').not('etapa', 'in', '(entregado,cancelado)')
+    if (desde) query = query.gte('fecha_ingreso', new Date(desde + 'T00:00:00').toISOString())
+    if (hasta) query = query.lt('fecha_ingreso', new Date(new Date(hasta + 'T00:00:00').getTime() + 86400000).toISOString())
     const s = limpiaBusqueda(q)
     if (s) query = query.or(['folio', 'os_bitacora', 'placas', 'siniestro', 'cliente_nombre', 'marca', 'modelo'].map(c => `${c}.ilike.%${s}%`).join(','))
     query.then(({ data }) => { setRows((data ?? []) as VOrden[]); setCargando(false) })
@@ -66,7 +75,7 @@ export function ListaOrdenes() {
         .or(['siniestro', 'asegurado', 'placas', 'telefono'].map(c => `${c}.ilike.%${s}%`).join(',')).limit(20)
         .then(({ data }) => setAsigs(data ?? []))
     } else setAsigs([])
-  }, [filtro, q, al.proximas, al.detenidas, al.sinActualizar])
+  }, [filtro, q, desde, hasta, al.proximas, al.detenidas, al.sinActualizar])
 
   // Avance de trabajos (terminados / total) e importe autorizado de las órdenes cargadas (solo lectura)
   useEffect(() => {
@@ -99,10 +108,24 @@ export function ListaOrdenes() {
   const pag = vistas.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA)
   const extras = [tecnico, aseg, desde, hasta].filter(Boolean).length
 
-  const setFiltro = (f: string) => { const n = new URLSearchParams(); n.set('filtro', f); setSp(n) }
+  const setFiltro = (f: string) => { const n = new URLSearchParams(); n.set('filtro', f); if (desde) n.set('ingreso_desde', desde); if (hasta) n.set('ingreso_hasta', hasta); setSp(n) }
   const etapaSel = filtro.startsWith('etapa:') ? filtro.slice(6) : ''
   const etapaLabel = etapaSel ? etapaSel.split(',').map(e => ETAPAS[e as Etapa]?.label).join(' / ') : null
-  const limpiar = () => { setSp(new URLSearchParams()); setTecnico(''); setAseg(''); setDesde(''); setHasta(''); setOrden('reciente') }
+  const limpiar = () => { setSp(new URLSearchParams()); setTecnico(''); setAseg(''); setOrden('reciente') }
+  // Accesos rápidos de fecha de ingreso
+  const fmt = (d: Date) => d.toLocaleDateString('en-CA')
+  const hoyD = new Date(); hoyD.setHours(12, 0, 0, 0)
+  const mas = (n: number) => { const d = new Date(hoyD); d.setDate(d.getDate() + n); return fmt(d) }
+  const lunes = (() => { const d = new Date(hoyD); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return fmt(d) })()
+  const PRESETS: { id: string; label: string; d: string; h: string }[] = [
+    { id: 'hoy', label: 'Hoy', d: fmt(hoyD), h: fmt(hoyD) },
+    { id: 'ayer', label: 'Ayer', d: mas(-1), h: mas(-1) },
+    { id: 'semana', label: 'Esta semana', d: lunes, h: fmt(hoyD) },
+    { id: '7d', label: 'Últimos 7 días', d: mas(-6), h: fmt(hoyD) },
+    { id: 'mes', label: 'Este mes', d: fmt(new Date(hoyD.getFullYear(), hoyD.getMonth(), 1)), h: fmt(hoyD) },
+    { id: 'mes_ant', label: 'Mes anterior', d: fmt(new Date(hoyD.getFullYear(), hoyD.getMonth() - 1, 1)), h: fmt(new Date(hoyD.getFullYear(), hoyD.getMonth(), 0)) },
+  ]
+  const presetActivo = PRESETS.find(x => x.d === desde && x.h === hasta)?.id
 
   function exportar() {
     descargarCSV('ordenes', vistas.map(o => ({ ...o, etapa: ETAPAS[o.etapa].label, retrasado: o.retrasado ? 'Sí' : 'No' })), [
@@ -159,10 +182,6 @@ export function ListaOrdenes() {
         <select className="input !w-auto !rounded-full !py-2" value={aseg} onChange={e => setAseg(e.target.value)} aria-label="Filtrar por aseguradora">
           <option value="">Aseguradora y particular</option>{aseguradoras.map(t => <option key={t}>{t}</option>)}
         </select>
-        <label className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#66818f]">Ingreso
-          <input type="date" className="input !w-auto !rounded-full !py-1.5" value={desde} onChange={e => setDesde(e.target.value)} aria-label="Ingreso desde" />–
-          <input type="date" className="input !w-auto !rounded-full !py-1.5" value={hasta} onChange={e => setHasta(e.target.value)} aria-label="Ingreso hasta" />
-        </label>
         <label className="flex items-center gap-1.5 text-[12px] text-[#66818f]"><ArrowDownUp className="h-4 w-4" />
           <select className="input !w-auto !rounded-full !py-2" value={orden} onChange={e => setOrden(e.target.value as Orden)} aria-label="Ordenar por">
             {Object.entries(ORDENES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -170,6 +189,23 @@ export function ListaOrdenes() {
         </label>
         {(q || filtro !== 'activos' || extras > 0) && <button className="btn btn-ghost btn-sm" onClick={limpiar}><X className="h-4 w-4" /> Limpiar</button>}
         <button className="btn btn-secondary btn-sm ml-auto" onClick={exportar} title="Descargar las órdenes filtradas"><Download className="h-4 w-4" /> Excel</button>
+      </div>
+
+      {/* Filtro por fecha de ingreso */}
+      <div className={`flex flex-wrap items-center gap-2 rounded-[20px] border p-2.5 backdrop-blur ${desde || hasta ? 'border-[#93d0dd] bg-[#eef8fa]' : 'border-[#dbe9ee] bg-white/75'}`}>
+        <span className="ml-1 flex items-center gap-1.5 text-[13px] font-semibold text-[#17657c]"><CalendarDays className="h-4 w-4" /> Fecha de ingreso</span>
+        {PRESETS.map(x => (
+          <button key={x.id} type="button" onClick={() => presetActivo === x.id ? setFechas('', '') : setFechas(x.d, x.h)}
+            className={`rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition ${presetActivo === x.id ? 'bg-gradient-to-b from-[#2bb0c8] to-[#1d8299] text-white shadow' : 'bg-white text-[#40606e] ring-1 ring-[#d7e7ec] hover:ring-[#93d0dd]'}`}>{x.label}</button>
+        ))}
+        <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#66818f]">
+          Del <input type="date" className="input !w-auto !rounded-full !py-1.5" value={desde} max={hasta || undefined} onChange={e => setFechas(e.target.value, hasta)} aria-label="Ingreso desde" />
+          al <input type="date" className="input !w-auto !rounded-full !py-1.5" value={hasta} min={desde || undefined} onChange={e => setFechas(desde, e.target.value)} aria-label="Ingreso hasta" />
+        </span>
+        {(desde || hasta) && <>
+          <span className="text-[12px] text-[#17657c]">{cargando ? 'Buscando…' : `${vistas.length} ${vistas.length === 1 ? 'orden ingresada' : 'órdenes ingresadas'}`}{filtro !== 'todos' ? ` · solo «${FILTROS[filtro] ?? 'etapa elegida'}»` : ''}</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFechas('', '')}><X className="h-4 w-4" /> Quitar fechas</button>
+        </>}
       </div>
 
       {asigs.length > 0 && (
