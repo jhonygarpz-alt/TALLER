@@ -1,6 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BandaEstado } from '../lib/barraEstado'
+import { useActualizacionAutomatica } from '../lib/version'
+
+function Actualizador() { useActualizacionAutomatica(); return null }
+
 import { HashRouter } from 'react-router-dom'
 import '../index.css'
 import { AuthProvider } from '../lib/auth'
@@ -16,7 +20,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
-      <BandaEstado /><AuthProvider><AppMovil /></AuthProvider>
+      <Actualizador /><BandaEstado /><AuthProvider><AppMovil /></AuthProvider>
     </HashRouter>
   </StrictMode>,
 )

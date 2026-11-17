@@ -1,6 +1,10 @@
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BandaEstado } from '../lib/barraEstado'
+import { useActualizacionAutomatica } from '../lib/version'
+
+function Actualizador() { useActualizacionAutomatica(); return null }
+
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import '../index.css'
 import { leerToken } from './api'
@@ -28,5 +32,5 @@ function AppCliente() {
 }
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode><HashRouter><BandaEstado /><AppCliente /></HashRouter></StrictMode>,
+  <StrictMode><HashRouter><Actualizador /><BandaEstado /><AppCliente /></HashRouter></StrictMode>,
 )
