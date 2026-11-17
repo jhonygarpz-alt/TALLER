@@ -135,7 +135,7 @@ export default function CompraDetalle() {
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Proveedor">
             <select className="input" value={c.proveedor_id ?? ''} disabled={!editable} onChange={e => run(supabase.from('compras').update({ proveedor_id: e.target.value || null }).eq('id', id))}>
-              <option value="">—</option>{proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              <option value="">—</option>{proveedores.filter(p => p.activo !== false || p.id === c.proveedor_id).map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
             </select>
           </Field>
           <Field label="Fecha"><input className="input" disabled value={fecha(c.fecha)} /></Field>
@@ -215,7 +215,7 @@ export default function CompraDetalle() {
         )}
         {editable && (
           <form className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3 sm:grid-cols-[1.5fr_8rem_6rem_1fr_auto]" onSubmit={(e: FormEvent) => { e.preventDefault(); run(supabase.from('cotizaciones').insert({ compra_id: id, proveedor_id: Number(fc.proveedor_id), importe: Number(fc.importe), dias_entrega: fc.dias_entrega ? Number(fc.dias_entrega) : null, notas: fc.notas || null }), () => setFc({ proveedor_id: '', importe: '', dias_entrega: '', notas: '' })) }}>
-            <Field label="Proveedor *"><select className="input" required value={fc.proveedor_id} onChange={e => setFc({ ...fc, proveedor_id: e.target.value })}><option value="">—</option>{proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
+            <Field label="Proveedor *"><select className="input" required value={fc.proveedor_id} onChange={e => setFc({ ...fc, proveedor_id: e.target.value })}><option value="">—</option>{proveedores.filter(p => p.activo !== false).map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
             <Field label="Importe *"><input className="input" type="number" step="0.01" min="0" required value={fc.importe} onChange={e => setFc({ ...fc, importe: e.target.value })} /></Field>
             <Field label="Días"><input className="input" type="number" min="0" value={fc.dias_entrega} onChange={e => setFc({ ...fc, dias_entrega: e.target.value })} /></Field>
             <Field label="Notas"><input className="input" value={fc.notas} onChange={e => setFc({ ...fc, notas: e.target.value })} /></Field>

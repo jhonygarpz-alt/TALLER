@@ -19,7 +19,7 @@ const CATEGORIAS: { id: CategoriaFoto; label: string }[] = [
 ]
 const NOMBRE_CAT: Record<string, string> = { recepcion: 'Recepción', diagnostico: 'Diagnóstico', dano: 'Daños', proceso: 'Proceso', entrega: 'Entrega', actividad: 'Trabajos', conformidad: 'Conformidad', pieza_retirada: 'Piezas retiradas', factura: 'Facturas' }
 
-interface Act { id: number; actividad: string; area: string; estado: string; importe_destajo: number; tecnico_id: number; fecha_inicio: string | null; fecha_fin: string | null; tecnicos?: { nombre: string; perfil_id: string | null } | null }
+interface Act { id: number; actividad: string; area: string; estado: string; importe_destajo: number; tecnico_id: number | null; fecha_inicio: string | null; fecha_fin: string | null; tecnicos?: { nombre: string; perfil_id: string | null } | null; proveedores?: { nombre: string } | null }
 
 export default function Orden() {
   const { id } = useParams()
@@ -43,7 +43,7 @@ export default function Orden() {
     const [a, b, c] = await Promise.all([
       supabase.from('v_ordenes').select('*').eq('id', id).single(),
       supabase.from('fotos').select('*').eq('orden_id', id).order('created_at', { ascending: false }),
-      supabase.from('actividades').select('id,actividad,area,estado,importe_destajo,tecnico_id,fecha_inicio,fecha_fin,tecnicos(nombre,perfil_id)').eq('orden_id', id).neq('estado', 'cancelada').order('id'),
+      supabase.from('actividades').select('id,actividad,area,estado,importe_destajo,tecnico_id,fecha_inicio,fecha_fin,tecnicos(nombre,perfil_id),proveedores(nombre)').eq('orden_id', id).neq('estado', 'cancelada').order('id'),
     ])
     if (a.error) setError(errorTexto(a.error))
     setO(a.data as VOrden); setFotos((b.data ?? []) as FotoRow[]); setActs((c.data ?? []) as unknown as Act[])
@@ -393,7 +393,7 @@ export function Trabajos({ acts, orden, onCambio, miPerfil }: { acts: Act[]; ord
         return (
           <div key={a.id} className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0"><div className="font-bold">{a.actividad}</div><div className="text-sm text-slate-500">{a.tecnicos?.nombre}{mio && ' (tú)'}</div></div>
+              <div className="min-w-0"><div className="font-bold">{a.actividad}</div><div className="text-sm text-slate-500">{a.tecnicos?.nombre ?? <><span className="mr-1 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">Proveedor</span>{a.proveedores?.nombre?.trim()}</>}{mio && ' (tú)'}</div></div>
               <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${est?.badge ?? 'bg-slate-100'}`}>{est?.label ?? a.estado}</span>
             </div>
             {orden.etapa !== 'entregado' && (

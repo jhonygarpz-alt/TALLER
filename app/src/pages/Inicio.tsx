@@ -72,7 +72,7 @@ export default function Inicio() {
     supabase.from('actividades').select('id', { count: 'exact', head: true }).in('estado', ['asignada', 'en_proceso', 'terminada']).then(r => setPendientes(r.count ?? 0))
     supabase.from('v_ordenes').select('id,tipo,aseguradora_nombre,fecha_ingreso,fecha_entrega,etapa,entregado_a_tiempo,fecha_compromiso').neq('etapa', 'cancelado').limit(5000)
       .then(({ data }) => setOrdenes((data ?? []) as OrdenMin[]))
-    supabase.from('actividades').select('estado, fecha_fin, tecnicos(nombre)').in('estado', ['terminada', 'validada']).gte('fecha_fin', desdeConsulta).limit(5000)
+    supabase.from('actividades').select('estado, fecha_fin, tecnicos(nombre)').in('estado', ['terminada', 'validada']).not('tecnico_id', 'is', null).gte('fecha_fin', desdeConsulta).limit(5000)
       .then(({ data }) => setActs((data ?? []) as unknown as ActMin[]))
     if (verFin) {
       supabase.from('v_rentabilidad').select('*').eq('etapa', 'entregado').gte('fecha_entrega', desdeConsulta).lt('fecha_entrega', hasta)

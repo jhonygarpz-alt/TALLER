@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeftRight, Download, Package, Paintbrush, Plus, ShoppingCart } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Download, Package, Paintbrush, Plus, ShoppingCart, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 
@@ -51,7 +51,7 @@ function MaterialForm({ m, proveedores, onDone }: { m: Material | null; proveedo
       <Field label="Categoría"><input className="input" list="cats" value={f.categoria} onChange={set('categoria')} /></Field>
       <Field label="Unidad de medida"><UnidadSelect value={f.unidad} onChange={v => setF({ ...f, unidad: v })} /></Field>
       <Field label="Nivel mínimo"><input className="input" type="number" step="0.001" min="0" value={f.minimo} onChange={set('minimo')} /></Field>
-      <Field label="Proveedor habitual"><select className="input" value={f.proveedor_id} onChange={set('proveedor_id')}><option value="">—</option>{proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
+      <Field label="Proveedor habitual"><select className="input" value={f.proveedor_id} onChange={set('proveedor_id')}><option value="">—</option>{proveedores.filter(p => p.activo !== false || String(p.id) === String(f.proveedor_id)).map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.activo} onChange={e => setF({ ...f, activo: e.target.checked })} /> Activo</label>
       <datalist id="cats">{['Pintura base', 'Barniz / transparente', 'Primer', 'Thinner / solventes', 'Lijas y abrasivos', 'Masillas', 'Cintas y enmascarado', 'Pulido', 'Refacciones de carrocería'].map(c => <option key={c} value={c} />)}</datalist>
       {!m && <p className="text-xs text-slate-500 sm:col-span-2">La existencia inicial se registra con “Ajustar” (inventario inicial) o al recibir una compra.</p>}
@@ -229,7 +229,7 @@ export function TabCompras() {
       {nueva && <Modal title="Nueva requisición" onClose={() => setNueva(false)}>
         <form onSubmit={crear} className="space-y-3">
           <ErrorMsg error={error} />
-          <Field label="Proveedor (puede definirse después de cotizar)"><select className="input" value={f.proveedor_id} onChange={e => setF({ ...f, proveedor_id: e.target.value })}><option value="">—</option>{proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
+          <Field label="Proveedor (puede definirse después de cotizar)"><select className="input" value={f.proveedor_id} onChange={e => setF({ ...f, proveedor_id: e.target.value })}><option value="">—</option>{proveedores.filter(p => p.activo !== false || String(p.id) === String(f.proveedor_id)).map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
           <Field label="Fecha"><input className="input" type="date" value={f.fecha} onChange={e => setF({ ...f, fecha: e.target.value })} /></Field>
           <Field label="Notas / justificación"><textarea className="input" rows={2} value={f.notas} onChange={e => setF({ ...f, notas: e.target.value })} /></Field>
           <div className="flex justify-end gap-2"><button type="button" className="btn btn-secondary" onClick={() => setNueva(false)}>Cancelar</button><button className="btn btn-primary">Crear y agregar partidas</button></div>
@@ -246,7 +246,8 @@ export function TabProveedores() {
   const [edit, setEdit] = useState<Proveedor | 'nuevo' | null>(null)
   const [f, setF] = useState({ nombre: '', contacto: '', telefono: '', email: '', rfc: '' })
   const [error, setError] = useState<string | null>(null)
-  const cargar = () => supabase.from('proveedores').select('*').order('nombre').then(({ data }) => setRows((data ?? []) as Proveedor[]))
+  const [aviso, setAviso] = useState<string | null>(null)
+  const cargar = () => supabase.from('proveedores').select('*').order('activo', { ascending: false }).order('nombre').then(({ data }) => setRows((data ?? []) as Proveedor[]))
   useEffect(() => { cargar() }, [])
   const abrir = (p: Proveedor | 'nuevo') => { setEdit(p); setError(null); setF(p === 'nuevo' ? { nombre: '', contacto: '', telefono: '', email: '', rfc: '' } : { nombre: p.nombre, contacto: p.contacto ?? '', telefono: p.telefono ?? '', email: p.email ?? '', rfc: p.rfc ?? '' }) }
   async function guardar(e: FormEvent) {
@@ -256,14 +257,35 @@ export function TabProveedores() {
     setEdit(null); cargar()
   }
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
+  async function eliminar(p: Proveedor) {
+    if (!confirm(`¿Eliminar al proveedor ${p.nombre.trim()}?`)) return
+    setError(null)
+    const { error } = await supabase.from('proveedores').delete().eq('id', p.id)
+    if (!error) { setAviso(`Proveedor ${p.nombre.trim()} eliminado.`); return cargar() }
+    if (error.code !== '23503') return setAviso(errorTexto(error))
+    // Tiene compras, cotizaciones o trabajos registrados: no se borra para no perder ese historial; se da de baja
+    if (!confirm(`${p.nombre.trim()} tiene compras, cotizaciones o trabajos registrados, por eso no se puede borrar sin perder ese historial.\n\n¿Darlo de baja? Ya no aparecerá para nuevas compras ni trabajos, y su historial se conserva.`)) return
+    const r = await supabase.from('proveedores').update({ activo: false }).eq('id', p.id)
+    setAviso(r.error ? errorTexto(r.error) : `Proveedor ${p.nombre.trim()} dado de baja (su historial se conserva).`); cargar()
+  }
+  async function reactivar(p: Proveedor) {
+    const r = await supabase.from('proveedores').update({ activo: true }).eq('id', p.id)
+    setAviso(r.error ? errorTexto(r.error) : null); cargar()
+  }
   return (
     <div className="space-y-3">
+      {aviso && <div className="flex items-start justify-between gap-3 rounded-xl bg-brand-50 px-4 py-2.5 text-sm text-brand-800 ring-1 ring-brand-200"><span>{aviso}</span><button className="font-semibold" onClick={() => setAviso(null)}>×</button></div>}
       {puede('compras.gestionar') && <div className="flex justify-end"><button className="btn btn-primary btn-sm" onClick={() => abrir('nuevo')}><Plus className="h-4 w-4" /> Nuevo proveedor</button></div>}
       <Card pad={false}>
         {rows.length === 0 ? <Empty>Sin proveedores</Empty> : (
           <div className="overflow-x-auto"><table className="tbl"><thead><tr><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th>Correo</th><th>RFC</th><th></th></tr></thead>
-            <tbody>{rows.map(p => <tr key={p.id}><td className="font-medium">{p.nombre}</td><td>{p.contacto ?? '—'}</td><td>{p.telefono ?? '—'}</td><td>{p.email ?? '—'}</td><td>{p.rfc ?? '—'}</td>
-              <td className="text-right">{puede('compras.gestionar') && <button className="btn btn-secondary btn-sm" onClick={() => abrir(p)}>Editar</button>}</td></tr>)}</tbody>
+            <tbody>{rows.map(p => <tr key={p.id} className={p.activo === false ? 'opacity-60' : ''}><td className="font-medium">{p.nombre}{p.activo === false && <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600">De baja</span>}</td><td>{p.contacto ?? '—'}</td><td>{p.telefono ?? '—'}</td><td>{p.email ?? '—'}</td><td>{p.rfc ?? '—'}</td>
+              <td className="whitespace-nowrap text-right">{puede('compras.gestionar') && <div className="inline-flex gap-1.5">
+                <button className="btn btn-secondary btn-sm" onClick={() => abrir(p)}>Editar</button>
+                {p.activo === false
+                  ? <button className="btn btn-secondary btn-sm" onClick={() => reactivar(p)}>Reactivar</button>
+                  : <button className="btn btn-ghost btn-sm text-red-600" title="Eliminar proveedor" onClick={() => eliminar(p)}><Trash2 className="h-4 w-4" /> Eliminar</button>}
+              </div>}</td></tr>)}</tbody>
           </table></div>
         )}
       </Card>

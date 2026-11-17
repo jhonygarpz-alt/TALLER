@@ -154,7 +154,7 @@ export function Productividad() {
   const [rows, setRows] = useState<ActProd[]>([])
   useEffect(() => {
     supabase.from('actividades').select('tecnico_id, orden_id, estado, horas, rechazos, importe_destajo, fecha_asignacion, validado_at, tecnicos(nombre)')
-      .gte('fecha_asignacion', per.desde).lt('fecha_asignacion', per.hasta).neq('estado', 'cancelada')
+      .gte('fecha_asignacion', per.desde).lt('fecha_asignacion', per.hasta).neq('estado', 'cancelada').not('tecnico_id', 'is', null)
       .then(({ data }) => setRows((data ?? []) as unknown as ActProd[]))
   }, [per.desde, per.hasta])
   const stats = useMemo(() => {

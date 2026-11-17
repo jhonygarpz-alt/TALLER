@@ -9,11 +9,13 @@ import type { Tarifa, Tecnico } from '../lib/tipos'
 import { Badge, Empty, ErrorMsg, Field, Modal } from './ui'
 import { Galeria } from './Fotos'
 
+export const responsable = (a: Pick<Actividad, 'tecnicos' | 'proveedores'>) => a.tecnicos?.nombre ?? a.proveedores?.nombre?.trim() ?? '—'
+
 export interface Actividad {
-  id: number; orden_id: number; area: string; actividad: string; pieza: string | null; tecnico_id: number; tarifa_id: number | null
+  id: number; orden_id: number; area: string; actividad: string; pieza: string | null; tecnico_id: number | null; proveedor_id: number | null; costo_proveedor: number | null; tarifa_id: number | null
   importe_destajo: number; estado: string; fecha_asignacion: string; fecha_inicio: string | null; fecha_fin: string | null
   horas: number | null; rechazos: number; motivo_rechazo: string | null; validado_at: string | null
-  tecnicos?: { nombre: string; perfil_id: string | null }; ordenes?: { folio: string; etapa: string; tipo: string }
+  tecnicos?: { nombre: string; perfil_id: string | null } | null; proveedores?: { nombre: string } | null; ordenes?: { folio: string; etapa: string; tipo: string }
 }
 
 /** Tiempo trabajado en piezas: media pieza y de 1 hasta 12, en medias */
@@ -63,11 +65,14 @@ export function NuevaActividad({ ordenId, onDone }: { ordenId?: number; onDone: 
   const [tarifas, setTarifas] = useState<Tarifa[]>([])
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
   const [ordenes, setOrdenes] = useState<{ id: number; folio: string; marca: string; modelo: string; placas: string | null }[]>([])
-  const [f, setF] = useState({ orden_id: ordenId ? String(ordenId) : '', tarifa_id: '', area: 'hojalateria', actividad: '', pieza: '', tecnico_id: '' })
+  const [proveedores, setProveedores] = useState<{ id: number; nombre: string }[]>([])
+  const [f, setF] = useState({ orden_id: ordenId ? String(ordenId) : '', tarifa_id: '', area: 'hojalateria', actividad: '', pieza: '', tecnico_id: '', proveedor_id: '', costo: '' })
+  const [externo, setExterno] = useState(false)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     supabase.from('tarifas_destajo').select('*').eq('activo', true).order('area').order('importe').order('actividad').then(({ data }) => setTarifas((data ?? []) as Tarifa[]))
     supabase.from('tecnicos').select('*').eq('activo', true).order('nombre').then(({ data }) => setTecnicos((data ?? []) as Tecnico[]))
+    supabase.from('proveedores').select('id,nombre').eq('activo', true).order('nombre').then(({ data }) => setProveedores(data ?? []))
     if (!ordenId) supabase.from('v_ordenes').select('id,folio,marca,modelo,placas').not('etapa', 'in', '(entregado,cancelado)').order('folio').then(({ data }) => setOrdenes(data ?? []))
   }, [ordenId])
   const tarifa = tarifas.find(t => String(t.id) === f.tarifa_id)
@@ -76,9 +81,13 @@ export function NuevaActividad({ ordenId, onDone }: { ordenId?: number; onDone: 
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (!tarifa && !f.actividad.trim()) return setError('Elige una tarifa o describe la actividad')
+    if (externo && !f.proveedor_id) return setError('Elige el proveedor que hará el trabajo')
+    if (!externo && !f.tecnico_id) return setError('Elige el técnico responsable')
     const { error } = await supabase.from('actividades').insert({
       orden_id: Number(f.orden_id), tarifa_id: tarifa ? tarifa.id : null, area: tarifa?.area ?? f.area,
-      actividad: f.actividad.trim() || tarifa?.actividad, pieza: f.pieza || null, tecnico_id: Number(f.tecnico_id),
+      actividad: f.actividad.trim() || tarifa?.actividad, pieza: f.pieza || null,
+      tecnico_id: externo ? null : Number(f.tecnico_id), proveedor_id: externo ? Number(f.proveedor_id) : null,
+      costo_proveedor: externo && f.costo ? Number(f.costo) : null,
     })
     if (error) return setError(errorTexto(error))
     onDone()
@@ -93,24 +102,41 @@ export function NuevaActividad({ ordenId, onDone }: { ordenId?: number; onDone: 
           </select>
         </Field>
       )}
-      <Field label="Tarifa de destajo" className="sm:col-span-2" hint={tarifa ? `Importe de destajo: ${money2(tarifa.importe)}` : 'Sin tarifa la actividad no genera destajo. Configura tarifas en Taller → Técnicos y tarifas.'}>
+      <Field grupo label="¿Quién hará el trabajo?" className="sm:col-span-2">
+        <div className="inline-flex rounded-xl bg-slate-100 p-1">
+          {([[false, 'Técnico del taller'], [true, 'Proveedor externo']] as const).map(([v, l]) => (
+            <button key={l} type="button" onClick={() => setExterno(v)} className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${externo === v ? 'bg-white text-brand-700 shadow' : 'text-slate-600'}`}>{l}</button>
+          ))}
+        </div>
+      </Field>
+      <Field label={externo ? 'Tipo de trabajo (catálogo)' : 'Tarifa de destajo'} className="sm:col-span-2" hint={externo ? 'Los trabajos de proveedor no generan destajo.' : tarifa ? `Importe de destajo: ${money2(tarifa.importe)}` : 'Sin tarifa la actividad no genera destajo. Configura tarifas en Taller → Técnicos y tarifas.'}>
         <select className="input" value={f.tarifa_id} onChange={e => setF({ ...f, tarifa_id: e.target.value })}>
-          <option value="">Sin tarifa (no genera destajo)</option>
+          <option value="">{externo ? 'Ninguno (descríbelo abajo)' : 'Sin tarifa (no genera destajo)'}</option>
           {Object.entries(AREAS).map(([k, v]) => {
             const ts = tarifas.filter(t => t.area === k)
-            return ts.length ? <optgroup key={k} label={v}>{ts.map(t => <option key={t.id} value={t.id}>{t.actividad} — {money2(t.importe)}</option>)}</optgroup> : null
+            return ts.length ? <optgroup key={k} label={v}>{ts.map(t => <option key={t.id} value={t.id}>{t.actividad}{externo ? '' : ` — ${money2(t.importe)}`}</option>)}</optgroup> : null
           })}
         </select>
       </Field>
       {!tarifa && <Field label="Área"><select className="input" value={f.area} onChange={e => setF({ ...f, area: e.target.value })}>{Object.entries(AREAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>}
       <Field label={tarifa ? 'Detalle de la actividad (opcional)' : 'Actividad *'}><input className="input" value={f.actividad} onChange={e => setF({ ...f, actividad: e.target.value })} placeholder={tarifa?.actividad ?? 'Ej. Pulido general'} /></Field>
       <Field label="Pieza intervenida"><input className="input" value={f.pieza} onChange={e => setF({ ...f, pieza: e.target.value })} placeholder="Ej. Salpicadera derecha" /></Field>
+      {externo ? <>
+        <Field label="Proveedor *" hint={proveedores.length === 0 ? 'No hay proveedores. Agrégalos en Compras → Proveedores.' : undefined}>
+          <select className="input" value={f.proveedor_id} onChange={e => setF({ ...f, proveedor_id: e.target.value })}>
+            <option value="">Selecciona…</option>{proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre.trim()}</option>)}
+          </select>
+        </Field>
+        <Field label="Costo acordado con el proveedor" hint="Al validar el trabajo se registra como servicio externo en los costos de la orden.">
+          <input className="input" type="number" min="0" step="0.01" value={f.costo} onChange={e => setF({ ...f, costo: e.target.value })} placeholder="0.00" />
+        </Field>
+      </> : (
       <Field label="Técnico responsable *">
-        <select className="input" required value={f.tecnico_id} onChange={e => setF({ ...f, tecnico_id: e.target.value })}>
+        <select className="input" value={f.tecnico_id} onChange={e => setF({ ...f, tecnico_id: e.target.value })}>
           <option value="">Selecciona…</option>{tecs.map(t => <option key={t.id} value={t.id}>{t.nombre} ({AREAS[t.area]})</option>)}
         </select>
-      </Field>
-      {tecnicos.length === 0 && <p className="text-xs text-amber-700 sm:col-span-2">No hay técnicos registrados. Agrégalos en Taller → Técnicos y tarifas.</p>}
+      </Field>)}
+      {!externo && tecnicos.length === 0 && <p className="text-xs text-amber-700 sm:col-span-2">No hay técnicos registrados. Agrégalos en Taller → Técnicos y tarifas.</p>}
       <div className="flex justify-end gap-2 sm:col-span-2">
         <button type="button" className="btn btn-secondary" onClick={onDone}>Cancelar</button>
         <button className="btn btn-primary">Asignar trabajo</button>
@@ -132,7 +158,7 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
   const [avances, setAvances] = useState<Record<number, { porcentaje: number; nota: string | null; created_at: string }>>({})
 
   const cargar = useCallback(async () => {
-    let q = supabase.from('actividades').select('*, tecnicos(nombre, perfil_id), ordenes(folio, etapa, tipo)').order('fecha_asignacion', { ascending: false }).limit(500)
+    let q = supabase.from('actividades').select('*, tecnicos(nombre, perfil_id), proveedores(nombre), ordenes(folio, etapa, tipo)').order('fecha_asignacion', { ascending: false }).limit(500)
     if (ordenId) q = q.eq('orden_id', ordenId)
     if (filtroEstado === 'abiertas') q = q.in('estado', ['asignada', 'en_proceso', 'terminada'])
     else if (filtroEstado && filtroEstado !== 'todas') q = q.eq('estado', filtroEstado)
@@ -151,7 +177,9 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
     let motivo: string | null = null
     if (acc === 'rechazar') { motivo = prompt('Motivo del retrabajo (quedará registrado):'); if (!motivo) return }
     if (acc === 'cancelar') { motivo = prompt('Motivo de la cancelación:'); if (motivo === null) return }
-    if (acc === 'validar' && !confirm(`¿Validar "${a.actividad}"? Se generará un destajo de ${money2(a.importe_destajo)} para ${a.tecnicos?.nombre}.`)) return
+    if (acc === 'validar' && !confirm(a.proveedor_id
+      ? `¿Validar "${a.actividad}" del proveedor ${responsable(a)}? ${Number(a.costo_proveedor) > 0 ? `Se registrará un servicio externo de ${money2(Number(a.costo_proveedor))} en los costos de la orden.` : 'No tiene costo capturado.'}`
+      : `¿Validar "${a.actividad}"? Se generará un destajo de ${money2(a.importe_destajo)} para ${a.tecnicos?.nombre}.`)) return
     const { error } = await supabase.rpc('actividad_accion', { p_id: a.id, p_accion: acc, p_motivo: motivo })
     setError(error ? errorTexto(error) : null)
     cargar(); onCambio?.()
@@ -187,7 +215,9 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
                   </div>
                   <div className="mt-0.5 text-xs text-slate-500">
                     {mostrarOrden && a.ordenes && <><Link className="font-semibold text-brand-700 hover:underline" to={`/ordenes/${a.orden_id}?tab=trabajos`}>{a.ordenes.folio}</Link> · {a.ordenes.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'} · </>}
-                    {AREAS[a.area]} · <b>{a.tecnicos?.nombre}</b> · Destajo {a.importe_destajo > 0 ? money2(a.importe_destajo) : 'sin tarifa'}
+                    {AREAS[a.area]} · {a.proveedor_id
+                      ? <><Badge cls="bg-violet-100 text-violet-700">Proveedor</Badge> <b>{responsable(a)}</b> · Costo {Number(a.costo_proveedor) > 0 ? money2(Number(a.costo_proveedor)) : 'sin capturar'}</>
+                      : <><b>{a.tecnicos?.nombre}</b> · Destajo {a.importe_destajo > 0 ? money2(a.importe_destajo) : 'sin tarifa'}</>}
                     {a.fecha_inicio && ` · Inicio ${fechaHora(a.fecha_inicio)}`}{a.fecha_fin && ` · Fin ${fechaHora(a.fecha_fin)}`}{a.horas != null && ` · ${Number(a.horas) % 0.5 === 0 && Number(a.horas) > 0 && Number(a.horas) <= 12 ? piezasTxt(Number(a.horas)) : `${num(a.horas)} h`}`}
                   </div>
                   {a.motivo_rechazo && a.estado !== 'validada' && <div className="mt-0.5 text-xs text-red-600">Motivo: {a.motivo_rechazo}</div>}
@@ -217,7 +247,7 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
                   {a.estado === 'asignada' && puede('actividades.asignar') && <button className="btn btn-ghost btn-sm text-red-600" onClick={() => eliminar(a)}>Eliminar</button>}
                   {a.estado === 'en_proceso' && puede('actividades.asignar') && <button className="btn btn-ghost btn-sm text-red-600" title="Cancelar trabajo" onClick={() => accion(a, 'cancelar')}><XCircle className="h-3.5 w-3.5" /></button>}
                   {['terminada', 'validada'].includes(a.estado) && puede('excepciones.autorizar') && <button className="btn btn-ghost btn-sm text-red-600" title="Anular trabajo y su destajo" onClick={async () => {
-                    const r = await revertir('actividad_anular', { p_id: a.id }, `¿Anular "${a.actividad}" de ${a.tecnicos?.nombre}? ${a.estado === 'validada' ? 'Su destajo también se cancelará.' : ''}`)
+                    const r = await revertir('actividad_anular', { p_id: a.id }, `¿Anular "${a.actividad}" de ${responsable(a)}? ${a.estado === 'validada' ? (a.proveedor_id ? 'Su costo de servicio externo también se quitará.' : 'Su destajo también se cancelará.') : ''}`)
                     if (r !== undefined) { setError(r); cargar(); onCambio?.() }
                   }}><XCircle className="h-3.5 w-3.5" /> Anular</button>}
                 </div>

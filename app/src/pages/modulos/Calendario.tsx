@@ -25,11 +25,11 @@ const lunes = (d: Date) => { const x = new Date(d); const w = (x.getDay() + 6) %
 const horaDe = (ts: string) => new Date(ts).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
 
 function ProgramarTrabajo({ onDone }: { onDone: () => void }) {
-  const [acts, setActs] = useState<{ id: number; actividad: string; pieza: string | null; fecha_programada: string | null; tecnicos: { nombre: string }; ordenes: { folio: string } }[]>([])
+  const [acts, setActs] = useState<{ id: number; actividad: string; pieza: string | null; fecha_programada: string | null; tecnicos: { nombre: string } | null; proveedores: { nombre: string } | null; ordenes: { folio: string } }[]>([])
   const [f, setF] = useState({ id: '', fecha: hoyISO() })
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    supabase.from('actividades').select('id, actividad, pieza, fecha_programada, tecnicos(nombre), ordenes(folio)').in('estado', ['asignada', 'en_proceso']).order('fecha_programada', { nullsFirst: true })
+    supabase.from('actividades').select('id, actividad, pieza, fecha_programada, tecnicos(nombre), proveedores(nombre), ordenes(folio)').in('estado', ['asignada', 'en_proceso']).order('fecha_programada', { nullsFirst: true })
       .then(({ data }) => setActs((data ?? []) as unknown as typeof acts))
   }, [])
   async function submit(e: FormEvent) {
@@ -44,7 +44,7 @@ function ProgramarTrabajo({ onDone }: { onDone: () => void }) {
       <Field label="Trabajo pendiente *">
         <select className="input" required value={f.id} onChange={e => setF({ ...f, id: e.target.value })}>
           <option value="">Selecciona…</option>
-          {acts.map(a => <option key={a.id} value={a.id}>{a.ordenes.folio} · {a.actividad}{a.pieza ? ` (${a.pieza})` : ''} · {a.tecnicos.nombre}{a.fecha_programada ? ` · programado ${a.fecha_programada}` : ''}</option>)}
+          {acts.map(a => <option key={a.id} value={a.id}>{a.ordenes.folio} · {a.actividad}{a.pieza ? ` (${a.pieza})` : ''} · {a.tecnicos?.nombre ?? `Prov. ${a.proveedores?.nombre?.trim()}`}{a.fecha_programada ? ` · programado ${a.fecha_programada}` : ''}</option>)}
         </select>
       </Field>
       <Field label="Fecha programada *"><input className="input" type="date" required value={f.fecha} onChange={e => setF({ ...f, fecha: e.target.value })} /></Field>
@@ -78,7 +78,7 @@ export default function Calendario() {
       supabase.from('cliente_seguimientos').select('id, cliente_id, tipo, notas, fecha_cita, clientes(nombre)').gte('fecha_cita', d).lt('fecha_cita', h),
       supabase.from('v_ordenes').select('id, folio, marca, modelo, placas, fecha_compromiso, retrasado, etapa').not('etapa', 'in', '(entregado,cancelado)').gte('fecha_compromiso', d).lt('fecha_compromiso', h),
       supabase.from('v_ordenes').select('id, folio, marca, modelo, fecha_entrega, entregado_a_tiempo').eq('etapa', 'entregado').gte('fecha_entrega', d).lt('fecha_entrega', h),
-      supabase.from('actividades').select('id, orden_id, actividad, pieza, area, fecha_programada, estado, tecnicos(nombre), ordenes(folio)').gte('fecha_programada', d).lt('fecha_programada', h).neq('estado', 'cancelada'),
+      supabase.from('actividades').select('id, orden_id, actividad, pieza, area, fecha_programada, estado, tecnicos(nombre), proveedores(nombre), ordenes(folio)').gte('fecha_programada', d).lt('fecha_programada', h).neq('estado', 'cancelada'),
       supabase.from('asignaciones').select('id, siniestro, asegurado, fecha_asignacion').gte('fecha_asignacion', d).lt('fecha_asignacion', h),
     ])
     const ev: Evento[] = []
@@ -87,11 +87,12 @@ export default function Calendario() {
       ev.push({ id: 's' + s.id, fecha: iso(new Date(s.fecha_cita)), hora: horaDe(s.fecha_cita), tipo: 'seguimiento', titulo: s.clientes?.nombre ?? 'Cliente', sub: s.notas, to: `/clientes/${s.cliente_id}?tab=seguimiento` })
     for (const o of comp.data ?? []) ev.push({ id: 'p' + o.id, fecha: o.fecha_compromiso!, tipo: 'compromiso', titulo: `${o.folio} · ${o.marca} ${o.modelo}`, sub: o.placas ?? '', to: `/ordenes/${o.id}`, alerta: o.retrasado })
     for (const o of ent.data ?? []) ev.push({ id: 'e' + o.id, fecha: iso(new Date(o.fecha_entrega!)), hora: horaDe(o.fecha_entrega!), tipo: 'entrega', titulo: `${o.folio} · ${o.marca} ${o.modelo}`, sub: o.entregado_a_tiempo ? 'A tiempo' : 'Fuera de plazo', to: `/ordenes/${o.id}?tab=entrega`, alerta: !o.entregado_a_tiempo })
-    const acts = (act.data ?? []) as unknown as { id: number; orden_id: number; actividad: string; pieza: string | null; area: string; fecha_programada: string; estado: string; tecnicos: { nombre: string }; ordenes: { folio: string } }[]
-    for (const a of acts) ev.push({ id: 't' + a.id, fecha: a.fecha_programada, tipo: 'trabajo', titulo: `${a.ordenes.folio} · ${a.actividad}`, sub: a.tecnicos.nombre, to: `/ordenes/${a.orden_id}?tab=trabajos`, alerta: a.fecha_programada < hoyISO() && ['asignada', 'en_proceso'].includes(a.estado) })
+    const acts = (act.data ?? []) as unknown as { id: number; orden_id: number; actividad: string; pieza: string | null; area: string; fecha_programada: string; estado: string; tecnicos: { nombre: string } | null; proveedores: { nombre: string } | null; ordenes: { folio: string } }[]
+    const quien = (a: { tecnicos: { nombre: string } | null; proveedores: { nombre: string } | null }) => a.tecnicos?.nombre ?? `Prov. ${a.proveedores?.nombre?.trim() ?? ''}`
+    for (const a of acts) ev.push({ id: 't' + a.id, fecha: a.fecha_programada, tipo: 'trabajo', titulo: `${a.ordenes.folio} · ${a.actividad}`, sub: quien(a), to: `/ordenes/${a.orden_id}?tab=trabajos`, alerta: a.fecha_programada < hoyISO() && ['asignada', 'en_proceso'].includes(a.estado) })
     for (const a of asig.data ?? []) ev.push({ id: 'a' + a.id, fecha: a.fecha_asignacion, tipo: 'asignacion', titulo: `Asignación ${a.siniestro}`, sub: a.asegurado, to: `/ordenes?tab=asignaciones&ver=${a.id}` })
     setEventos(ev)
-    setCarga(acts.map(a => ({ tecnico: a.tecnicos.nombre, area: a.area, fecha: a.fecha_programada })))
+    setCarga(acts.map(a => ({ tecnico: quien(a), area: a.area, fecha: a.fecha_programada })))
   }, [desde, hasta])
   useEffect(() => { cargar() }, [cargar])
 

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Check, Loader2, Send, UserRound } from 'lucide-react'
+import { Check, Loader2, Send, Truck, UserRound } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { AREAS, errorTexto, money2 } from '../lib/format'
 import { Aviso, Campo, Hoja, botonPrimario, entrada } from './ui'
 
 interface Tarifa { id: number; area: string; actividad: string; importe: number }
 interface Tecnico { id: number; nombre: string; area: string; perfil_id: string | null }
+interface Proveedor { id: number; nombre: string; telefono: string | null }
 
 /**
  * Asignar un trabajo a un técnico desde la app (mismo registro que "Asignar trabajo" del sistema web).
@@ -20,12 +21,17 @@ export default function AsignarTrabajo({ ordenId, folio, onClose, onListo }: { o
   const [pieza, setPieza] = useState('')
   const [detalle, setDetalle] = useState('')
   const [verTodos, setVerTodos] = useState(false)
+  const [externo, setExterno] = useState(false)
+  const [proveedores, setProveedores] = useState<Proveedor[]>([])
+  const [proveedorId, setProveedorId] = useState('')
+  const [costo, setCosto] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.from('tarifas_destajo').select('id,area,actividad,importe').eq('activo', true).order('importe').order('actividad').then(({ data }) => setTarifas((data ?? []) as Tarifa[]))
     supabase.from('tecnicos').select('id,nombre,area,perfil_id').eq('activo', true).order('nombre').then(({ data }) => setTecnicos((data ?? []) as Tecnico[]))
+    supabase.from('proveedores').select('id,nombre,telefono').eq('activo', true).order('nombre').then(({ data }) => setProveedores((data ?? []) as Proveedor[]))
   }, [])
 
   // Áreas que tienen técnicos o tarifas
@@ -39,12 +45,14 @@ export default function AsignarTrabajo({ ordenId, folio, onClose, onListo }: { o
 
   async function asignar(e: FormEvent) {
     e.preventDefault(); setError(null)
-    if (!tecnicoId) return setError('Elige al técnico que hará el trabajo')
-    if (!tarifa && !detalle.trim()) return setError('Elige una tarifa o escribe qué trabajo es')
+    if (externo ? !proveedorId : !tecnicoId) return setError(externo ? 'Elige al proveedor que hará el trabajo' : 'Elige al técnico que hará el trabajo')
+    if (!detalle.trim() && (externo || !tarifa)) return setError(externo ? 'Escribe qué trabajo hará el proveedor' : 'Elige una tarifa o escribe qué trabajo es')
     setGuardando(true)
     const { error } = await supabase.from('actividades').insert({
-      orden_id: ordenId, tarifa_id: tarifa ? tarifa.id : null, area: tarifa?.area ?? area,
-      actividad: detalle.trim() || tarifa?.actividad, pieza: pieza.trim() || null, tecnico_id: Number(tecnicoId),
+      orden_id: ordenId, tarifa_id: tarifa && !externo ? tarifa.id : null, area: (!externo && tarifa?.area) || area,
+      actividad: detalle.trim() || (!externo ? tarifa?.actividad : undefined), pieza: pieza.trim() || null,
+      tecnico_id: externo ? null : Number(tecnicoId), proveedor_id: externo ? Number(proveedorId) : null,
+      costo_proveedor: externo && costo ? Number(costo) : null,
     })
     setGuardando(false)
     if (error) return setError(errorTexto(error))
@@ -61,8 +69,23 @@ export default function AsignarTrabajo({ ordenId, folio, onClose, onListo }: { o
           <div className="flex flex-wrap gap-2">{areas.map(a => <button key={a} type="button" className={chip(area === a)} onClick={() => elegirArea(a)}>{a === 'detallado' ? 'Detallado / pulido' : AREAS[a]}</button>)}</div>
         </Campo>
 
-        <Campo grupo label="2. Técnico *">
+        <Campo grupo label="2. ¿Quién lo hará? *">
           <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
+              {([[false, 'Técnico'], [true, 'Proveedor']] as const).map(([v, l]) => (
+                <button key={l} type="button" onClick={() => setExterno(v)} className={`rounded-xl py-2 text-sm font-semibold transition ${externo === v ? 'bg-white text-brand-700 shadow' : 'text-slate-600'}`}>{l}</button>
+              ))}
+            </div>
+            {externo ? <>
+              {proveedores.length === 0 && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">No hay proveedores. Agrégalos en el sistema web: Compras → Proveedores.</p>}
+              {proveedores.map(p => (
+                <button key={p.id} type="button" onClick={() => setProveedorId(String(p.id))}
+                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left ring-1 transition ${proveedorId === String(p.id) ? 'bg-brand-50 ring-2 ring-brand-500' : 'bg-white ring-slate-200'}`}>
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${proveedorId === String(p.id) ? 'bg-brand-600 text-white' : 'bg-violet-100 text-violet-600'}`}>{proveedorId === String(p.id) ? <Check className="h-5 w-5" /> : <Truck className="h-5 w-5" />}</span>
+                  <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{p.nombre.trim()}</span><span className="text-xs text-slate-500">Proveedor externo{p.telefono ? ` · ${p.telefono}` : ''}</span></span>
+                </button>
+              ))}
+            </> : <>
             {tecsArea.length === 0 && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">No hay técnicos activos de {AREAS[area]}. Toca «Ver todos».</p>}
             {tecsArea.map(t => (
               <button key={t.id} type="button" onClick={() => setTecnicoId(String(t.id))}
@@ -72,18 +95,24 @@ export default function AsignarTrabajo({ ordenId, folio, onClose, onListo }: { o
               </button>
             ))}
             <button type="button" onClick={() => setVerTodos(!verTodos)} className="text-sm font-semibold text-brand-700">{verTodos ? `Ver solo ${AREAS[area]}` : 'Ver todos los técnicos'}</button>
+            </>}
           </div>
         </Campo>
 
+        {externo ? (
+          <Campo label="3. Costo acordado con el proveedor" ayuda="Al validar el trabajo se registra en los costos de la orden como servicio externo. No genera destajo.">
+            <input className={entrada} type="number" inputMode="decimal" min="0" step="0.01" value={costo} onChange={e => setCosto(e.target.value)} placeholder="0.00" />
+          </Campo>
+        ) : (
         <Campo label="3. Tarifa de destajo" ayuda={tarifa ? `Destajo: ${money2(tarifa.importe)} (se genera al validar el trabajo)` : 'Sin tarifa el trabajo no genera destajo.'}>
           <select className={entrada} value={tarifaId} onChange={e => setTarifaId(e.target.value)}>
             <option value="">Sin tarifa (no genera destajo)</option>
             {tarifasArea.map(t => <option key={t.id} value={t.id}>{t.actividad.trim()} — {money2(t.importe)}</option>)}
           </select>
-        </Campo>
+        </Campo>)}
 
         <Campo label="4. Pieza o piezas a trabajar"><input className={entrada} value={pieza} onChange={e => setPieza(e.target.value)} placeholder="Ej. Salpicadera izq. y puerta del. izq." /></Campo>
-        <Campo label={tarifa ? 'Detalle del trabajo (opcional)' : 'Qué trabajo es *'}><input className={entrada} value={detalle} onChange={e => setDetalle(e.target.value)} placeholder={tarifa?.actividad.trim() ?? 'Ej. Preparar y pintar'} /></Campo>
+        <Campo label={tarifa && !externo ? 'Detalle del trabajo (opcional)' : 'Qué trabajo es *'}><input className={entrada} value={detalle} onChange={e => setDetalle(e.target.value)} placeholder={tarifa?.actividad.trim() ?? 'Ej. Preparar y pintar'} /></Campo>
 
         <button className={botonPrimario} disabled={guardando}>{guardando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />} Asignar trabajo</button>
       </form>

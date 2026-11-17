@@ -30,6 +30,6 @@ export interface Material {
 }
 export interface Tecnico { id: number; nombre: string; area: string; perfil_id: string | null; activo: boolean; especialidad?: string | null; telefono?: string | null }
 export interface Tarifa { id: number; area: string; actividad: string; importe: number; activo: boolean }
-export interface Proveedor { id: number; nombre: string; contacto: string | null; telefono: string | null; email: string | null; rfc: string | null }
+export interface Proveedor { id: number; nombre: string; contacto: string | null; telefono: string | null; email: string | null; rfc: string | null; activo?: boolean }
 
 export const vehiculoTxt = (o: { marca: string; modelo: string; anio?: number | null }) => `${o.marca} ${o.modelo}${o.anio ? ' ' + o.anio : ''}`

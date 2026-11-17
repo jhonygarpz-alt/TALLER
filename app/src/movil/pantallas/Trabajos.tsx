@@ -8,7 +8,7 @@ import { Barra, Cargando, Vacio } from '../ui'
 
 interface Fila {
   id: number; actividad: string; area: string; estado: string; orden_id: number; fecha_asignacion: string
-  tecnicos: { nombre: string } | null
+  tecnicos: { nombre: string } | null; proveedores?: { nombre: string } | null
   ordenes: { folio: string; os_bitacora: string | null; vehiculos: { marca: string; modelo: string; placas: string | null } | null } | null
 }
 
@@ -30,7 +30,7 @@ export default function Trabajos() {
   useEffect(() => {
     if (tecIds === null) return
     setRows(null)
-    let q = supabase.from('actividades').select('id,actividad,area,estado,orden_id,fecha_asignacion,tecnicos(nombre),ordenes(folio,os_bitacora,vehiculos(marca,modelo,placas))').order('fecha_asignacion', { ascending: false }).limit(100)
+    let q = supabase.from('actividades').select('id,actividad,area,estado,orden_id,fecha_asignacion,tecnicos(nombre),proveedores(nombre),ordenes(folio,os_bitacora,vehiculos(marca,modelo,placas))').order('fecha_asignacion', { ascending: false }).limit(100)
     if (vista === 'mios') q = q.in('tecnico_id', tecIds.length ? tecIds : [-1]).in('estado', ['asignada', 'en_proceso', 'terminada'])
     else if (vista === 'validar') q = q.eq('estado', 'terminada')
     else q = q.in('estado', ['asignada', 'en_proceso', 'terminada'])
@@ -57,7 +57,7 @@ export default function Trabajos() {
               <div className="min-w-0 flex-1">
                 <div className="truncate font-bold">{a.actividad}</div>
                 <div className="truncate text-sm text-slate-500">{a.ordenes?.folio}{a.ordenes?.os_bitacora && ` · OS ${a.ordenes.os_bitacora}`} · {a.ordenes?.vehiculos?.marca} {a.ordenes?.vehiculos?.modelo} {a.ordenes?.vehiculos?.placas ?? ''}</div>
-                <div className="mt-1 flex items-center gap-2 text-xs"><span className={`rounded-full px-2 py-0.5 font-semibold ${est?.badge}`}>{est?.label}</span><span className="text-slate-400">{AREAS[a.area]}{vista !== 'mios' && a.tecnicos && ` · ${a.tecnicos.nombre}`}</span></div>
+                <div className="mt-1 flex items-center gap-2 text-xs"><span className={`rounded-full px-2 py-0.5 font-semibold ${est?.badge}`}>{est?.label}</span><span className="text-slate-400">{AREAS[a.area]}{vista !== 'mios' && (a.tecnicos || a.proveedores) && ` · ${a.tecnicos?.nombre ?? `Proveedor: ${a.proveedores?.nombre?.trim()}`}`}</span></div>
               </div>
               <ChevronRight className="h-5 w-5 text-slate-300" />
             </Link>
