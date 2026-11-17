@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Receipt } from 'lucide-react'
+import ReporteGastosEconomicos from '../../components/ReporteGastosEconomicos'
 import { supabase } from '../../lib/supabase'
 import { revertir } from '../../lib/revertir'
 import { useAuth } from '../../lib/auth'
@@ -60,6 +61,7 @@ export default function Costos({ o, recargar }: TabProps) {
   const [ff, setFf] = useState({ folio: '', receptor: o.tipo === 'aseguradora' ? 'aseguradora' : 'cliente', monto: '', fecha: hoyISO() })
   const [fp, setFp] = useState({ monto: '', metodo: 'transferencia', referencia: '', factura_id: '', fecha: hoyISO() })
   const verFin = puede('finanzas.ver'), gestFin = puede('finanzas.gestionar')
+  const [repGastos, setRepGastos] = useState(false)
 
   const cargar = useCallback(async () => {
     const qs = await Promise.all([
@@ -94,7 +96,8 @@ export default function Costos({ o, recargar }: TabProps) {
   return (
     <div className="space-y-5">
       <ErrorMsg error={error} />
-      {verFin && r && <Card title="Rentabilidad de la orden"><DesgloseRentabilidad r={r} /></Card>}
+      {verFin && r && <Card title="Rentabilidad de la orden" action={<button className="btn btn-secondary btn-sm" onClick={() => setRepGastos(true)}><Receipt className="h-4 w-4" /> Reporte de gastos económicos</button>}><DesgloseRentabilidad r={r} /></Card>}
+      {repGastos && <ReporteGastosEconomicos ordenId={o.id} onClose={() => setRepGastos(false)} />}
 
       {puede('destajos.ver') && (
         <Card title={`Destajos (${o.tipo === 'aseguradora' ? 'aseguradora' : 'particular'})`}>

@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react'
-import { FileSpreadsheet, FileText, Printer, Target } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
+import { FileSpreadsheet, FileText, Printer, Receipt, Target } from 'lucide-react'
+import ReporteGastosEconomicos from '../../components/ReporteGastosEconomicos'
 import { useAuth } from '../../lib/auth'
 import { PageHeader, SinPermiso, Tabs, useTab } from '../../components/ui'
 import { TabKpis, TabReportes } from '../resultados/analisis'
@@ -9,10 +10,12 @@ const ReporteMensual = lazy(() => import('../resultados/ReporteMensual'))
 export default function Reportes() {
   const { puede } = useAuth()
   const tab = useTab('reportes')
+  const [gastos, setGastos] = useState(false)
   if (!puede('reportes.ver') && !puede('finanzas.ver')) return <SinPermiso que="Reportes" />
   return (
     <div>
       <PageHeader title="Reportes y KPIs" subtitle="Descargas a Excel, impresión a PDF e indicadores de aseguradora">
+        {puede('finanzas.ver') && <button className="btn btn-primary btn-sm no-print" onClick={() => setGastos(true)}><Receipt className="h-4 w-4" /> Reporte de gastos económicos</button>}
         <button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}><Printer className="h-4 w-4" /> Imprimir / PDF</button>
       </PageHeader>
       <Tabs tabs={[
@@ -22,6 +25,7 @@ export default function Reportes() {
       ]} />
       {tab === 'mensual' && puede('finanzas.ver') ? <Suspense fallback={<div className="esqueleto h-96" />}><ReporteMensual /></Suspense>
         : tab === 'kpis' ? <TabKpis /> : <TabReportes />}
+      {gastos && <ReporteGastosEconomicos onClose={() => setGastos(false)} />}
     </div>
   )
 }
