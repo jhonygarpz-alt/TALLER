@@ -28,7 +28,7 @@ const up = (s: string | null | undefined) => (s ?? '').trim().toUpperCase()
 const AREAS_HOJ = ['hojalateria', 'armado']
 const NOMBRE_AREA: Record<string, string> = { detallado: 'PULIDOR', mecanica: 'MECÁNICO', otros: 'OTROS', hojalateria: 'HOJALATERO', pintura: 'PINTOR', armado: 'ARMADO' }
 
-export async function cargarReporte(ordenId: number, elaboro: string): Promise<DatosReporte> {
+export async function cargarReporte(ordenId: number, _elaboro?: string): Promise<DatosReporte> {
   const [o, rent, sol, cos, des, act, fac] = await Promise.all([
     supabase.from('v_ordenes').select('folio,tipo,aseguradora_nombre,siniestro,marca,modelo,anio,color,placas').eq('id', ordenId).single(),
     supabase.from('v_rentabilidad').select('autorizado,adicional').eq('orden_id', ordenId).maybeSingle(),
@@ -134,7 +134,7 @@ export async function cargarReporte(ordenId: number, elaboro: string): Promise<D
   return {
     aseguradora: esAseg ? nombreAseg : '', esAseguradora: esAseg, esParticular: !esAseg,
     siniestro: ord.siniestro ?? '', marca: up(ord.marca), vehiculo: up(ord.modelo), color: up(ord.color), placas: up(ord.placas), modelo: ord.anio ? String(ord.anio) : '',
-    orden: ord.folio, elaboro: up(elaboro), fecha: hoy,
+    orden: ord.folio, elaboro: 'JAZMÍN', fecha: hoy, // Siempre elabora Jazmín
     filas, hojalatero: nombres(a => AREAS_HOJ.includes(a)), pintor: nombres(a => a === 'pintura'),
     gastosAdicionales: sumExt, materialesPulido: pulido, moHojalatero: moH, moPintor: moP, materiales: sumMat, refacciones: sumRef,
     suma, iva: r2(suma * 0.16), total: r2(suma * 1.16), pagan, gastamos: suma, ganancia: r2(pagan - suma),
