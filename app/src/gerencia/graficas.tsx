@@ -5,9 +5,9 @@ import { Link } from 'react-router-dom'
 // Paleta fina sobre fondo gris suave: verdes del taller, lima, ámbar y gris perla
 export const C = {
   oscuro: '#17657c', verde: '#2298af', medio: '#3aa9c0', lima: '#7fcfdf', ambar: '#efbd2f', gris: '#c4d4da',
-  rojo: '#d65a52', ok: '#2fa37a', azul: '#4a86c8', teal: '#2f9c8c', texto: '#193344', suave: '#66818f',
+  rojo: '#d65a52', ok: '#2fa37a', azul: '#4a86c8', teal: '#2f9c8c', texto: '#193344', suave: '#4f6672',
 }
-export const SERIE = [C.verde, C.lima, C.ambar, C.teal, C.medio, C.azul, '#b3e0ea', '#8aa2ad']
+export const SERIE = [C.verde, C.lima, C.ambar, C.teal, C.medio, C.azul, '#b3e0ea', '#6f8792']
 
 /** Tarjeta blanca con sombra suave */
 export function Panel({ titulo, sub, derecha, a, children, className = '' }: { titulo?: ReactNode; sub?: ReactNode; derecha?: ReactNode; a?: string; children: ReactNode; className?: string }) {
@@ -15,7 +15,7 @@ export function Panel({ titulo, sub, derecha, a, children, className = '' }: { t
     <section className={`rounded-[22px] border border-black/[.035] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,20,.04),0_6px_18px_rgba(16,24,20,.05)] ${className}`}>
       {(titulo || derecha || a) && (
         <div className="mb-3 flex items-start justify-between gap-2">
-          <div className="min-w-0"><h2 className="text-[17px] font-bold tracking-[-.01em] text-[#193344]">{titulo}</h2>{sub && <p className="text-[13px] text-[#66818f]">{sub}</p>}</div>
+          <div className="min-w-0"><h2 className="text-[17px] font-bold tracking-[-.01em] text-[#193344]">{titulo}</h2>{sub && <p className="text-[14px] text-[#4f6672]">{sub}</p>}</div>
           {derecha}
           {a && <Link to={a} aria-label="Ver detalle" className="-mr-1 rounded-full p-1.5 text-[#193344] active:bg-black/5"><ChevronRight className="h-5 w-5" /></Link>}
         </div>
@@ -84,11 +84,11 @@ export function Lineas({ serie, etiqueta, detalle }: { serie: { d: string; ingre
           </g>
         ))}
       </svg>
-      <div className="mt-1 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-[13px] text-[#193344]">
+      <div className="mt-1 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-[14px] text-[#193344]">
         <span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full" style={{ background: C.oscuro }} /> Ingresos ({serie.reduce((a, d) => a + d.ingresos, 0)})</span>
         <span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full" style={{ background: C.lima }} /> Entregas ({serie.reduce((a, d) => a + d.entregas, 0)})</span>
       </div>
-      <p className="mt-1 h-4 text-center text-[12px] text-[#66818f]">{s ? <><b className="text-[#193344]">{detalle(s.d)}</b> · {s.ingresos} ingresos · {s.entregas} entregas</> : 'Toca la gráfica para ver el detalle'}</p>
+      <p className="mt-1 h-4 text-center text-[13px] text-[#4f6672]">{s ? <><b className="text-[#193344]">{detalle(s.d)}</b> · {s.ingresos} ingresos · {s.entregas} entregas</> : 'Toca la gráfica para ver el detalle'}</p>
     </div>
   )
 }
@@ -118,15 +118,15 @@ export function Dona({ datos, centro, sub, tam = 120 }: { datos: { label: string
             return el
           })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center"><div className="text-[30px] leading-none font-bold tracking-tight text-[#193344]">{centro}</div>{sub && <div className="mt-1 text-[12px] text-[#193344]">{sub}</div>}</div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center"><div className="text-[30px] leading-none font-bold tracking-tight text-[#193344]">{centro}</div>{sub && <div className="mt-1 text-[13px] text-[#193344]">{sub}</div>}</div>
       </div>
-      <ul className="min-w-0 flex-1 space-y-2 text-[13px]">
+      <ul className="min-w-0 flex-1 space-y-2 text-[14px]">
         {datos.map(d => (
           <li key={d.label} className="flex items-center gap-2.5">
             <i className="h-3 w-3 shrink-0 rounded-full" style={{ background: d.color }} />
             <span className="min-w-0 flex-1 leading-tight text-[#193344]">{d.label}</span>
             <b className="w-6 text-right font-semibold text-[#193344]">{d.valor}</b>
-            <span className="w-10 text-right text-[#66818f]">{total ? Math.round(d.valor / total * 100) : 0}%</span>
+            <span className="w-10 text-right text-[#4f6672]">{total ? Math.round(d.valor / total * 100) : 0}%</span>
           </li>
         ))}
       </ul>
@@ -137,14 +137,14 @@ export function Dona({ datos, centro, sub, tam = 120 }: { datos: { label: string
 /** Barras horizontales */
 export function Barras({ datos, formato = (v: number) => String(v), vacio = 'Sin datos en el periodo' }: { datos: { label: string; valor: number; color?: string; extra?: ReactNode }[]; formato?: (v: number) => string; vacio?: string }) {
   const max = Math.max(1, ...datos.map(d => d.valor))
-  if (!datos.length) return <p className="py-4 text-center text-sm text-[#66818f]">{vacio}</p>
+  if (!datos.length) return <p className="py-4 text-center text-sm text-[#4f6672]">{vacio}</p>
   return (
     <ul className="space-y-3">
       {datos.map((d, i) => {
         const col = d.color ?? SERIE[i % SERIE.length]
         return (
           <li key={d.label}>
-            <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px]"><span className="truncate text-[#193344]">{d.label}</span><span className="shrink-0 font-semibold text-[#193344]">{formato(d.valor)}{d.extra}</span></div>
+            <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[14px]"><span className="truncate text-[#193344]">{d.label}</span><span className="shrink-0 font-semibold text-[#193344]">{formato(d.valor)}{d.extra}</span></div>
             <div className="h-2 overflow-hidden rounded-full bg-[#e8f2f5]">
               <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${Math.max(2, d.valor / max * 100)}%`, background: col }} />
             </div>
@@ -167,7 +167,7 @@ export function Medidor({ valor, etiqueta }: { valor: number | null; etiqueta: s
         {v > 0 && <path d="M10,50 A40,40 0 0 1 90,50" fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${largo * v / 100} ${largo}`} />}
         <text x="50" y="47" textAnchor="middle" fontSize="17" fontWeight="700" fill={C.texto}>{valor == null ? '—' : `${Math.round(v)}%`}</text>
       </svg>
-      <div className="-mt-0.5 text-center text-[12px] text-[#66818f]">{etiqueta}</div>
+      <div className="-mt-0.5 text-center text-[13px] text-[#4f6672]">{etiqueta}</div>
     </div>
   )
 }

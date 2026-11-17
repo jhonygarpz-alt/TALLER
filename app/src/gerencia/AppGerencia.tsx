@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Bell, CalendarDays, CarFront, ClipboardList, House, LayoutGrid, LogOut, RefreshCw, UserRound, BarChart3, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -14,6 +14,24 @@ import Reportes from './pantallas/Reportes'
 import Ajustes from './pantallas/Ajustes'
 
 const BASE = import.meta.env.BASE_URL
+/**
+ * Altura de la barra de estado del celular (hora, señal, batería). En iPhone con la app instalada
+ * a veces el navegador reporta 0 aunque el contenido quede debajo de la barra: en ese caso se usa 47px.
+ */
+function useBarraEstado() {
+  useEffect(() => {
+    const raiz = document.documentElement
+    const m = document.createElement('div')
+    m.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top);visibility:hidden'
+    document.body.appendChild(m)
+    const alto = m.getBoundingClientRect().height
+    m.remove()
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    const instalada = window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true
+    raiz.style.setProperty('--sat', alto > 0 ? `${alto}px` : ios && instalada ? '47px' : '0px')
+  }, [])
+}
+
 const leerPeriodo = (): Periodo => { try { return (localStorage.getItem('gerencia.periodo') as Periodo) || 'hoy' } catch { return 'hoy' } }
 
 export interface PropsPantalla { datos: Tablero; periodo: Periodo }
@@ -24,7 +42,7 @@ export function Kpi({ icono: Icono, valor, label, derecha, abajo }: { icono: Luc
     <div className="flex items-center gap-3 rounded-[20px] border border-black/[.035] bg-white p-3 shadow-[0_1px_2px_rgba(16,24,20,.04),0_6px_18px_rgba(16,24,20,.05)]">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef6f8] text-[#17657c]"><Icono className="h-[22px] w-[22px]" strokeWidth={1.7} /></span>
       <div className="min-w-0 flex-1">
-        <div className="text-[12.5px] leading-tight text-[#193344]">{label}</div>
+        <div className="text-[13.5px] leading-tight text-[#193344]">{label}</div>
         <div className="mt-0.5 flex items-end justify-between gap-1">
           <span className="text-[26px] leading-[1.1] font-bold tracking-tight text-[#193344]">{valor}</span>
           {(derecha || abajo) && <span className="flex flex-col items-end pb-0.5">{derecha}{abajo}</span>}
@@ -40,7 +58,7 @@ function Marca() {
     <div className="flex items-center gap-2">
       <img src={`${BASE}gerencia/icon-192.png`} alt="" className="h-9 w-9 rounded-xl" />
       <div className="leading-none italic">
-        <div className="text-[11px] font-extrabold tracking-wide text-[#193344]">TALLER</div>
+        <div className="text-[12px] font-extrabold tracking-wide text-[#193344]">TALLER</div>
         <div className="text-[18px] font-black tracking-tight text-[#17657c]">LEGARIA</div>
       </div>
     </div>
@@ -51,12 +69,12 @@ function Encabezado() {
   const { estado } = usePush('gerencia')
   const { perfil } = useAuth()
   return (
-    <header className="flex items-center gap-2.5 px-4 pt-[calc(env(safe-area-inset-top)+14px)] pb-3">
+    <header className="flex items-center gap-2.5 px-4 pt-[calc(var(--sat)+14px)] pb-3">
       <Marca />
       <span className="h-9 w-px shrink-0 bg-[#193344]/20" />
       <div className="min-w-0 flex-1 leading-tight whitespace-nowrap">
         <div className="text-[15px] font-bold text-[#193344]">Gerencia</div>
-        <div className="text-[11.5px] text-[#193344]">Panel Ejecutivo</div>
+        <div className="text-[12.5px] text-[#193344]">Panel Ejecutivo</div>
       </div>
       <Link to="/mas" aria-label="Notificaciones" className="relative rounded-full p-2 text-[#193344] active:bg-black/5">
         <Bell className="h-6 w-6" strokeWidth={1.7} />
@@ -83,13 +101,13 @@ function Portada({ datos, cargando, recargar }: { datos: Tablero | null; cargand
       <div className="pointer-events-none absolute inset-y-0 right-[29%] w-4 -skew-x-[28deg] bg-[#17657c]/10" />
       <div className="relative">
         <h1 className="text-[30px] leading-tight font-bold tracking-[-.02em] text-[#193344]">Hola, {perfil?.nombre?.split(' ')[0] ?? 'Gerencia'}</h1>
-        <p className="text-[15px] text-[#66818f]">Resumen operativo del taller</p>
+        <p className="text-[15px] text-[#4f6672]">Resumen operativo del taller</p>
         <button onClick={recargar} className="mt-3 inline-flex items-center gap-2 rounded-full border border-black/[.06] bg-white/95 px-4 py-2 text-[14px] text-[#193344] shadow-[0_2px_10px_rgba(16,24,20,.08)] active:scale-[.98]">
           <CalendarDays className="h-[18px] w-[18px]" strokeWidth={1.7} />
           {datos ? fechaLarga(datos.hoy) : '…'}
-          <RefreshCw className={`h-4 w-4 text-[#66818f] ${cargando ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 text-[#4f6672] ${cargando ? 'animate-spin' : ''}`} />
         </button>
-        {hora && <div className="mt-1.5 pl-1 text-[11px] text-[#66818f]">Actualizado {hora}</div>}
+        {hora && <div className="mt-1.5 pl-1 text-[12px] text-[#4f6672]">Actualizado {hora}</div>}
       </div>
     </div>
   )
@@ -100,7 +118,7 @@ function Periodos({ periodo, setPeriodo }: { periodo: Periodo; setPeriodo: (p: P
     <div className="grid grid-cols-[.8fr_1fr_1.12fr_1.38fr] gap-1.5 px-4 pb-1">
       {PERIODOS.map(p => (
         <button key={p.id} onClick={() => setPeriodo(p.id)}
-          className={`flex items-center justify-center gap-1 rounded-full px-1 py-2.5 text-[13px] whitespace-nowrap transition ${periodo === p.id ? 'bg-gradient-to-b from-[#2298af] to-[#17657c] font-semibold text-white shadow-[0_4px_12px_rgba(23,101,124,.3)]' : 'border border-black/[.04] bg-white text-[#193344] shadow-[0_1px_2px_rgba(16,24,20,.05)]'}`}>
+          className={`flex items-center justify-center gap-1 rounded-full px-1 py-2.5 text-[14px] whitespace-nowrap transition ${periodo === p.id ? 'bg-gradient-to-b from-[#2298af] to-[#17657c] font-semibold text-white shadow-[0_4px_12px_rgba(23,101,124,.3)]' : 'border border-black/[.04] bg-white text-[#193344] shadow-[0_1px_2px_rgba(16,24,20,.05)]'}`}>
           <CalendarDays className="h-[15px] w-[15px] shrink-0" strokeWidth={1.7} />{p.label}
         </button>
       ))}
@@ -110,7 +128,7 @@ function Periodos({ periodo, setPeriodo }: { periodo: Periodo; setPeriodo: (p: P
 
 function BarraInferior() {
   const item = (to: string, Icono: LucideIcon, label: string) => (
-    <NavLink to={to} end={to === '/'} className={({ isActive }) => `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2.5 text-[12px] transition ${isActive ? 'bg-gradient-to-b from-[#2298af] to-[#17657c] font-semibold text-white shadow-[0_4px_14px_rgba(23,101,124,.35)]' : 'text-[#193344] active:bg-black/5'}`}>
+    <NavLink to={to} end={to === '/'} className={({ isActive }) => `flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2.5 text-[13px] transition ${isActive ? 'bg-gradient-to-b from-[#2298af] to-[#17657c] font-semibold text-white shadow-[0_4px_14px_rgba(23,101,124,.35)]' : 'text-[#193344] active:bg-black/5'}`}>
       <Icono className="h-6 w-6" strokeWidth={1.6} />{label}
     </NavLink>
   )
@@ -145,6 +163,7 @@ const TITULOS: Record<string, [string, string]> = {
 }
 
 function Contenido() {
+  useBarraEstado()
   const { pathname } = useLocation()
   const [periodo, setP] = useState<Periodo>(leerPeriodo)
   const setPeriodo = (p: Periodo) => { setP(p); try { localStorage.setItem('gerencia.periodo', p) } catch { /* sin almacenamiento */ } }
@@ -155,9 +174,10 @@ function Contenido() {
     : el(datos)
   return (
     <div className="mx-auto min-h-screen max-w-lg bg-[#f1f7f9] text-[#193344]" style={{ fontFamily: "'Plus Jakarta Sans', Inter, system-ui, sans-serif" }}>
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[var(--sat)] bg-[#f1f7f9]/95 backdrop-blur" />
       <Encabezado />
       {titulo
-        ? <div className="px-5 pt-1 pb-3"><h1 className="text-[26px] font-bold tracking-[-.02em]">{titulo[0]}</h1><p className="text-[14px] text-[#66818f]">{titulo[1]}</p></div>
+        ? <div className="px-5 pt-1 pb-3"><h1 className="text-[26px] font-bold tracking-[-.02em]">{titulo[0]}</h1><p className="text-[14px] text-[#4f6672]">{titulo[1]}</p></div>
         : <Portada datos={datos} cargando={cargando} recargar={recargar} />}
       {pathname !== '/mas' && <Periodos periodo={periodo} setPeriodo={setPeriodo} />}
       {error && datos && <div className="mx-4 mt-3 rounded-2xl bg-red-50 px-4 py-2 text-xs text-red-700">No se pudo actualizar: {error}</div>}

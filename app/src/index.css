@@ -65,6 +65,7 @@ body.erp, body.movil {
   --neon-fuerte: 0 2px 4px rgba(16, 44, 67, .06), 0 18px 38px -16px rgba(23, 101, 124, .45);
 }
 body.erp { background: #0e2638; color: var(--erp-texto); }
+:root { --sat: env(safe-area-inset-top, 0px); }
 body.movil { background: #f1f7f9; color: var(--erp-texto); }
 body.movil ::selection { background: #c5e6ed; }
 body.erp ::selection { background: #c5e6ed; }
