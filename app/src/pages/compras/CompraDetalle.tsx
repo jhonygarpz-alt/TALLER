@@ -120,8 +120,9 @@ export default function CompraDetalle() {
     <div className="space-y-5">
       <Link to="/compras?tab=compras" className="text-sm font-medium text-brand-700 hover:underline">← Compras</Link>
       <PageHeader title={`Requisición REQ-${String(c.id).padStart(4, '0')}`} subtitle={<>Creada {fechaHora(c.created_at)} · <Badge cls={ESTADO_COMPRA[c.estado].badge}>{ESTADO_COMPRA[c.estado].label}</Badge></>}>
+        {['requisicion', 'cancelada'].includes(c.estado) && puede('compras.gestionar') &&
+          <button className="btn btn-secondary text-red-600" onClick={() => confirm('¿Eliminar esta requisición? Esta acción no se puede deshacer.') && run(supabase.from('compras').delete().eq('id', id), () => nav('/compras?tab=compras'))}><Trash2 className="h-4 w-4" /> Eliminar</button>}
         {c.estado === 'requisicion' && puede('compras.gestionar') && <>
-          <button className="btn btn-secondary text-red-600" title="Eliminar requisición" aria-label="Eliminar requisición" onClick={() => confirm('¿Eliminar requisición?') && run(supabase.from('compras').delete().eq('id', id), () => nav('/compras?tab=compras'))}><Trash2 className="h-4 w-4" /></button>
           <button className="btn btn-primary" disabled={!partidas.length} onClick={() => accion('enviar', '¿Enviar a autorización? Las partidas ya no se podrán modificar después de autorizada.')}><Send className="h-4 w-4" /> Solicitar autorización</button>
         </>}
         {c.estado === 'por_autorizar' && puede('compras.autorizar') && <button className="btn btn-success" onClick={() => accion('autorizar', `¿Autorizar compra por ${money2(total)} (IVA incluido)?`)}><CheckCircle2 className="h-4 w-4" /> Autorizar compra</button>}

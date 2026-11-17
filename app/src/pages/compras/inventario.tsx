@@ -191,13 +191,22 @@ export function TabCompras() {
   const [nueva, setNueva] = useState(false)
   const [f, setF] = useState({ proveedor_id: '', fecha: hoyISO(), notas: '' })
   const [error, setError] = useState<string | null>(null)
+  const [recarga, setRecarga] = useState(0)
+  const [errorLista, setErrorLista] = useState<string | null>(null)
+  async function eliminar(c: CompraRow) {
+    const folio = `REQ-${String(c.id).padStart(4, '0')}`
+    if (!confirm(`¿Eliminar la requisición ${folio}${c.compra_partidas.length ? ` y sus ${c.compra_partidas.length} partida(s)` : ''}? Esta acción no se puede deshacer.`)) return
+    const { error } = await supabase.from('compras').delete().eq('id', c.id)
+    setErrorLista(error ? errorTexto(error) : null)
+    if (!error) setRecarga(r => r + 1)
+  }
   useEffect(() => {
     let q = supabase.from('compras').select('*, proveedores(nombre), compra_partidas(cantidad,costo_unit,iva_pct)').order('fecha', { ascending: false }).limit(500)
     if (estado === 'abiertas') q = q.in('estado', ['requisicion', 'por_autorizar', 'autorizada'])
     else if (estado !== 'todas') q = q.eq('estado', estado)
     q.then(({ data }) => setRows((data ?? []) as CompraRow[]))
     supabase.from('proveedores').select('*').order('nombre').then(({ data }) => setProveedores((data ?? []) as Proveedor[]))
-  }, [estado])
+  }, [estado, recarga])
   async function crear(e: FormEvent) {
     e.preventDefault()
     const { data, error } = await supabase.from('compras').insert(clean(f)).select('id').single()
@@ -213,15 +222,18 @@ export function TabCompras() {
         ))}
         {puede('compras.gestionar') && <button className="btn btn-primary btn-sm ml-auto" onClick={() => setNueva(true)}><Plus className="h-4 w-4" /> Nueva requisición</button>}
       </div>
+      <ErrorMsg error={errorLista} />
       <Card pad={false}>
         {rows.length === 0 ? <Empty icon={ShoppingCart}>Sin compras</Empty> : (
           <div className="overflow-x-auto"><table className="tbl">
-            <thead><tr><th>Folio</th><th>Fecha</th><th>Proveedor</th><th>Factura</th><th>Estado</th><th className="text-right">Partidas</th><th className="text-right">Total con IVA</th></tr></thead>
+            <thead><tr><th>Folio</th><th>Fecha</th><th>Proveedor</th><th>Factura</th><th>Estado</th><th className="text-right">Partidas</th><th className="text-right">Total con IVA</th><th></th></tr></thead>
             <tbody>{rows.map(c => (
               <tr key={c.id} className="cursor-pointer" onClick={() => nav(`/compras/${c.id}`)}>
                 <td className="font-bold">REQ-{String(c.id).padStart(4, '0')}</td><td>{fecha(c.fecha)}</td><td>{c.proveedores?.nombre ?? '—'}</td><td>{c.factura ?? '—'}</td>
                 <td><Badge cls={ESTADO_COMPRA[c.estado].badge}>{ESTADO_COMPRA[c.estado].label}</Badge></td>
                 <td className="text-right">{c.compra_partidas.length}</td><td className="text-right font-semibold">{money2(total(c))}</td>
+                <td className="text-right">{['requisicion', 'cancelada'].includes(c.estado) && puede('compras.gestionar') &&
+                  <button className="btn btn-ghost btn-sm text-red-600" title="Eliminar requisición" onClick={e => { e.stopPropagation(); eliminar(c) }}><Trash2 className="h-4 w-4" /> Eliminar</button>}</td>
               </tr>))}</tbody>
           </table></div>
         )}
