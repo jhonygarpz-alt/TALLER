@@ -217,7 +217,7 @@ export default function Recepcion() {
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Aseguradora *"><select className="input" value={f.aseguradora_id} disabled={!!asignacionId} onChange={e => { setF(p => ({ ...p, aseguradora_id: e.target.value, tipo_reparacion_id: '' })); elegirAsignacion(null); setAsigNueva(false) }}>{aseguradoras.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Field>
               {asigNueva ? <Field label="Número de siniestro *"><input className="input" value={f.siniestro} onChange={set('siniestro')} placeholder="Siniestro de la asignación nueva" /></Field> : <div />}
-              <Field label="Asignación de la aseguradora *" className="sm:col-span-2" hint="Toda orden de aseguradora va ligada a su asignación. Al elegirla se llenan el siniestro, el asegurado y el vehículo.">
+              <Field grupo label="Asignación de la aseguradora *" className="sm:col-span-2" hint="Toda orden de aseguradora va ligada a su asignación. Al elegirla se llenan el siniestro, el asegurado y el vehículo.">
                 <SelectorAsignacion aseguradoraId={f.aseguradora_id} seleccion={asig} nueva={asigNueva} bloqueado={!!asignacionId}
                   onElegir={elegirAsignacion} onNueva={v => { setAsigNueva(v); elegirAsignacion(null) }} />
               </Field>

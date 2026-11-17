@@ -57,11 +57,11 @@ export default function AsignarTrabajo({ ordenId, folio, onClose, onListo }: { o
       <form onSubmit={asignar} className="space-y-4 pb-2">
         {error && <Aviso onClose={() => setError(null)}>{error}</Aviso>}
 
-        <Campo label="1. Área del trabajo">
+        <Campo grupo label="1. Área del trabajo">
           <div className="flex flex-wrap gap-2">{areas.map(a => <button key={a} type="button" className={chip(area === a)} onClick={() => elegirArea(a)}>{a === 'detallado' ? 'Detallado / pulido' : AREAS[a]}</button>)}</div>
         </Campo>
 
-        <Campo label="2. Técnico *">
+        <Campo grupo label="2. Técnico *">
           <div className="space-y-2">
             {tecsArea.length === 0 && <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">No hay técnicos activos de {AREAS[area]}. Toca «Ver todos».</p>}
             {tecsArea.map(t => (

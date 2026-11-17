@@ -104,13 +104,18 @@ export function Hoja({ titulo, onClose, children }: { titulo: string; onClose: (
 }
 
 /** Campo con etiqueta para formularios móviles */
-export function Campo({ label, children, ayuda }: { label: string; children: ReactNode; ayuda?: ReactNode }) {
+/**
+ * Campo con etiqueta. Usa `grupo` cuando el contenido tiene botones o listas (no un solo input):
+ * se dibuja como <div> porque Safari (iPhone) reenvía cada toque dentro de un <label> a su primer botón.
+ */
+export function Campo({ label, children, ayuda, grupo }: { label: string; children: ReactNode; ayuda?: ReactNode; grupo?: boolean }) {
+  const Tag = grupo ? 'div' : 'label'
   return (
-    <label className="block">
+    <Tag className="block">
       <span className="mb-1.5 block text-[13px] font-semibold text-slate-600">{label}</span>
       {children}
       {ayuda && <span className="mt-1 block text-xs text-slate-500">{ayuda}</span>}
-    </label>
+    </Tag>
   )
 }
 export const entrada = 'block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-800 shadow-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15'

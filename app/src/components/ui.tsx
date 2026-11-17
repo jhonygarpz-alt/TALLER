@@ -43,13 +43,15 @@ export function Badge({ cls, children }: { cls: string; children: ReactNode }) {
   return <span className={`badge ${cls}`}>{children}</span>
 }
 
-export function Field({ label, children, className = '', hint }: { label: string; children: ReactNode; className?: string; hint?: ReactNode }) {
+/** Campo con etiqueta. `grupo`: contenido con botones o listas → <div> (Safari reenvía los toques de un <label> a su primer botón) */
+export function Field({ label, children, className = '', hint, grupo }: { label: string; children: ReactNode; className?: string; hint?: ReactNode; grupo?: boolean }) {
+  const Tag = grupo ? 'div' : 'label'
   return (
-    <label className={`block ${className}`}>
+    <Tag className={`block ${className}`}>
       <span className="label">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
-    </label>
+    </Tag>
   )
 }
 

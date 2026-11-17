@@ -189,7 +189,7 @@ export default function NuevaOrden() {
           </div>
           {f.tipo === 'aseguradora' && <>
             <Campo label="Aseguradora *"><select className={entrada} value={f.aseguradora_id} onChange={e => { set('aseguradora_id')(e); elegirAsignacion(null); setAsigNueva(false) }}>{aseguradoras.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Campo>
-            <Campo label="Asignación de la aseguradora *" ayuda="Al elegirla se llenan el siniestro, el asegurado y el vehículo.">
+            <Campo grupo label="Asignación de la aseguradora *" ayuda="Al elegirla se llenan el siniestro, el asegurado y el vehículo.">
               <SelectorAsignacion movil aseguradoraId={f.aseguradora_id} seleccion={asig} nueva={asigNueva} onElegir={elegirAsignacion} onNueva={v => { setAsigNueva(v); elegirAsignacion(null) }} />
             </Campo>
             {asigNueva && <Campo label="Número de siniestro *"><input className={entrada} inputMode="numeric" value={f.siniestro} onChange={set('siniestro')} placeholder="Ej. 4264105478000121" /></Campo>}
@@ -202,7 +202,7 @@ export default function NuevaOrden() {
         </>}
 
         {paso === 2 && <>
-          <Campo label="Placas" ayuda={buscado ? (existente ? <span className="font-semibold text-brand-700">✓ Ya registrado: {existente.texto}. Se llenaron sus datos.</span> : 'Placas nuevas: se dará de alta el vehículo.') : 'Busca para recuperar los datos si el auto ya vino antes.'}>
+          <Campo grupo label="Placas" ayuda={buscado ? (existente ? <span className="font-semibold text-brand-700">✓ Ya registrado: {existente.texto}. Se llenaron sus datos.</span> : 'Placas nuevas: se dará de alta el vehículo.') : 'Busca para recuperar los datos si el auto ya vino antes.'}>
             <div className="flex gap-2">
               <input className={`${entrada} uppercase`} value={f.placas} autoCapitalize="characters" onChange={e => { set('placas')(e); setBuscado(false); setExistente(null) }} onBlur={buscarPlacas} placeholder="ABC123A" />
               <button onClick={buscarPlacas} className="flex w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-700 text-white" aria-label="Buscar placas"><Search className="h-6 w-6" /></button>

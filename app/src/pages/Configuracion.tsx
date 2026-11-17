@@ -30,7 +30,7 @@ function generarPassword() {
 
 function CampoPassword({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <Field label="Contraseña temporal *" hint="Mínimo 8 caracteres. Compártela con el usuario de forma privada.">
+    <Field grupo label="Contraseña temporal *" hint="Mínimo 8 caracteres. Compártela con el usuario de forma privada.">
       <div className="flex gap-2">
         <input className="input font-mono" required minLength={8} value={value} onChange={e => onChange(e.target.value)} />
         <button type="button" className="btn btn-secondary" onClick={() => onChange(generarPassword())}>Generar</button>
