@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, Star, Truck } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
@@ -15,8 +15,30 @@ export const CHECKLIST_CALIDAD = [
 export default function Entrega({ o, recargar }: TabProps) {
   const { puede } = useAuth()
   const [check, setCheck] = useState<Record<string, boolean>>(o.checklist_calidad && Object.keys(o.checklist_calidad).length ? o.checklist_calidad : Object.fromEntries(CHECKLIST_CALIDAD.map(c => [c, false])))
-  const [recibe, setRecibe] = useState('')
-  const [just, setJust] = useState('')
+  // Lo escrito en "Registrar entrega" se conserva en este equipo aunque se cambie de pestaña o se recargue
+  const claveLocal = `entrega-borrador-${o.id}`
+  const previo = (() => { try { return JSON.parse(localStorage.getItem(claveLocal) ?? '{}') as { recibe?: string; just?: string } } catch { return {} } })()
+  const [recibe, setRecibe] = useState(previo.recibe ?? '')
+  const [just, setJust] = useState(previo.just ?? '')
+  const [guardandoCheck, setGuardandoCheck] = useState<'' | 'guardando' | 'guardado'>('')
+  const ultimo = useRef(0)
+  useEffect(() => {
+    try {
+      if (recibe || just) localStorage.setItem(claveLocal, JSON.stringify({ recibe, just }))
+      else localStorage.removeItem(claveLocal)
+    } catch { /* sin almacenamiento local: el formulario sigue funcionando */ }
+  }, [recibe, just, claveLocal])
+
+  /** Cada casilla del checklist se guarda en la orden en cuanto se marca, para no perder el avance */
+  async function marcar(c: string, v: boolean) {
+    const nuevo = { ...check, [c]: v }
+    setCheck(nuevo); setGuardandoCheck('guardando')
+    const n = ++ultimo.current
+    const { error } = await supabase.from('ordenes').update({ checklist_calidad: nuevo }).eq('id', o.id)
+    if (n !== ultimo.current) return
+    if (error) { setGuardandoCheck(''); return setError(`No se pudo guardar el checklist: ${errorTexto(error)}`) }
+    setGuardandoCheck('guardado')
+  }
   const [enc, setEnc] = useState({ satisfaccion: o.satisfaccion ?? 0, comentario: o.encuesta_comentario ?? '' })
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
@@ -29,6 +51,7 @@ export default function Entrega({ o, recargar }: TabProps) {
     if (!confirm(`¿Confirmas la entrega de ${o.folio} a ${recibe}? La orden quedará cerrada.`)) return
     const { error } = await supabase.rpc('orden_entregar', { p_orden: o.id, p_recibe: recibe, p_checklist: check, p_justificacion: just || null })
     if (error) return setError(errorTexto(error))
+    try { localStorage.removeItem(claveLocal) } catch { /* nada */ }
     setError(null); recargar()
   }
   async function guardarEncuesta() {
@@ -43,11 +66,11 @@ export default function Entrega({ o, recargar }: TabProps) {
     <div className="space-y-5">
       <ErrorMsg error={error} /><OkMsg msg={ok} />
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card title="Checklist final de calidad">
+        <Card title="Checklist final de calidad" action={!entregado && guardandoCheck ? <span className="text-xs text-slate-500">{guardandoCheck === 'guardando' ? 'Guardando…' : 'Avance guardado ✓'}</span> : undefined}>
           <ul className="space-y-1.5">
-            {Object.keys(check).map(c => (
+            {[...CHECKLIST_CALIDAD, ...Object.keys(check).filter(k => !CHECKLIST_CALIDAD.includes(k))].map(c => (
               <li key={c}><label className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50">
-                <input type="checkbox" className="h-5 w-5" checked={check[c]} disabled={entregado} onChange={e => setCheck({ ...check, [c]: e.target.checked })} />{c}
+                <input type="checkbox" className="h-5 w-5" checked={!!check[c]} disabled={entregado} onChange={e => marcar(c, e.target.checked)} />{c}
               </label></li>
             ))}
           </ul>
