@@ -19,6 +19,7 @@ export default function Presupuesto({ o, recargar }: TabProps) {
   const [pres, setPres] = useState<Pres[]>([])
   const [sel, setSel] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
   const [f, setF] = useState({ area: 'hojalateria', concepto: 'mano_obra', descripcion: '', cantidad: '1', unidad: 'pza', precio_unit: '', costo_unit: '0' })
   const [aut, setAut] = useState({ por: '', ref: '' })
   const cerrada = o.etapa === 'entregado' || o.etapa === 'cancelado'
@@ -53,13 +54,18 @@ export default function Presupuesto({ o, recargar }: TabProps) {
     if (!confirm(autorizar ? '¿Registrar AUTORIZACIÓN del presupuesto?' : '¿Registrar RECHAZO del presupuesto?')) return
     run(() => supabase.rpc('presupuesto_resolver', { p_id: sel, p_autorizar: autorizar, p_autorizado_por: aut.por, p_referencia: aut.ref || null }), () => setAut({ por: '', ref: '' }))
   }
-  const cambiarTipo = (x: Pres) => {
-    const msg = x.particular
-      ? `¿Regresar la ${nombrePres(x)} a la aseguradora? Volverá a contar en lo autorizado por la aseguradora.`
-      : `¿Pasar la Ampliación #${x.numero} (${money2(total(x))}) a presupuesto particular? La pagará el cliente: dejará de contar en lo autorizado por la aseguradora y se facturará en Facturación particular.`
-    if (!confirm(msg)) return
-    run(() => supabase.rpc('presupuesto_cambiar_tipo', { p_id: x.id, p_particular: !x.particular }))
-  }
+  /** Un clic: pasa la ampliación a particular (o la regresa). Si había un presupuesto particular vacío en borrador, se elimina. */
+  const cambiarTipo = (x: Pres) => run(async () => {
+    const r = await supabase.rpc('presupuesto_cambiar_tipo', { p_id: x.id, p_particular: !x.particular })
+    if (r.error) return r
+    if (!x.particular) {
+      const vacios = pres.filter(v => v.particular && v.estado === 'borrador' && v.presupuesto_partidas.length === 0)
+      for (const v of vacios) await supabase.from('presupuestos').delete().eq('id', v.id)
+    }
+    setSel(x.id)
+    setAviso(x.particular ? `Ampliación #${x.numero} regresada a la aseguradora.` : `Ampliación #${x.numero} pasada a presupuesto particular (${money2(total(x))}).`)
+    return r
+  })
   const eliminar = () => confirm('¿Eliminar este borrador?') && run(() => supabase.from('presupuestos').delete().eq('id', sel!), () => setSel(null))
 
   const totalAut = pres.filter(x => x.estado === 'autorizado' && !x.particular).reduce((s, x) => s + total(x), 0)
@@ -69,11 +75,20 @@ export default function Presupuesto({ o, recargar }: TabProps) {
   return (
     <div className="space-y-5">
       <ErrorMsg error={error} />
+      {aviso && <div className="flex items-center justify-between rounded-xl bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-800 ring-1 ring-violet-200"><span>{aviso}</span><button onClick={() => setAviso(null)}>×</button></div>}
       <div className="flex flex-wrap items-center gap-2">
         {pres.map(x => (
           <button key={x.id} onClick={() => setSel(x.id)}
             className={`rounded-xl border-2 px-4 py-2 text-left text-sm ${sel === x.id ? (x.particular ? 'border-violet-500 bg-violet-50' : 'border-brand-600 bg-brand-50') : x.particular ? 'border-violet-200 bg-white' : 'border-slate-200 bg-white'}`}>
-            <div className="font-bold">{nombrePres(x)}</div>
+            <div className="flex items-center gap-2 font-bold">{nombrePres(x)}
+              {esAseguradora && x.es_ampliacion && x.estado === 'autorizado' && o.etapa !== 'cancelado' && puede('presupuestos.gestionar') && (
+                <span role="button" tabIndex={0} title={x.particular ? 'Regresar a la aseguradora' : 'Pasar a presupuesto particular (lo paga el cliente)'}
+                  onClick={e => { e.stopPropagation(); cambiarTipo(x) }} onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); cambiarTipo(x) } }}
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${x.particular ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-violet-600 text-white hover:bg-violet-700'}`}>
+                  {x.particular ? '← Aseguradora' : '→ Particular'}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2"><Badge cls={ESTADO_PRESUPUESTO[x.estado].badge}>{ESTADO_PRESUPUESTO[x.estado].label}</Badge><span className="text-xs">{money(total(x))}</span></div>
           </button>
         ))}
@@ -112,14 +127,7 @@ export default function Presupuesto({ o, recargar }: TabProps) {
                 <p className="text-xs text-slate-500">Pásala aquí como particular (conserva su autorización y sus partidas). Este borrador vacío se elimina.</p>
                 <div className="mt-2 flex flex-wrap gap-2">{amps.map(x => (
                   <button key={x.id} className="btn btn-sm border-2 border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100" onClick={() => {
-                    if (!confirm(`¿Pasar la Ampliación #${x.numero} (${money2(total(x))}) a presupuesto particular? La pagará el cliente y se facturará en Facturación particular.`)) return
-                    run(async () => {
-                      const r1 = await supabase.rpc('presupuesto_cambiar_tipo', { p_id: x.id, p_particular: true })
-                      if (r1.error) return r1
-                      await supabase.from('presupuestos').delete().eq('id', p.id)
-                      setSel(x.id)
-                      return r1
-                    })
+                    cambiarTipo(x)
                   }}>Pasar Ampliación #{x.numero} · {money2(total(x))}</button>
                 ))}</div>
               </div>
