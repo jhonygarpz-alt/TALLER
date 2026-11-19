@@ -53,6 +53,13 @@ export default function Presupuesto({ o, recargar }: TabProps) {
     if (!confirm(autorizar ? '¿Registrar AUTORIZACIÓN del presupuesto?' : '¿Registrar RECHAZO del presupuesto?')) return
     run(() => supabase.rpc('presupuesto_resolver', { p_id: sel, p_autorizar: autorizar, p_autorizado_por: aut.por, p_referencia: aut.ref || null }), () => setAut({ por: '', ref: '' }))
   }
+  const cambiarTipo = (x: Pres) => {
+    const msg = x.particular
+      ? `¿Regresar la ${nombrePres(x)} a la aseguradora? Volverá a contar en lo autorizado por la aseguradora.`
+      : `¿Pasar la Ampliación #${x.numero} (${money2(total(x))}) a presupuesto particular? La pagará el cliente: dejará de contar en lo autorizado por la aseguradora y se facturará en Facturación particular.`
+    if (!confirm(msg)) return
+    run(() => supabase.rpc('presupuesto_cambiar_tipo', { p_id: x.id, p_particular: !x.particular }))
+  }
   const eliminar = () => confirm('¿Eliminar este borrador?') && run(() => supabase.from('presupuestos').delete().eq('id', sel!), () => setSel(null))
 
   const totalAut = pres.filter(x => x.estado === 'autorizado' && !x.particular).reduce((s, x) => s + total(x), 0)
@@ -88,7 +95,13 @@ export default function Presupuesto({ o, recargar }: TabProps) {
       </div>
 
       {!p ? <Card><Empty>No hay presupuestos. Crea el primero después del diagnóstico.</Empty></Card> : (
-        <Card title={nombrePres(p)} action={<span className="flex gap-2">{p.particular && <Badge cls="bg-violet-100 text-violet-700">Lo paga el cliente</Badge>}<Badge cls={ESTADO_PRESUPUESTO[p.estado].badge}>{ESTADO_PRESUPUESTO[p.estado].label}</Badge></span>}>
+        <Card title={nombrePres(p)} action={<span className="flex flex-wrap items-center justify-end gap-2">
+          {esAseguradora && p.es_ampliacion && o.etapa !== 'cancelado' && puede('presupuestos.gestionar') && (
+            <button className={`btn btn-sm ${p.particular ? 'btn-secondary' : 'border-2 border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100'}`} onClick={() => cambiarTipo(p)}>
+              {p.particular ? 'Regresar a la aseguradora' : 'Pasar a presupuesto particular'}
+            </button>
+          )}
+          {p.particular && <Badge cls="bg-violet-100 text-violet-700">Lo paga el cliente</Badge>}<Badge cls={ESTADO_PRESUPUESTO[p.estado].badge}>{ESTADO_PRESUPUESTO[p.estado].label}</Badge></span>}>
           {p.particular && <p className="mb-3 rounded-lg bg-violet-50 px-3 py-2 text-sm text-violet-800">Presupuesto particular: trabajos que paga el cliente aparte de la aseguradora. Se factura en <b>Facturación particular</b> y no cambia la etapa de la orden.</p>}
           {p.presupuesto_partidas.length === 0 ? <Empty>Agrega las partidas del presupuesto</Empty> : (
             <TableWrap>

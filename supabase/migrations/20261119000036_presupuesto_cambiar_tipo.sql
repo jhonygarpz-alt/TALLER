@@ -1,0 +1,2 @@
+-- presupuesto_cambiar_tipo(p_id, p_particular): pasa una ampliación de la aseguradora a presupuesto particular
+-- (o la regresa). Requiere presupuestos.gestionar; bloquea si ya hay facturas de ese concepto. Queda en auditoría.
