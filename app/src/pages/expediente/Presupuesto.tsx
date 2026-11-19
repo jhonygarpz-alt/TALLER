@@ -103,6 +103,28 @@ export default function Presupuesto({ o, recargar }: TabProps) {
           )}
           {p.particular && <Badge cls="bg-violet-100 text-violet-700">Lo paga el cliente</Badge>}<Badge cls={ESTADO_PRESUPUESTO[p.estado].badge}>{ESTADO_PRESUPUESTO[p.estado].label}</Badge></span>}>
           {p.particular && <p className="mb-3 rounded-lg bg-violet-50 px-3 py-2 text-sm text-violet-800">Presupuesto particular: trabajos que paga el cliente aparte de la aseguradora. Se factura en <b>Facturación particular</b> y no cambia la etapa de la orden.</p>}
+          {p.particular && p.estado === 'borrador' && p.presupuesto_partidas.length === 0 && puede('presupuestos.gestionar') && (() => {
+            const amps = pres.filter(x => x.es_ampliacion && !x.particular && x.estado === 'autorizado')
+            if (!amps.length) return null
+            return (
+              <div className="mb-3 rounded-xl border-2 border-dashed border-violet-300 bg-white p-3">
+                <div className="text-sm font-semibold text-violet-900">¿Lo que paga el cliente ya está en una ampliación autorizada?</div>
+                <p className="text-xs text-slate-500">Pásala aquí como particular (conserva su autorización y sus partidas). Este borrador vacío se elimina.</p>
+                <div className="mt-2 flex flex-wrap gap-2">{amps.map(x => (
+                  <button key={x.id} className="btn btn-sm border-2 border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100" onClick={() => {
+                    if (!confirm(`¿Pasar la Ampliación #${x.numero} (${money2(total(x))}) a presupuesto particular? La pagará el cliente y se facturará en Facturación particular.`)) return
+                    run(async () => {
+                      const r1 = await supabase.rpc('presupuesto_cambiar_tipo', { p_id: x.id, p_particular: true })
+                      if (r1.error) return r1
+                      await supabase.from('presupuestos').delete().eq('id', p.id)
+                      setSel(x.id)
+                      return r1
+                    })
+                  }}>Pasar Ampliación #{x.numero} · {money2(total(x))}</button>
+                ))}</div>
+              </div>
+            )
+          })()}
           {p.presupuesto_partidas.length === 0 ? <Empty>Agrega las partidas del presupuesto</Empty> : (
             <TableWrap>
               <table className="tbl">
