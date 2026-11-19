@@ -37,6 +37,14 @@ export async function enviarEncuesta(token: string, orden: number, calificacion:
   const { error } = await supabase.rpc('cliente_encuesta', { p_token: token, p_orden: orden, p_calificacion: calificacion, p_comentario: comentario })
   if (error) throw new Error(errorTexto(error))
 }
+/** Foto real del vehículo (recepción en el taller): enlace temporal validado con el token del cliente */
+export async function fotoVehiculo(token: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('cliente-foto', { body: { token } })
+    if (error) return null
+    return (data as { url?: string | null })?.url ?? null
+  } catch { return null }
+}
 export async function salir(token: string) {
   await supabase.rpc('cliente_salir', { p_token: token }).then(() => {}, () => {})
   guardarToken(null)

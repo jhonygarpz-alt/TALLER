@@ -4,7 +4,7 @@ import { BellRing, CalendarDays, CheckCircle2, ChevronRight, Loader2, LogOut, Pa
 import IlustracionAuto from '../../components/IlustracionAuto'
 import { fecha, fechaHora } from '../../lib/format'
 import { Aviso, Cargando } from '../../movil/ui'
-import { activarAvisos, datos, logoUrl, pushSoportado, salir, type DatosCliente, type OrdenCliente } from '../api'
+import { activarAvisos, datos, fotoVehiculo, logoUrl, pushSoportado, salir, type DatosCliente, type OrdenCliente } from '../api'
 
 const PASOS = ['Recibido', 'Diagnóstico', 'Autorización', 'Reparación', 'Pintura', 'Detalles y calidad', 'Listo para entrega', 'Entregado']
 
@@ -40,6 +40,9 @@ export default function Seguimiento({ token, onSalir }: { token: string; onSalir
   const [avisoMsg, setAvisoMsg] = useState<{ t: 'ok' | 'error'; m: string } | null>(null)
   const [activando, setActivando] = useState(false)
   const [cargando, setCargando] = useState(false)
+  const [foto, setFoto] = useState<string | null>(null)
+  const [verFoto, setVerFoto] = useState(false)
+  useEffect(() => { fotoVehiculo(token).then(setFoto) }, [token])
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -78,11 +81,25 @@ export default function Seguimiento({ token, onSalir }: { token: string; onSalir
       </header>
 
       <div className="relative z-10 -mt-10 space-y-4 px-4">
+        {foto ? (
+          <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200/80">
+            <button type="button" onClick={() => setVerFoto(true)} className="block w-full" aria-label="Ver foto de tu vehículo">
+              <img src={foto} alt={`${v?.marca ?? ''} ${v?.modelo ?? ''}`} className="aspect-[16/10] w-full object-cover" onError={() => setFoto(null)} />
+            </button>
+            <div className="p-3.5"><div className="text-lg leading-tight font-extrabold text-slate-900">{v?.marca} {v?.modelo} {v?.anio ?? ''}</div>
+              <div className="text-sm text-slate-500">Placas <b className="text-brand-700">{v?.placas}</b>{v?.color && ` · ${v.color}`} · <span className="text-xs">Foto tomada al recibirlo en el taller</span></div></div>
+          </div>
+        ) : (
         <div className="flex items-center gap-3 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-slate-200/80">
           <div className="h-[72px] w-[104px] shrink-0 overflow-hidden rounded-2xl"><IlustracionAuto modelo={v?.modelo} color={v?.color} conEtiqueta={false} /></div>
           <div className="min-w-0"><div className="text-lg leading-tight font-extrabold text-slate-900">{v?.marca} {v?.modelo} {v?.anio ?? ''}</div>
             <div className="text-sm text-slate-500">Placas <b className="text-brand-700">{v?.placas}</b>{v?.color && ` · ${v.color}`}</div></div>
-        </div>
+        </div>)}
+        {verFoto && foto && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3" onClick={() => setVerFoto(false)}>
+            <img src={foto} alt="" className="max-h-full max-w-full rounded-2xl object-contain" />
+          </div>
+        )}
 
         {pendientesEncuesta.map(o => (
           <Link key={o.id} to={`/encuesta/${o.id}`} className="flex items-center gap-3 rounded-3xl bg-gradient-to-r from-amber-400 to-amber-500 p-4 text-white shadow-lg shadow-amber-900/20 active:scale-[.98]">
