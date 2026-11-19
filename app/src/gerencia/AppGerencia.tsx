@@ -101,21 +101,16 @@ function Periodos({ periodo, setPeriodo }: { periodo: Periodo; setPeriodo: (p: P
   const cal = useRef<HTMLInputElement>(null)
   const elegido = periodo.startsWith('dia:') ? periodo.slice(4) : null
   const chip = (activo: boolean) => `flex shrink-0 items-center justify-center gap-1 rounded-full px-3.5 py-2.5 text-[14px] whitespace-nowrap transition ${activo ? 'bg-gradient-to-b from-[#2298af] to-[#17657c] font-semibold text-white shadow-[0_4px_12px_rgba(23,101,124,.3)]' : 'border border-black/[.04] bg-white text-[#193344] shadow-[0_1px_2px_rgba(16,24,20,.05)]'}`
-  function abrirCalendario() {
-    const el = cal.current
-    if (!el) return
-    try { (el as HTMLInputElement & { showPicker?: () => void }).showPicker?.() ?? el.click() } catch { el.click() }
-  }
   return (
     <div className="-mb-1 flex gap-1.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none]">
-      <div className="relative shrink-0">
-        <button type="button" onClick={abrirCalendario} className={chip(!!elegido)} aria-label="Elegir un día en el calendario">
-          <CalendarDays className="h-[15px] w-[15px] shrink-0" strokeWidth={1.7} />{elegido ? diaCorto(elegido) : 'Elegir día'}
-        </button>
-        <input ref={cal} type="date" max={hoyTaller()} value={elegido ?? ''} aria-label="Día a consultar"
+      {/* El selector de fecha va encima del botón (transparente): iPhone solo abre el calendario si el toque cae en el propio campo */}
+      <label className={`relative ${chip(!!elegido)}`}>
+        <CalendarDays className="h-[15px] w-[15px] shrink-0" strokeWidth={1.7} />{elegido ? diaCorto(elegido) : 'Elegir día'}
+        <input ref={cal} type="date" max={hoyTaller()} value={elegido ?? ''} aria-label="Elegir un día en el calendario"
+          onClick={e => { try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.() } catch { /* el navegador abre su propio calendario */ } }}
           onChange={e => e.target.value && setPeriodo(e.target.value === hoyTaller() ? 'hoy' : `dia:${e.target.value}`)}
-          className="pointer-events-none absolute inset-0 h-full w-full opacity-0" tabIndex={-1} />
-      </div>
+          className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none opacity-0 [font-size:16px]" />
+      </label>
       {PERIODOS.map(p => (
         <button key={p.id} onClick={() => setPeriodo(p.id)} className={chip(periodo === p.id)}>{p.label}</button>
       ))}
