@@ -9,8 +9,9 @@ import type { TabProps } from './Expediente'
 import MaterialesUnidad from '../../components/MaterialesUnidad'
 
 interface Partida { id: number; area: string; concepto: string; descripcion: string; cantidad: number; unidad: string; precio_unit: number; costo_unit: number }
-interface Pres { id: number; numero: number; es_ampliacion: boolean; estado: string; autorizado_por: string | null; referencia_aut: string | null; fecha_autorizacion: string | null; notas: string | null; created_at: string; presupuesto_partidas: Partida[] }
+interface Pres { id: number; numero: number; es_ampliacion: boolean; particular: boolean; estado: string; autorizado_por: string | null; referencia_aut: string | null; fecha_autorizacion: string | null; notas: string | null; created_at: string; presupuesto_partidas: Partida[] }
 
+const nombrePres = (p: Pres) => `${p.es_ampliacion ? 'Ampliación' : 'Presupuesto'}${p.particular ? ' particular' : ''} #${p.numero}`
 const total = (p: Pres) => p.presupuesto_partidas.reduce((s, x) => s + x.cantidad * x.precio_unit, 0)
 
 export default function Presupuesto({ o, recargar }: TabProps) {
@@ -32,7 +33,10 @@ export default function Presupuesto({ o, recargar }: TabProps) {
   useEffect(() => { cargar() }, [cargar])
 
   const p = pres.find(x => x.id === sel)
-  const hayBorrador = pres.some(x => x.estado === 'borrador' || x.estado === 'enviado')
+  const abierto = (x: Pres) => x.estado === 'borrador' || x.estado === 'enviado'
+  const hayBorrador = pres.some(x => !x.particular && abierto(x))
+  const hayBorradorPart = pres.some(x => x.particular && abierto(x))
+  const esAseguradora = o.tipo === 'aseguradora'
 
   async function run(fn: () => PromiseLike<{ error: unknown }>, ok?: () => void) {
     const { error } = await fn()
@@ -40,7 +44,7 @@ export default function Presupuesto({ o, recargar }: TabProps) {
     setError(null); ok?.(); await cargar(); recargar()
   }
 
-  const nuevo = () => run(() => supabase.from('presupuestos').insert({ orden_id: o.id }).select('id').single().then(r => { if (r.data) setSel(r.data.id); return r }))
+  const nuevo = (particular = false) => run(() => supabase.from('presupuestos').insert({ orden_id: o.id, particular }).select('id').single().then(r => { if (r.data) setSel(r.data.id); return r }))
   const agregar = (e: FormEvent) => { e.preventDefault(); run(() => supabase.from('presupuesto_partidas').insert({ presupuesto_id: sel, ...f }), () => setF({ ...f, descripcion: '', cantidad: '1', precio_unit: '', costo_unit: '0' })) }
   const quitar = (id: number) => run(() => supabase.from('presupuesto_partidas').delete().eq('id', id))
   const enviar = () => confirm('¿Enviar presupuesto para autorización? Ya no podrá modificarse.') && run(() => supabase.rpc('presupuesto_enviar', { p_id: sel }))
@@ -51,7 +55,8 @@ export default function Presupuesto({ o, recargar }: TabProps) {
   }
   const eliminar = () => confirm('¿Eliminar este borrador?') && run(() => supabase.from('presupuestos').delete().eq('id', sel!), () => setSel(null))
 
-  const totalAut = pres.filter(x => x.estado === 'autorizado').reduce((s, x) => s + total(x), 0)
+  const totalAut = pres.filter(x => x.estado === 'autorizado' && !x.particular).reduce((s, x) => s + total(x), 0)
+  const totalPart = pres.filter(x => x.estado === 'autorizado' && x.particular).reduce((s, x) => s + total(x), 0)
   const porArea = p ? Object.entries(p.presupuesto_partidas.reduce<Record<string, number>>((acc, x) => { acc[x.area] = (acc[x.area] ?? 0) + x.cantidad * x.precio_unit; return acc }, {})) : []
 
   return (
@@ -60,19 +65,26 @@ export default function Presupuesto({ o, recargar }: TabProps) {
       <div className="flex flex-wrap items-center gap-2">
         {pres.map(x => (
           <button key={x.id} onClick={() => setSel(x.id)}
-            className={`rounded-xl border-2 px-4 py-2 text-left text-sm ${sel === x.id ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white'}`}>
-            <div className="font-bold">{x.es_ampliacion ? 'Ampliación' : 'Presupuesto'} #{x.numero}</div>
+            className={`rounded-xl border-2 px-4 py-2 text-left text-sm ${sel === x.id ? (x.particular ? 'border-violet-500 bg-violet-50' : 'border-brand-600 bg-brand-50') : x.particular ? 'border-violet-200 bg-white' : 'border-slate-200 bg-white'}`}>
+            <div className="font-bold">{nombrePres(x)}</div>
             <div className="flex items-center gap-2"><Badge cls={ESTADO_PRESUPUESTO[x.estado].badge}>{ESTADO_PRESUPUESTO[x.estado].label}</Badge><span className="text-xs">{money(total(x))}</span></div>
           </button>
         ))}
         {!cerrada && !hayBorrador && puede('presupuestos.gestionar') && (
-          <button className="btn btn-primary" onClick={nuevo}><FilePlus2 className="h-4 w-4" /> {pres.some(x => x.estado === 'autorizado') ? 'Nueva ampliación' : 'Nuevo presupuesto'}</button>
+          <button className="btn btn-primary" onClick={() => nuevo(false)}><FilePlus2 className="h-4 w-4" /> {pres.some(x => x.estado === 'autorizado' && !x.particular) ? 'Nueva ampliación' : 'Nuevo presupuesto'}</button>
         )}
-        <div className="ml-auto text-right text-sm"><div className="text-xs text-slate-500">Total autorizado (incl. ampliaciones)</div><div className="text-xl font-extrabold text-green-700">{money2(totalAut)}</div></div>
+        {!cerrada && esAseguradora && !hayBorradorPart && puede('presupuestos.gestionar') && (
+          <button className="btn border-2 border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100" title="Trabajos que paga el cliente (no la aseguradora)" onClick={() => nuevo(true)}><FilePlus2 className="h-4 w-4" /> Presupuesto particular</button>
+        )}
+        <div className="ml-auto flex gap-6 text-right text-sm">
+          <div><div className="text-xs text-slate-500">{esAseguradora ? 'Autorizado aseguradora' : 'Total autorizado'} (incl. ampliaciones)</div><div className="text-xl font-extrabold text-green-700">{money2(totalAut)}</div></div>
+          {(esAseguradora && (totalPart > 0 || pres.some(x => x.particular))) && <div><div className="text-xs text-slate-500">Autorizado particular (cliente)</div><div className="text-xl font-extrabold text-violet-700">{money2(totalPart)}</div></div>}
+        </div>
       </div>
 
       {!p ? <Card><Empty>No hay presupuestos. Crea el primero después del diagnóstico.</Empty></Card> : (
-        <Card title={`${p.es_ampliacion ? 'Ampliación' : 'Presupuesto'} #${p.numero}`} action={<Badge cls={ESTADO_PRESUPUESTO[p.estado].badge}>{ESTADO_PRESUPUESTO[p.estado].label}</Badge>}>
+        <Card title={nombrePres(p)} action={<span className="flex gap-2">{p.particular && <Badge cls="bg-violet-100 text-violet-700">Lo paga el cliente</Badge>}<Badge cls={ESTADO_PRESUPUESTO[p.estado].badge}>{ESTADO_PRESUPUESTO[p.estado].label}</Badge></span>}>
+          {p.particular && <p className="mb-3 rounded-lg bg-violet-50 px-3 py-2 text-sm text-violet-800">Presupuesto particular: trabajos que paga el cliente aparte de la aseguradora. Se factura en <b>Facturación particular</b> y no cambia la etapa de la orden.</p>}
           {p.presupuesto_partidas.length === 0 ? <Empty>Agrega las partidas del presupuesto</Empty> : (
             <TableWrap>
               <table className="tbl">

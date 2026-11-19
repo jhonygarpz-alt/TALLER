@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { Banknote, Download, FilePlus2, FileText, Hourglass, Paperclip, Printer, Receipt, Scale } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Banknote, Building2, Download, FilePlus2, FileText, Hourglass, Paperclip, Printer, Receipt, Scale, UserRound } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { usePeriodo } from '../../lib/periodo'
@@ -17,6 +17,11 @@ interface Cxc {
   archivo_path: string | null; estado_cfdi: string; uuid_cfdi: string | null
 }
 
+/** Apartado de facturación: aseguradora o particular */
+type Seg = 'aseguradora' | 'particular'
+/** Una factura es del apartado aseguradora si se emitió a la aseguradora; si se emitió al cliente es particular */
+const segFactura = (c: { receptor: string }): Seg => c.receptor === 'aseguradora' ? 'aseguradora' : 'particular'
+
 async function subirDocumento(facturaId: number, file: File) {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'pdf'
   const path = `facturas/${facturaId}/${Date.now()}.${ext}`
@@ -26,8 +31,8 @@ async function subirDocumento(facturaId: number, file: File) {
   if (error) throw error
 }
 
-function NuevaFactura({ r, onDone }: { r: Rentabilidad & { saldo_facturar: number }; onDone: () => void }) {
-  const [f, setF] = useState({ folio: '', receptor: r.tipo === 'aseguradora' ? 'aseguradora' : 'cliente', monto: r.saldo_facturar.toFixed(2), fecha: hoyISO() })
+function NuevaFactura({ r, seg, onDone }: { r: Rentabilidad & { saldo_facturar: number }; seg: Seg; onDone: () => void }) {
+  const [f, setF] = useState({ folio: '', receptor: seg === 'aseguradora' ? 'aseguradora' : 'cliente', monto: r.saldo_facturar.toFixed(2), fecha: hoyISO() })
   const [archivo, setArchivo] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
@@ -42,10 +47,10 @@ function NuevaFactura({ r, onDone }: { r: Rentabilidad & { saldo_facturar: numbe
   return (
     <form onSubmit={submit} className="space-y-3">
       <ErrorMsg error={error} />
-      <p className="text-sm">Orden <b>{r.folio}</b> · Ingreso reconocido {money2(r.ingreso_reconocido)} · Ya facturado {money2(r.facturado)}</p>
+      <p className="text-sm">Orden <b>{r.folio}</b> · Autorizado {seg === 'aseguradora' ? 'aseguradora' : 'particular'} {money2(r.ingreso_reconocido)} · Ya facturado {money2(r.facturado)}</p>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Folio / serie *"><input className="input" required value={f.folio} onChange={e => setF({ ...f, folio: e.target.value })} /></Field>
-        <Field label="Receptor"><select className="input" value={f.receptor} onChange={e => setF({ ...f, receptor: e.target.value })}><option value="aseguradora" disabled={r.tipo !== 'aseguradora'}>Aseguradora</option><option value="cliente">Cliente</option></select></Field>
+        <Field label="Receptor"><input className="input" disabled value={seg === 'aseguradora' ? 'Aseguradora' : 'Cliente particular'} /></Field>
         <Field label="Importe *"><input className="input" type="number" step="0.01" min="0.01" required value={f.monto} onChange={e => setF({ ...f, monto: e.target.value })} /></Field>
         <Field label="Fecha"><input className="input" type="date" value={f.fecha} onChange={e => setF({ ...f, fecha: e.target.value })} /></Field>
       </div>
@@ -80,34 +85,42 @@ function RegistrarPago({ c, onDone }: { c: Cxc; onDone: () => void }) {
   )
 }
 
-function PorFacturar({ onCambio }: { onCambio: () => void }) {
+function PorFacturar({ seg, onCambio }: { seg: Seg; onCambio: () => void }) {
   const { puede } = useAuth()
   const [rows, setRows] = useState<(Rentabilidad & { saldo_facturar: number })[]>([])
   const [sel, setSel] = useState<(Rentabilidad & { saldo_facturar: number }) | null>(null)
   const cargar = useCallback(() => {
-    supabase.from('v_rentabilidad').select('*').in('etapa', ['listo_entrega', 'entregado']).gt('ingreso_reconocido', 0).order('folio')
-      .then(({ data }) => setRows(((data ?? []) as Rentabilidad[]).map(r => ({ ...r, saldo_facturar: Number(r.ingreso_reconocido) - Number(r.facturado) })).filter(r => r.saldo_facturar > 0.005)))
-  }, [])
+    // Aseguradora: presupuestos de la aseguradora vs facturas a la aseguradora.
+    // Particular: órdenes particulares + presupuestos particulares de órdenes de aseguradora vs facturas al cliente.
+    type Fila = { id: number; folio: string; tipo: string; etapa: string; presupuestos: { particular: boolean; estado: string; presupuesto_partidas: { cantidad: number; precio_unit: number }[] }[]; facturas: { receptor: string; monto: number; cancelada: boolean }[] }
+    supabase.from('ordenes').select('id,folio,tipo,etapa,presupuestos(particular,estado,presupuesto_partidas(cantidad,precio_unit)),facturas(receptor,monto,cancelada)').in('etapa', ['listo_entrega', 'entregado']).order('folio')
+      .then(({ data }) => setRows(((data ?? []) as unknown as Fila[]).map(o => {
+        const delSeg = (pp: { particular: boolean }) => seg === 'aseguradora' ? o.tipo === 'aseguradora' && !pp.particular : o.tipo !== 'aseguradora' || pp.particular
+        const ingreso = o.presupuestos.filter(pp => pp.estado === 'autorizado' && delSeg(pp)).reduce((t, pp) => t + pp.presupuesto_partidas.reduce((u, x) => u + Number(x.cantidad) * Number(x.precio_unit), 0), 0)
+        const facturado = o.facturas.filter(f => !f.cancelada && (seg === 'aseguradora') === (f.receptor === 'aseguradora')).reduce((t, f) => t + Number(f.monto), 0)
+        return { orden_id: o.id, folio: o.folio, tipo: o.tipo, etapa: o.etapa, ingreso_reconocido: ingreso, facturado, saldo_facturar: ingreso - facturado } as unknown as Rentabilidad & { saldo_facturar: number }
+      }).filter(r => r.saldo_facturar > 0.005)))
+  }, [seg])
   useEffect(() => { cargar() }, [cargar])
   return (
-    <Card title={`Documentos pendientes de facturación (${rows.length})`} action={<span className="text-lg font-extrabold">{money2(rows.reduce((s, r) => s + r.saldo_facturar, 0))}</span>}>
-      {rows.length === 0 ? <Empty icon={FileText}>Todas las órdenes terminadas están facturadas</Empty> : (
+    <Card title={`${seg === 'aseguradora' ? 'Órdenes de aseguradora' : 'Órdenes particulares'} pendientes de facturación (${rows.length})`} action={<span className="text-lg font-extrabold">{money2(rows.reduce((s, r) => s + r.saldo_facturar, 0))}</span>}>
+      {rows.length === 0 ? <Empty icon={FileText}>Todas las órdenes {seg === 'aseguradora' ? 'de aseguradora' : 'particulares'} terminadas están facturadas</Empty> : (
         <div className="-mx-5 overflow-x-auto px-5"><table className="tbl">
-          <thead><tr><th>Orden</th><th>Tipo</th><th>Etapa</th><th className="text-right">Ingreso autorizado</th><th className="text-right">Facturado</th><th className="text-right">Por facturar</th><th></th></tr></thead>
+          <thead><tr><th>Orden</th><th>Tipo</th><th>Etapa</th><th className="text-right">Autorizado {seg === 'aseguradora' ? 'aseguradora' : 'particular'}</th><th className="text-right">Facturado</th><th className="text-right">Por facturar</th><th></th></tr></thead>
           <tbody>{rows.map(r => (
             <tr key={r.orden_id}><td><Link className="font-bold text-brand-700" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.folio}</Link></td>
-              <td className="text-xs">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</td><td><Badge cls={ETAPAS[r.etapa].badge}>{ETAPAS[r.etapa].label}</Badge></td>
+              <td className="text-xs">{r.tipo === 'aseguradora' ? (seg === 'particular' ? 'Aseguradora · presupuesto particular' : 'Aseguradora') : 'Particular'}</td><td><Badge cls={ETAPAS[r.etapa].badge}>{ETAPAS[r.etapa].label}</Badge></td>
               <td className="text-right">{money2(r.ingreso_reconocido)}</td><td className="text-right">{money2(r.facturado)}</td><td className="text-right font-bold text-amber-700">{money2(r.saldo_facturar)}</td>
               <td className="text-right">{puede('finanzas.gestionar') && <button className="btn btn-primary btn-sm" onClick={() => setSel(r)}><FilePlus2 className="h-4 w-4" /> Facturar</button>}</td></tr>))}
           </tbody>
         </table></div>
       )}
-      {sel && <Modal title="Registrar factura" onClose={() => setSel(null)}><NuevaFactura r={sel} onDone={() => { setSel(null); cargar(); onCambio() }} /></Modal>}
+      {sel && <Modal title="Registrar factura" onClose={() => setSel(null)}><NuevaFactura r={sel} seg={seg} onDone={() => { setSel(null); cargar(); onCambio() }} /></Modal>}
     </Card>
   )
 }
 
-function Facturas({ version, onCambio }: { version: number; onCambio: () => void }) {
+function Facturas({ seg, version, onCambio }: { seg: Seg; version: number; onCambio: () => void }) {
   const { puede } = useAuth()
   const [rows, setRows] = useState<Cxc[]>([])
   const [filtro, setFiltro] = useState<'todas' | 'pendientes' | 'vencidas' | 'pagadas'>('pendientes')
@@ -115,7 +128,7 @@ function Facturas({ version, onCambio }: { version: number; onCambio: () => void
   const [error, setError] = useState<string | null>(null)
   const cargar = useCallback(() => supabase.from('v_cuentas_cobrar').select('*').order('fecha', { ascending: false }).then(({ data }) => setRows((data ?? []) as Cxc[])), [])
   useEffect(() => { cargar() }, [cargar, version])
-  const lista = rows.filter(r => filtro === 'todas' || (filtro === 'pendientes' && r.saldo > 0.005) || (filtro === 'vencidas' && r.saldo > 0.005 && r.dias_vencido > 0) || (filtro === 'pagadas' && r.saldo <= 0.005))
+  const lista = rows.filter(r => segFactura(r) === seg).filter(r => filtro === 'todas' || (filtro === 'pendientes' && r.saldo > 0.005) || (filtro === 'vencidas' && r.saldo > 0.005 && r.dias_vencido > 0) || (filtro === 'pagadas' && r.saldo <= 0.005))
   async function adjuntar(c: Cxc, file?: File) {
     if (!file) return
     try { await subirDocumento(c.id, file); setError(null); cargar() } catch (e) { setError(errorTexto(e)) }
@@ -133,7 +146,7 @@ function Facturas({ version, onCambio }: { version: number; onCambio: () => void
         {([['pendientes', 'Con saldo'], ['vencidas', 'Vencidas'], ['pagadas', 'Pagadas'], ['todas', 'Todas']] as const).map(([k, l]) => (
           <button key={k} onClick={() => setFiltro(k)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${filtro === k ? 'bg-navy-800 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}>{l}</button>
         ))}
-        <button className="btn btn-secondary btn-sm ml-auto" onClick={() => descargarCSV('facturas', lista as unknown as Record<string, unknown>[], [
+        <button className="btn btn-secondary btn-sm ml-auto" onClick={() => descargarCSV(`facturas_${seg}`, lista as unknown as Record<string, unknown>[], [
           { key: 'folio', label: 'Factura' }, { key: 'orden_folio', label: 'Orden' }, { key: 'deudor', label: 'Deudor' }, { key: 'receptor', label: 'Receptor' }, { key: 'fecha', label: 'Fecha' },
           { key: 'fecha_vencimiento', label: 'Vencimiento' }, { key: 'monto', label: 'Importe' }, { key: 'pagado', label: 'Pagado' }, { key: 'saldo', label: 'Saldo' }, { key: 'dias_vencido', label: 'Días vencido' }, { key: 'estado_cfdi', label: 'CFDI' }])}><Download className="h-4 w-4" /> Excel</button>
       </div>
@@ -170,9 +183,9 @@ function Facturas({ version, onCambio }: { version: number; onCambio: () => void
   )
 }
 
-function CuentasPorCobrar({ version }: { version: number }) {
+function CuentasPorCobrar({ seg, version }: { seg: Seg; version: number }) {
   const [rows, setRows] = useState<Cxc[]>([])
-  useEffect(() => { supabase.from('v_cuentas_cobrar').select('*').gt('saldo', 0).then(({ data }) => setRows((data ?? []) as Cxc[])) }, [version])
+  useEffect(() => { supabase.from('v_cuentas_cobrar').select('*').gt('saldo', 0).then(({ data }) => setRows(((data ?? []) as Cxc[]).filter(r => segFactura(r) === seg))) }, [version, seg])
   const tramos = [
     { l: 'Por vencer', f: (d: number) => d <= 0 }, { l: '1 a 30 días', f: (d: number) => d > 0 && d <= 30 }, { l: '31 a 60 días', f: (d: number) => d > 30 && d <= 60 },
     { l: '61 a 90 días', f: (d: number) => d > 60 && d <= 90 }, { l: 'Más de 90 días', f: (d: number) => d > 90 },
@@ -201,11 +214,12 @@ function CuentasPorCobrar({ version }: { version: number }) {
   )
 }
 
-interface Cobro { id: number; fecha: string; monto: number; metodo: string; referencia: string | null; orden_id: number; ordenes: { folio: string }; facturas: { folio: string } | null }
-function Pagos({ version }: { version: number }) {
+interface Cobro { id: number; fecha: string; monto: number; metodo: string; referencia: string | null; orden_id: number; ordenes: { folio: string; tipo: string }; facturas: { folio: string; receptor: string } | null }
+const segCobro = (c: Cobro): Seg => c.facturas ? segFactura(c.facturas) : c.ordenes.tipo === 'aseguradora' ? 'aseguradora' : 'particular'
+function Pagos({ seg, version }: { seg: Seg; version: number }) {
   const per = usePeriodo('mes')
   const [rows, setRows] = useState<Cobro[]>([])
-  useEffect(() => { supabase.from('cobros').select('*, ordenes(folio), facturas(folio)').gte('fecha', per.desde).lt('fecha', per.hasta).order('fecha', { ascending: false }).then(({ data }) => setRows((data ?? []) as Cobro[])) }, [per.desde, per.hasta, version])
+  useEffect(() => { supabase.from('cobros').select('*, ordenes(folio,tipo), facturas(folio,receptor)').gte('fecha', per.desde).lt('fecha', per.hasta).order('fecha', { ascending: false }).then(({ data }) => setRows(((data ?? []) as Cobro[]).filter(c => segCobro(c) === seg))) }, [per.desde, per.hasta, version, seg])
   const porMetodo = rows.reduce<Record<string, number>>((acc, r) => { acc[r.metodo] = (acc[r.metodo] ?? 0) + Number(r.monto); return acc }, {})
   return (
     <div className="space-y-3">
@@ -225,16 +239,16 @@ function Pagos({ version }: { version: number }) {
   )
 }
 
-function EstadosCuenta({ version }: { version: number }) {
+function EstadosCuenta({ seg, version }: { seg: Seg; version: number }) {
   const [rows, setRows] = useState<Cxc[]>([])
   const [deudor, setDeudor] = useState('')
   const [pagos, setPagos] = useState<Cobro[]>([])
-  useEffect(() => { supabase.from('v_cuentas_cobrar').select('*').order('fecha').then(({ data }) => setRows((data ?? []) as Cxc[])) }, [version])
+  useEffect(() => { setDeudor(''); supabase.from('v_cuentas_cobrar').select('*').order('fecha').then(({ data }) => setRows(((data ?? []) as Cxc[]).filter(r => segFactura(r) === seg))) }, [version, seg])
   const deudores = [...new Set(rows.map(r => r.deudor))].sort()
   const facturas = rows.filter(r => r.deudor === deudor)
   useEffect(() => {
     if (!facturas.length) { setPagos([]); return }
-    supabase.from('cobros').select('*, ordenes(folio), facturas(folio)').in('factura_id', facturas.map(f => f.id)).order('fecha').then(({ data }) => setPagos((data ?? []) as Cobro[]))
+    supabase.from('cobros').select('*, ordenes(folio,tipo), facturas(folio,receptor)').in('factura_id', facturas.map(f => f.id)).order('fecha').then(({ data }) => setPagos((data ?? []) as Cobro[]))
   }, [deudor, rows]) // eslint-disable-line react-hooks/exhaustive-deps
   const movs = [...facturas.map(f => ({ fecha: f.fecha, concepto: `Factura ${f.folio} · ${f.orden_folio}`, cargo: Number(f.monto), abono: 0 })),
     ...pagos.map(p => ({ fecha: p.fecha, concepto: `Pago ${p.metodo}${p.referencia ? ' · ' + p.referencia : ''} (${p.facturas?.folio})`, cargo: 0, abono: Number(p.monto) }))].sort((a, b) => a.fecha.localeCompare(b.fecha))
@@ -242,7 +256,7 @@ function EstadosCuenta({ version }: { version: number }) {
   return (
     <Card title="Estado de cuenta" action={deudor && <button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}><Printer className="h-4 w-4" /> Imprimir / PDF</button>}>
       <select className="input mb-4 w-auto" value={deudor} onChange={e => setDeudor(e.target.value)}>
-        <option value="">Selecciona cliente o aseguradora…</option>{deudores.map(d => <option key={d} value={d}>{d}</option>)}
+        <option value="">{seg === 'aseguradora' ? 'Selecciona la aseguradora…' : 'Selecciona el cliente…'}</option>{deudores.map(d => <option key={d} value={d}>{d}</option>)}
       </select>
       {!deudor ? <p className="text-sm text-slate-400">Elige un deudor para ver sus cargos, abonos y saldo.</p> : (
         <div className="-mx-5 overflow-x-auto px-5"><table className="tbl">
@@ -259,12 +273,24 @@ export default function Facturacion() {
   const { puede } = useAuth()
   const tab = useTab('pendientes')
   const [version, setVersion] = useState(0)
+  const [sp, setSp] = useSearchParams()
+  const seg: Seg = sp.get('seg') === 'particular' ? 'particular' : 'aseguradora'
+  const cambiarSeg = (s: Seg) => { const n = new URLSearchParams(sp); n.set('seg', s); setSp(n, { replace: true }) }
   if (!puede('finanzas.ver')) return <SinPermiso que="facturación y cobranza" />
   const cambio = () => setVersion(v => v + 1)
   return (
     <div>
       <PageHeader title="Facturación y cobranza" subtitle="Facturas, vencimientos, pagos y saldos por cliente o aseguradora" />
       <div className="mb-4"><Pendiente>Emisión y timbrado de CFDI 4.0. Hoy se registran facturas emitidas en tu sistema de facturación (folio, importe y PDF/XML). La base de datos ya guarda RFC, régimen, C.P., uso de CFDI y UUID para la integración futura.</Pendiente></div>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        {([['aseguradora', 'Facturación de aseguradora', 'Facturas emitidas a la aseguradora (MAPFRE y otras)', Building2], ['particular', 'Facturación particular', 'Facturas emitidas a clientes particulares (incluye deducibles y adicionales)', UserRound]] as const).map(([k, t, d, Icono]) => (
+          <button key={k} type="button" onClick={() => cambiarSeg(k)}
+            className={`flex items-center gap-3 rounded-2xl p-4 text-left ring-1 transition ${seg === k ? 'bg-[#17657c] text-white shadow-lg ring-[#17657c]' : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50'}`}>
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${seg === k ? 'bg-white/15' : 'bg-brand-50 text-brand-700'}`}><Icono className="h-6 w-6" /></span>
+            <span><span className="block text-base font-bold">{t}</span><span className={`text-xs ${seg === k ? 'text-white/80' : 'text-slate-500'}`}>{d}</span></span>
+          </button>
+        ))}
+      </div>
       <Tabs tabs={[
         { id: 'pendientes', label: 'Por facturar', icon: Hourglass },
         { id: 'facturas', label: 'Facturas', icon: Receipt },
@@ -272,11 +298,11 @@ export default function Facturacion() {
         { id: 'pagos', label: 'Pagos recibidos', icon: Banknote },
         { id: 'estados', label: 'Estados de cuenta', icon: FileText },
       ]} />
-      {tab === 'pendientes' && <PorFacturar onCambio={cambio} />}
-      {tab === 'facturas' && <Facturas version={version} onCambio={cambio} />}
-      {tab === 'cxc' && <CuentasPorCobrar version={version} />}
-      {tab === 'pagos' && <Pagos version={version} />}
-      {tab === 'estados' && <EstadosCuenta version={version} />}
+      {tab === 'pendientes' && <PorFacturar key={seg} seg={seg} onCambio={cambio} />}
+      {tab === 'facturas' && <Facturas seg={seg} version={version} onCambio={cambio} />}
+      {tab === 'cxc' && <CuentasPorCobrar seg={seg} version={version} />}
+      {tab === 'pagos' && <Pagos seg={seg} version={version} />}
+      {tab === 'estados' && <EstadosCuenta seg={seg} version={version} />}
     </div>
   )
 }
