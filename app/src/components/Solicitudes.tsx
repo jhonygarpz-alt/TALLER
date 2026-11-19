@@ -13,6 +13,7 @@ import { Badge, Empty, ErrorMsg, Field, Modal } from './ui'
 interface Solicitud {
   id: number; orden_id: number | null; centro_costo: string | null; material_id: number; cantidad_solicitada: number
   cantidad_aprobada: number | null; cantidad_entregada: number | null; costo_unit: number | null; costo_total: number | null
+  costo_estimado: number | null; costo_unit_estimado: number | null
   estado: string; notas: string | null; motivo_rechazo: string | null; solicitado_at: string; entregado_at: string | null
   materiales?: { codigo: string | null; descripcion: string; unidad: string; tipo: string; existencia: number }
   ordenes?: { folio: string } | null
@@ -161,6 +162,7 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
   }
 
   const totalCargado = rows.filter(r => r.estado === 'entregada').reduce((s, r) => s + Number(r.costo_total ?? 0), 0)
+  const totalEstimado = rows.filter(r => r.estado === 'solicitada' || r.estado === 'autorizada').reduce((s, r) => s + Number(r.costo_estimado ?? 0) * ((r.cantidad_aprobada ?? r.cantidad_solicitada) / r.cantidad_solicitada), 0)
 
   return (
     <div>
@@ -180,7 +182,9 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
                 <td className="text-right">{num(s.cantidad_solicitada, 3)} {s.materiales?.unidad}</td>
                 <td className="text-right">{s.cantidad_aprobada != null ? num(s.cantidad_aprobada, 3) : '—'}</td>
                 <td className="text-right">{s.cantidad_entregada != null ? num(s.cantidad_entregada, 3) : '—'}{s.entrego && <div className="text-[11px] text-slate-400">{s.entrego.nombre}</div>}</td>
-                <td className="text-right">{s.costo_total != null ? money2(s.costo_total) : '—'}</td>
+                <td className="text-right">{s.costo_total != null ? money2(s.costo_total)
+                  : s.costo_estimado != null && s.estado !== 'rechazada' ? <span title={`Estimado: ${num(s.cantidad_aprobada ?? s.cantidad_solicitada, 3)} × ${money2(Number(s.costo_unit_estimado ?? 0))}`}>{money2(Number(s.costo_estimado) * ((s.cantidad_aprobada ?? s.cantidad_solicitada) / s.cantidad_solicitada))}<div className="text-[10px] text-slate-400">estimado</div></span>
+                  : s.estado === 'rechazada' ? '—' : <span className="text-[11px] text-amber-700">sin precio</span>}</td>
                 <td><Badge cls={ESTADO_SOLICITUD[s.estado].badge}>{ESTADO_SOLICITUD[s.estado].label}</Badge>{s.motivo_rechazo && <div className="text-[11px] text-red-600">{s.motivo_rechazo}</div>}</td>
                 <td className="whitespace-nowrap text-right">
                   {s.estado === 'solicitada' && puede('materiales.autorizar') && <>
@@ -196,7 +200,7 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
               </tr>))}
             </tbody>
           </table>
-          {ordenId && <p className="mt-2 text-right text-sm">Costo de materiales cargado a la orden: <b>{money2(totalCargado)}</b></p>}
+          {ordenId && <p className="mt-2 text-right text-sm">Costo de materiales cargado a la orden: <b>{money2(totalCargado)}</b>{totalEstimado > 0 && <span className="ml-3 text-slate-500">Por entregar (estimado): <b>{money2(totalEstimado)}</b></span>}</p>}
         </div>
       )}
       {nueva && <Modal title="Solicitud de material" onClose={() => setNueva(false)}><NuevaSolicitud ordenId={ordenId} onDone={() => { setNueva(false); cargar(); al.recargar(); onCambio?.() }} /></Modal>}

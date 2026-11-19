@@ -16,8 +16,26 @@ interface Cobro { id: number; fecha: string; monto: number; metodo: string; refe
 
 const TIPOS_COSTO: Record<string, string> = { mano_obra_adicional: 'Mano de obra adicional', servicio_externo: 'Servicio externo', material: 'Materiales (compra directa)', refaccion: 'Refacciones (compra directa)', pulido: 'Pulido', otro: 'Otro gasto directo' }
 
-export function DesgloseRentabilidad({ r }: { r: Rentabilidad }) {
-  const margen = r.ingreso_reconocido ? (r.utilidad_bruta / r.ingreso_reconocido) * 100 : NaN
+export interface Desglose { gastos_adicionales: number; materiales_pulido: number; mo_hojalatero: number; mo_pintor: number; materiales: number; refacciones: number; por_entregar: number; suma: number; iva: number; total: number }
+
+/** Desglose de gastos con los conceptos del formato del taller (misma regla que el reporte de gastos económicos) */
+export function useDesglose(ordenId: number, version?: unknown) {
+  const [d, setD] = useState<Desglose | null>(null)
+  useEffect(() => {
+    supabase.rpc('gastos_desglose', { p_ids: [ordenId] }).then(({ data }) => {
+      const x = (data ?? [])[0] as Record<string, unknown> | undefined
+      setD(x ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, Number(v)])) as unknown as Desglose : null)
+    })
+  }, [ordenId, version])
+  return d
+}
+
+export function DesgloseRentabilidad({ r, version }: { r: Rentabilidad; version?: unknown }) {
+  const g = useDesglose(r.orden_id, version)
+  const gastos = g?.suma ?? r.costos_directos
+  const bruta = Number(r.ingreso_reconocido) - gastos
+  const despues = bruta - Number(r.indirectos_asignados)
+  const margen = r.ingreso_reconocido ? (bruta / r.ingreso_reconocido) * 100 : NaN
   const fila = (k: string, v: number, cls = '') => <div className={`flex justify-between py-1 ${cls}`}><span>{k}</span><span>{money2(v)}</span></div>
   return (
     <div className="grid gap-5 text-sm md:grid-cols-2">
@@ -31,19 +49,28 @@ export function DesgloseRentabilidad({ r }: { r: Rentabilidad }) {
         {fila('Pendiente de cobro', r.por_cobrar, r.por_cobrar > 0 ? 'font-semibold text-red-600' : 'text-slate-500')}
       </div>
       <div>
-        <div className="mb-1 text-xs font-bold text-slate-500 uppercase">Costos directos</div>
-        {fila('Pintura', r.costo_pintura)}{fila('Materiales', r.costo_materiales)}{fila('Refacciones', r.costo_refacciones)}
-        {fila('Destajos', r.costo_destajos)}{fila('Mano de obra adicional', r.costo_mano_obra_adicional)}
-        {fila('Servicios externos', r.costo_servicios_externos)}{fila('Otros gastos directos', r.costo_otros)}
-        {fila('Total costos directos', r.costos_directos, 'border-t font-bold')}
+        <div className="mb-1 text-xs font-bold text-slate-500 uppercase">Gastos</div>
+        {!g ? <div className="esqueleto h-40" /> : <>
+          {fila('Gastos adicionales', g.gastos_adicionales)}
+          {fila('Materiales pulido', g.materiales_pulido)}
+          {fila('M.O. Hojalatero', g.mo_hojalatero)}
+          {fila('M.O. Pintor', g.mo_pintor)}
+          {fila('Materiales', g.materiales)}
+          {fila('Refacciones', g.refacciones)}
+          {fila('Suma', g.suma, 'border-t font-bold bg-slate-50 px-1')}
+          {fila('IVA (16%)', g.iva)}
+          {fila('Total', g.total, 'font-bold bg-slate-50 px-1')}
+          {g.por_entregar > 0 && <p className="mt-1 text-[11px] text-amber-700">Incluye {money2(g.por_entregar)} de material solicitado aún por entregar (costo estimado del catálogo).</p>}
+          <p className="mt-1 text-[11px] text-slate-400">Gastos adicionales: servicios externos, otros gastos, mano de obra de pulido u otras áreas y pequeño material.</p>
+        </>}
       </div>
       <div className="rounded-xl bg-slate-50 p-4 md:col-span-2">
         <div className="flex flex-wrap justify-between gap-4">
-          <div><div className="text-xs text-slate-500">Utilidad bruta (ingreso reconocido − costos directos)</div><div className={`text-2xl font-extrabold ${r.utilidad_bruta >= 0 ? 'text-green-700' : 'text-red-600'}`}>{money2(r.utilidad_bruta)} <span className="text-sm">({pct(margen)})</span></div></div>
+          <div><div className="text-xs text-slate-500">Ganancia (ingreso reconocido − suma de gastos)</div><div className={`text-2xl font-extrabold ${bruta >= 0 ? 'text-green-700' : 'text-red-600'}`}>{money2(bruta)} <span className="text-sm">({pct(margen)})</span></div></div>
           <div><div className="text-xs text-slate-500">Gastos indirectos asignados ({r.indirectos_pct}% del ingreso)</div><div className="text-lg font-bold">{money2(r.indirectos_asignados)}</div></div>
-          <div><div className="text-xs text-slate-500">Utilidad estimada después de indirectos</div><div className={`text-2xl font-extrabold ${r.utilidad_estimada >= 0 ? 'text-green-700' : 'text-red-600'}`}>{money2(r.utilidad_estimada)}</div></div>
+          <div><div className="text-xs text-slate-500">Ganancia después de indirectos</div><div className={`text-2xl font-extrabold ${despues >= 0 ? 'text-green-700' : 'text-red-600'}`}>{money2(despues)}</div></div>
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">El % de indirectos es un criterio configurable (Configuración → Parámetros). Los costos se cargan automáticamente desde entregas de almacén, compras directas, destajos validados y costos registrados aquí.</p>
+        <p className="mt-2 text-[11px] text-slate-400">El % de indirectos y el pequeño material son configurables (Configuración → Parámetros). Los gastos se cargan desde solicitudes y entregas de almacén, compras a la unidad, destajos validados y costos registrados aquí.</p>
       </div>
     </div>
   )
@@ -96,7 +123,7 @@ export default function Costos({ o, recargar }: TabProps) {
   return (
     <div className="space-y-5">
       <ErrorMsg error={error} />
-      {verFin && r && <Card title="Rentabilidad de la orden" action={<button className="btn btn-secondary btn-sm" onClick={() => setRepGastos(true)}><Receipt className="h-4 w-4" /> Reporte de gastos económicos</button>}><DesgloseRentabilidad r={r} /></Card>}
+      {verFin && r && <Card title="Rentabilidad de la orden" action={<button className="btn btn-secondary btn-sm" onClick={() => setRepGastos(true)}><Receipt className="h-4 w-4" /> Reporte de gastos económicos</button>}><DesgloseRentabilidad r={r} version={r} /></Card>}
       {repGastos && <ReporteGastosEconomicos ordenId={o.id} onClose={() => setRepGastos(false)} />}
 
       {puede('destajos.ver') && (

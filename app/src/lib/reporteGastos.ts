@@ -29,23 +29,30 @@ const AREAS_HOJ = ['hojalateria', 'armado']
 const NOMBRE_AREA: Record<string, string> = { detallado: 'PULIDOR', mecanica: 'MECÁNICO', otros: 'OTROS', hojalateria: 'HOJALATERO', pintura: 'PINTOR', armado: 'ARMADO' }
 
 export async function cargarReporte(ordenId: number, _elaboro?: string): Promise<DatosReporte> {
-  const [o, rent, sol, cos, des, act, fac] = await Promise.all([
+  const [o, rent, sol, cos, des, act, fac, cfg] = await Promise.all([
     supabase.from('v_ordenes').select('folio,tipo,aseguradora_nombre,siniestro,marca,modelo,anio,color,placas').eq('id', ordenId).single(),
     supabase.from('v_rentabilidad').select('autorizado,adicional').eq('orden_id', ordenId).maybeSingle(),
-    supabase.from('solicitudes_material').select('cantidad_entregada,costo_total,centro_costo,seccion,materiales(descripcion,unidad,tipo),actividades(area)').eq('orden_id', ordenId).eq('estado', 'entregada').order('id'),
+    // Material entregado (costo real) y el solicitado/autorizado aún por entregar (costo estimado del catálogo)
+    supabase.from('solicitudes_material').select('estado,cantidad_solicitada,cantidad_aprobada,cantidad_entregada,costo_total,costo_estimado,centro_costo,seccion,materiales(descripcion,unidad,tipo),actividades(area)').eq('orden_id', ordenId).in('estado', ['solicitada', 'autorizada', 'entregada']).order('id'),
     supabase.from('orden_costos').select('tipo,concepto,proveedor,monto').eq('orden_id', ordenId).order('fecha').order('id'),
     supabase.from('destajos').select('importe,actividades(area),tecnicos(nombre)').eq('orden_id', ordenId).neq('estado', 'cancelado'),
     supabase.from('actividades').select('area,actividad,pieza,tecnicos(nombre)').eq('orden_id', ordenId).neq('estado', 'cancelada').order('id'),
     supabase.from('facturas').select('receptor,monto').eq('orden_id', ordenId).eq('cancelada', false),
+    supabase.from('configuracion').select('valor').eq('clave', 'pequeno_material').maybeSingle(),
   ])
   if (o.error) throw o.error
   for (const q of [rent, sol, cos, des, act, fac]) if (q.error) throw q.error
   const ord = o.data
-  type Sol = { cantidad_entregada: number | null; costo_total: number | null; centro_costo: string | null; seccion: string | null; materiales: { descripcion: string; unidad: string; tipo: string } | null; actividades: { area: string } | null }
+  type Sol = { estado: string; cantidad_solicitada: number; cantidad_aprobada: number | null; cantidad_entregada: number | null; costo_total: number | null; costo_estimado: number | null; centro_costo: string | null; seccion: string | null; materiales: { descripcion: string; unidad: string; tipo: string } | null; actividades: { area: string } | null }
   type Cos = { tipo: string; concepto: string; proveedor: string | null; monto: number }
   type Des = { importe: number; actividades: { area: string } | null; tecnicos: { nombre: string } | null }
   type Act = { area: string; actividad: string; pieza: string | null; tecnicos: { nombre: string } | null }
-  const sols = (sol.data ?? []) as unknown as Sol[]
+  // Cantidad e importe de cada solicitud: lo entregado si ya se entregó; si no, lo autorizado/solicitado con costo estimado
+  const sols = ((sol.data ?? []) as unknown as Sol[]).map(x => {
+    if (x.estado === 'entregada') return x
+    const q = Number(x.cantidad_aprobada ?? x.cantidad_solicitada)
+    return { ...x, cantidad_entregada: q, costo_total: x.costo_estimado != null ? r2(Number(x.costo_estimado) * q / Number(x.cantidad_solicitada)) : 0 }
+  })
   const costos = (cos.data ?? []) as Cos[]
   const destajos = (des.data ?? []) as unknown as Des[]
   const acts = (act.data ?? []) as unknown as Act[]
@@ -89,6 +96,9 @@ export async function cargarReporte(ordenId: number, _elaboro?: string): Promise
   for (const c of costos.filter(c => ['servicio_externo', 'otro', 'mano_obra_adicional'].includes(c.tipo)))
     extras.push({ texto: `${up(c.concepto)}${c.proveedor ? ` (${up(c.proveedor)})` : ''}`.slice(0, 60), sub: r2(Number(c.monto)) })
   const pulido = r2(costos.filter(c => c.tipo === 'pulido').reduce((t, c) => t + Number(c.monto), 0))
+  // Pequeño material: gasto fijo por orden (parámetro configurable, $300 por omisión)
+  const pm = Number(cfg.data?.valor ?? 300)
+  if (pm > 0) extras.push({ texto: 'PEQUEÑO MATERIAL', sub: pm })
 
   // 5) Ingresos
   const autorizado = r2(Number(rent.data?.autorizado ?? 0) + Number(rent.data?.adicional ?? 0))

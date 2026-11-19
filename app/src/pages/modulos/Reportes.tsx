@@ -6,6 +6,7 @@ import { PageHeader, SinPermiso, Tabs, useTab } from '../../components/ui'
 import { TabKpis, TabReportes } from '../resultados/analisis'
 
 const ReporteMensual = lazy(() => import('../resultados/ReporteMensual'))
+const GastosAcumulados = lazy(() => import('../resultados/GastosAcumulados'))
 
 export default function Reportes() {
   const { puede } = useAuth()
@@ -22,8 +23,10 @@ export default function Reportes() {
         { id: 'reportes', label: 'Reportes', icon: FileSpreadsheet },
         { id: 'kpis', label: 'KPIs de aseguradora', icon: Target },
         { id: 'mensual', label: 'Reporte mensual', icon: FileText, hidden: !puede('finanzas.ver') },
+        { id: 'gastos', label: 'Gastos y ganancias', icon: Receipt, hidden: !puede('finanzas.ver') },
       ]} />
-      {tab === 'mensual' && puede('finanzas.ver') ? <Suspense fallback={<div className="esqueleto h-96" />}><ReporteMensual /></Suspense>
+      {tab === 'gastos' && puede('finanzas.ver') ? <Suspense fallback={<div className="esqueleto h-96" />}><GastosAcumulados /></Suspense>
+        : tab === 'mensual' && puede('finanzas.ver') ? <Suspense fallback={<div className="esqueleto h-96" />}><ReporteMensual /></Suspense>
         : tab === 'kpis' ? <TabKpis /> : <TabReportes />}
       {gastos && <ReporteGastosEconomicos onClose={() => setGastos(false)} />}
     </div>

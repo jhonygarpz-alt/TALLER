@@ -28,20 +28,20 @@ export default function MaterialesUnidad({ ordenId, conPresupuesto = true, actua
 
   useEffect(() => {
     Promise.all([
-      supabase.from('solicitudes_material').select('id,seccion,estado,cantidad_solicitada,cantidad_entregada,costo_total,entregado_at,solicitado_at,materiales(descripcion,unidad,tipo,costo_promedio),actividades(area)').eq('orden_id', ordenId).in('estado', ['solicitada', 'autorizada', 'entregada']).order('id'),
+      supabase.from('solicitudes_material').select('id,seccion,estado,cantidad_solicitada,cantidad_aprobada,cantidad_entregada,costo_total,costo_estimado,entregado_at,solicitado_at,materiales(descripcion,unidad,tipo,costo_promedio),actividades(area)').eq('orden_id', ordenId).in('estado', ['solicitada', 'autorizada', 'entregada']).order('id'),
       supabase.from('compra_partidas').select('id,seccion,cantidad,costo_unit,compra_id,materiales(descripcion,unidad,tipo),compras(estado,fecha)').eq('orden_id', ordenId).order('id'),
       supabase.from('orden_costos').select('id,tipo,concepto,proveedor,monto,fecha').eq('orden_id', ordenId).in('tipo', ['material', 'refaccion']).order('fecha'),
       supabase.from('presupuestos').select('presupuesto_partidas(area,concepto,cantidad,precio_unit)').eq('orden_id', ordenId).eq('estado', 'autorizado'),
     ]).then(([s, c, o, p]) => {
-      type Sol = { id: number; seccion: string | null; estado: string; cantidad_solicitada: number; cantidad_entregada: number | null; costo_total: number | null; entregado_at: string | null; solicitado_at: string; materiales: { descripcion: string; unidad: string; tipo: string; costo_promedio: number } | null; actividades: { area: string } | null }
+      type Sol = { id: number; seccion: string | null; estado: string; cantidad_solicitada: number; cantidad_aprobada: number | null; cantidad_entregada: number | null; costo_total: number | null; costo_estimado: number | null; entregado_at: string | null; solicitado_at: string; materiales: { descripcion: string; unidad: string; tipo: string; costo_promedio: number } | null; actividades: { area: string } | null }
       type Par = { id: number; seccion: string | null; cantidad: number; costo_unit: number; compra_id: number; materiales: { descripcion: string; unidad: string; tipo: string } | null; compras: { estado: string; fecha: string } | null }
       const ls: Linea[] = []
       for (const x of (s.data ?? []) as unknown as Sol[]) {
         const entregada = x.estado === 'entregada'
-        const cant = entregada ? Number(x.cantidad_entregada ?? 0) : Number(x.cantidad_solicitada)
+        const cant = entregada ? Number(x.cantidad_entregada ?? 0) : Number(x.cantidad_aprobada ?? x.cantidad_solicitada)
         ls.push({
           seccion: seccionDeSolicitud(x), descripcion: x.materiales?.descripcion ?? '', cantidad: `${num(cant, 3)} ${x.materiales?.unidad ?? ''}`,
-          importe: entregada ? Number(x.costo_total ?? 0) : cant * Number(x.materiales?.costo_promedio ?? 0),
+          importe: entregada ? Number(x.costo_total ?? 0) : x.costo_estimado != null ? Number(x.costo_estimado) * cant / Number(x.cantidad_solicitada) : cant * Number(x.materiales?.costo_promedio ?? 0),
           origen: entregada ? 'Entregado' : x.estado === 'autorizada' ? 'Autorizado, por entregar' : 'Solicitado', estado: entregada ? 'real' : 'pendiente', fecha: x.entregado_at ?? x.solicitado_at,
         })
       }
