@@ -168,10 +168,12 @@ function EditarActividad({ a, onClose, onOk }: { a: Actividad; onClose: () => vo
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
   const [proveedores, setProveedores] = useState<{ id: number; nombre: string }[]>([])
   const [externo, setExterno] = useState(!!a.proveedor_id)
-  const [f, setF] = useState({ actividad: a.actividad, pieza: a.pieza ?? '', area: a.area, tecnico_id: a.tecnico_id ? String(a.tecnico_id) : '', proveedor_id: a.proveedor_id ? String(a.proveedor_id) : '', tarifa_id: a.tarifa_id ? String(a.tarifa_id) : '', costo: a.costo_proveedor != null ? String(a.costo_proveedor) : '' })
+  const [f, setF] = useState({ actividad: a.actividad, pieza: a.pieza ?? '', area: a.area, tecnico_id: a.tecnico_id ? String(a.tecnico_id) : '', proveedor_id: a.proveedor_id ? String(a.proveedor_id) : '', tarifa_id: a.tarifa_id ? String(a.tarifa_id) : '', costo: a.costo_proveedor != null ? String(a.costo_proveedor) : '', importe: String(Number(a.importe_destajo) || '') })
+  const esTecnico = !a.proveedor_id
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   useEffect(() => {
+    supabase.from('tarifas_destajo').select('*').eq('activo', true).order('area').order('importe').order('actividad').then(({ data }) => setTarifas((data ?? []) as Tarifa[]))
     if (!abierta) return
     supabase.from('tarifas_destajo').select('*').eq('activo', true).order('area').order('importe').order('actividad').then(({ data }) => setTarifas((data ?? []) as Tarifa[]))
     supabase.from('tecnicos').select('*').eq('activo', true).order('nombre').then(({ data }) => setTecnicos((data ?? []) as Tecnico[]))
@@ -189,20 +191,31 @@ function EditarActividad({ a, onClose, onOk }: { a: Actividad; onClose: () => vo
         Object.assign(datos, { tecnico_id: null, proveedor_id: Number(f.proveedor_id), tarifa_id: null, importe_destajo: 0, costo_proveedor: f.costo ? Number(f.costo) : null })
       } else {
         if (!f.tecnico_id) return setError('Elige el técnico')
-        Object.assign(datos, { proveedor_id: null, costo_proveedor: null, tecnico_id: Number(f.tecnico_id), tarifa_id: tarifa ? tarifa.id : null, importe_destajo: tarifa ? tarifa.importe : 0 })
+        const imp = Number(f.importe) || 0
+        Object.assign(datos, { proveedor_id: null, costo_proveedor: null, tecnico_id: Number(f.tecnico_id), tarifa_id: tarifa && imp === Number(tarifa.importe) ? tarifa.id : null, importe_destajo: imp })
       }
     }
+    if (Number(f.importe) < 0) return setError('El importe del destajo no puede ser negativo')
     setGuardando(true)
     const { error } = await supabase.from('actividades').update(datos).eq('id', a.id)
+    if (error) { setGuardando(false); return setError(errorTexto(error)) }
+    // Trabajo terminado o validado: el destajo se cambia con su proceso (actualiza el destajo existente, sin duplicarlo)
+    if (!abierta && esTecnico) {
+      const imp = Number(f.importe) || 0
+      const tarifaId = tarifa && imp === Number(tarifa.importe) ? tarifa.id : null
+      if (imp !== Number(a.importe_destajo) || tarifaId !== (a.tarifa_id ?? null)) {
+        const r = await supabase.rpc('actividad_cambiar_destajo', { p_id: a.id, p_tarifa_id: tarifaId, p_importe: imp })
+        if (r.error) { setGuardando(false); return setError(errorTexto(r.error)) }
+      }
+    }
     setGuardando(false)
-    if (error) return setError(errorTexto(error))
     onOk()
   }
   return (
     <Modal title="Editar trabajo" onClose={onClose}>
       <form onSubmit={guardar} className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2"><ErrorMsg error={error} /></div>
-        {!abierta && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:col-span-2">Este trabajo ya está {a.estado === 'validada' ? 'validado' : 'terminado'}: puedes corregir la descripción, la pieza y el área. El técnico y el destajo ya no cambian; si están mal, anula el trabajo y vuelve a asignarlo.</p>}
+        {!abierta && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:col-span-2">Este trabajo ya está {a.estado === 'validada' ? 'validado' : 'terminado'}: puedes corregir la descripción, la pieza, el área y el destajo{a.estado === 'validada' ? ' (se actualiza el destajo por pagar; si ya se pagó no se puede cambiar)' : ''}. Para cambiar de técnico, anula el trabajo y vuelve a asignarlo.</p>}
         <Field label="Descripción del trabajo *" className="sm:col-span-2"><input className="input" value={f.actividad} onChange={e => setF({ ...f, actividad: e.target.value })} /></Field>
         <Field label="Pieza o piezas" className="sm:col-span-2"><input className="input" value={f.pieza} onChange={e => setF({ ...f, pieza: e.target.value })} /></Field>
         <Field label="Área"><select className="input" value={f.area} onChange={e => setF({ ...f, area: e.target.value })}>{Object.entries(AREAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
@@ -219,13 +232,18 @@ function EditarActividad({ a, onClose, onOk }: { a: Actividad; onClose: () => vo
             <Field label="Importe por concepto"><input className="input" type="number" min="0" step="0.01" value={f.costo} onChange={e => setF({ ...f, costo: e.target.value })} /></Field>
           </> : <>
             <Field label="Técnico *"><select className="input" value={f.tecnico_id} onChange={e => setF({ ...f, tecnico_id: e.target.value })}><option value="">Selecciona…</option>{tecnicos.map(t => <option key={t.id} value={t.id}>{t.nombre.trim()} ({AREAS[t.area]})</option>)}</select></Field>
-            <Field label="Tarifa de destajo" hint={tarifa ? `Destajo: ${money2(tarifa.importe)}` : 'Sin tarifa no genera destajo'}>
-              <select className="input" value={f.tarifa_id} onChange={e => setF({ ...f, tarifa_id: e.target.value })}>
-                <option value="">Sin tarifa</option>
-                {Object.entries(AREAS).map(([k, v]) => { const ts = tarifas.filter(t => t.area === k); return ts.length ? <optgroup key={k} label={v}>{ts.map(t => <option key={t.id} value={t.id}>{t.actividad} — {money2(t.importe)}</option>)}</optgroup> : null })}
-              </select>
-            </Field>
           </>}
+        </>}
+        {((abierta && !externo) || (!abierta && esTecnico)) && <>
+          <Field label="Tarifa de destajo">
+            <select className="input" value={f.tarifa_id} onChange={e => { const t = tarifas.find(x => String(x.id) === e.target.value); setF({ ...f, tarifa_id: e.target.value, importe: t ? String(t.importe) : f.importe }) }}>
+              <option value="">Sin tarifa (importe a mano)</option>
+              {Object.entries(AREAS).map(([k, v]) => { const ts = tarifas.filter(t => t.area === k); return ts.length ? <optgroup key={k} label={v}>{ts.map(t => <option key={t.id} value={t.id}>{t.actividad} — {money2(t.importe)}</option>)}</optgroup> : null })}
+            </select>
+          </Field>
+          <Field label="Importe del destajo" hint={Number(f.importe) > 0 ? (a.estado === 'validada' ? 'Se actualiza el destajo por pagar del técnico.' : 'Se genera al validar el trabajo.') : 'En $0 el trabajo no genera destajo.'}>
+            <input className="input" type="number" min="0" step="0.01" value={f.importe} placeholder="0.00" onChange={e => setF({ ...f, importe: e.target.value })} />
+          </Field>
         </>}
         <div className="flex justify-end gap-2 sm:col-span-2"><button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button><button className="btn btn-primary" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button></div>
       </form>

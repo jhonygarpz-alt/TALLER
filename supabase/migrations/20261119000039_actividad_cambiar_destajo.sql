@@ -1,0 +1,3 @@
+-- actividad_cambiar_destajo(p_id, p_tarifa_id, p_importe): cambia la tarifa/importe del destajo de un trabajo terminado o validado.
+-- Validado: actualiza el destajo vigente (sin duplicarlo), lo crea si no existía o lo cancela si el importe queda en 0.
+-- Si el destajo ya se pagó, no se modifica. Requiere actividades.validar o excepciones.autorizar.
