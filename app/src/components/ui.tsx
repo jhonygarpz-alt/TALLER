@@ -99,7 +99,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0b2133]/55 backdrop-blur-[2px] sm:items-start sm:overflow-y-auto sm:p-6" onMouseDown={onClose}>
+    <div data-sin-recarga className="fixed inset-0 z-50 flex items-end justify-center bg-[#0b2133]/55 backdrop-blur-[2px] sm:items-start sm:overflow-y-auto sm:p-6" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className={`max-h-[92vh] w-full animate-aparecer overflow-y-auto rounded-t-[24px] bg-white shadow-[0_30px_80px_-20px_rgba(11,33,51,.6)] ring-1 ring-[#dbe9ee] sm:mt-8 sm:max-h-none sm:rounded-[24px] ${wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'}`}
         onMouseDown={e => e.stopPropagation()}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e8f1f4] bg-white/95 px-5 py-4 backdrop-blur">

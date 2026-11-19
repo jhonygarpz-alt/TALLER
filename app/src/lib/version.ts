@@ -10,7 +10,8 @@ export function useActualizacionAutomatica() {
     if (!import.meta.env.PROD) return
     let revisando = false
     async function revisar() {
-      if (revisando || document.visibilityState !== 'visible') return
+      // No recargar mientras haya una ventana abierta (avance, foto, formulario): se intenta más tarde
+      if (revisando || document.visibilityState !== 'visible' || document.querySelector('[data-sin-recarga]')) return
       revisando = true
       try {
         const r = await fetch(`${import.meta.env.BASE_URL}version.json?t=${Date.now()}`, { cache: 'no-store' })

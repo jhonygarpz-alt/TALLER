@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, Camera, ChevronRight, Hammer, Loader2, Paintbrush, Play, Sparkles, TrendingUp, Wrench, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { borrarBorrador, guardarBorrador, leerBorrador } from '../lib/borrador'
 import { AREAS, errorTexto, fecha, money2 } from '../lib/format'
 import { Miniatura } from '../components/Fotos'
 import { Aviso, Hoja, botonPrimario, entrada } from '../movil/ui'
@@ -72,6 +73,23 @@ export function HojaAvance({ t, actual, onClose, onListo }: { t: Trabajo; actual
   const vista = useMemo(() => (foto ? URL.createObjectURL(foto) : null), [foto])
   const termina = pct === 100
 
+  // Respaldo en el celular: si el sistema cierra la app al abrir la cámara, al volver se recupera el avance y la foto
+  const clave = `avance-${t.id}`
+  const [listo, setListo] = useState(false)
+  useEffect(() => {
+    leerBorrador<{ pct: number; nota: string; foto: Blob | null; nombre?: string }>(clave).then(b => {
+      if (b?.datos) {
+        setPct(b.datos.pct); setNota(b.datos.nota)
+        if (b.datos.foto) setFoto(new File([b.datos.foto], b.datos.nombre ?? 'foto.jpg', { type: b.datos.foto.type || 'image/jpeg' }))
+      }
+      setListo(true)
+    })
+  }, [clave])
+  useEffect(() => {
+    if (!listo) return
+    guardarBorrador(clave, { pct, nota, foto, nombre: foto?.name })
+  }, [listo, clave, pct, nota, foto])
+
   async function guardar() {
     if (pct < actual && !confirm(`El avance anterior era ${actual}%. ¿Registrar ${pct}%?`)) return
     if (termina && !foto) {
@@ -81,12 +99,13 @@ export function HojaAvance({ t, actual, onClose, onListo }: { t: Trabajo; actual
     setGuardando(true); setError(null)
     try {
       await registrarAvance(t, pct, nota, foto, termina)
+      await borrarBorrador(clave)
       onListo(termina ? '¡Trabajo terminado! Quedó en revisión del supervisor.' : `Avance de ${pct}% registrado`)
     } catch (e) { setError(errorTexto(e)); setGuardando(false) }
   }
 
   return (
-    <Hoja titulo="Registrar avance" onClose={onClose}>
+    <Hoja titulo="Registrar avance" onClose={() => { if ((foto || nota.trim()) && !confirm('¿Cerrar sin guardar el avance? Se perderá la foto y la nota.')) return; borrarBorrador(clave); onClose() }}>
       <div className="space-y-5">
         <div className="text-sm text-slate-500">{t.actividad}{t.pieza && ` · ${t.pieza}`} · {t.ordenes?.vehiculos?.marca} {t.ordenes?.vehiculos?.modelo} {t.ordenes?.vehiculos?.placas}</div>
         {error && <Aviso onClose={() => setError(null)}>{error}</Aviso>}

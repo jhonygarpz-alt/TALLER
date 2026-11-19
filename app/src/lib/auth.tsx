@@ -30,7 +30,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); cargarPerfil(data.session) })
+    let usuario: string | null = null
+    supabase.auth.getSession().then(({ data }) => { usuario = data.session?.user.id ?? null })
     const { data } = supabase.auth.onAuthStateChange((ev, s) => {
+      const mismo = !!s && s.user.id === usuario
+      usuario = s?.user.id ?? null
+      // Al volver de la cámara u otra app, Supabase vuelve a avisar "SIGNED_IN" del mismo usuario:
+      // se actualiza la sesión sin pantalla de carga, para no cerrar lo que se estaba capturando.
+      if (mismo && (ev === 'SIGNED_IN' || ev === 'TOKEN_REFRESHED' || ev === 'USER_UPDATED')) {
+        setSession(prev => (prev?.access_token === s?.access_token ? prev : s))
+        if (ev === 'USER_UPDATED') cargarPerfil(s)
+        return
+      }
       setSession(s)
       if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT' || ev === 'USER_UPDATED') { setCargando(true); cargarPerfil(s) }
     })

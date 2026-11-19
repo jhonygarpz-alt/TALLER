@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BadgeCheck, CheckCircle2, ChevronLeft, ClipboardList, Cog, FileClock, Hammer, Loader2, Paintbrush, ScanSearch, Sparkles, SprayCan, Truck, Wrench, X, XCircle, type LucideIcon } from 'lucide-react'
 import { ETAPAS, type Etapa } from '../lib/format'
@@ -89,8 +89,11 @@ export function Aviso({ tipo = 'error', children, onClose }: { tipo?: 'error' | 
 /** Hoja que sube desde abajo (menús y formularios cortos) */
 export function Hoja({ titulo, onClose, children }: { titulo: string; onClose: () => void; children: ReactNode }) {
   useEffect(() => { const o = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = o } }, [])
+  // Solo se cierra si el toque empezó en el fondo (al volver de la cámara algunos celulares mandan un toque "fantasma")
+  const enFondo = useRef(false)
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 backdrop-blur-[2px]" onClick={onClose}>
+    <div data-sin-recarga className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 backdrop-blur-[2px]"
+      onPointerDown={e => { enFondo.current = e.target === e.currentTarget }} onClick={e => { if (enFondo.current && e.target === e.currentTarget) onClose(); enFondo.current = false }}>
       <div className="max-h-[88vh] w-full max-w-lg animate-aparecer overflow-y-auto rounded-t-3xl bg-white pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="sticky top-0 z-10 bg-white px-5 pt-3 pb-2">
           <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300" />

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, ClipboardList, Hammer, Package, Paintbrush, PlayCircle, RefreshCw, Timer } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { leerBorrador } from '../../lib/borrador'
 import { useEmpresa } from '../../lib/empresa'
 import { errorTexto } from '../../lib/format'
 import { Aviso, Cargando, Vacio } from '../../movil/ui'
@@ -35,6 +36,20 @@ export default function MisTrabajos() {
     const ex = await cargarExtras(lista); setAvances(ex.avances); setPortadas(ex.portadas)
   }, [fichas])
   useEffect(() => { cargar() }, [cargar])
+  // Si la app se cerró mientras se registraba un avance (p. ej. al abrir la cámara), se reabre con lo capturado
+  const revisado = useRef(false)
+  useEffect(() => {
+    if (!rows?.length || avance || revisado.current) return
+    revisado.current = true
+    let vivo = true
+    ;(async () => {
+      for (const t of rows.filter(r => r.estado === 'asignada' || r.estado === 'en_proceso')) {
+        const b = await leerBorrador(`avance-${t.id}`)
+        if (b && vivo) { setAvance(t); setMsg({ t: 'ok', m: 'Recuperamos el avance que estabas registrando. Revisa y toca Guardar.' }); return }
+      }
+    })()
+    return () => { vivo = false }
+  }, [rows]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { // abrir en la pestaña que tenga trabajos
     if (!rows) return
     if (!rows.some(r => r.estado === 'en_proceso') && rows.some(r => r.estado === 'asignada')) setVista('hacer')
