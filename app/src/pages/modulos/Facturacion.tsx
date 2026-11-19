@@ -100,7 +100,7 @@ function PorFacturar({ seg, onCambio }: { seg: Seg; onCambio: () => void }) {
   const cargar = useCallback(() => {
     type Pres = { numero: number; particular: boolean; es_ampliacion: boolean; estado: string; presupuesto_partidas: { cantidad: number; precio_unit: number }[] }
     type Fila = { id: number; folio: string; tipo: string; etapa: string; presupuestos: Pres[]; facturas: { receptor: string; monto: number; cancelada: boolean; concepto: string | null }[] }
-    supabase.from('ordenes').select('id,folio,tipo,etapa,presupuestos(numero,particular,es_ampliacion,estado,presupuesto_partidas(cantidad,precio_unit)),facturas(receptor,monto,cancelada,concepto)').in('etapa', ['listo_entrega', 'entregado']).order('folio')
+    supabase.from('ordenes').select('id,folio,tipo,etapa,presupuestos(numero,particular,es_ampliacion,estado,presupuesto_partidas(cantidad,precio_unit)),facturas(receptor,monto,cancelada,concepto)').in('etapa', ['listo_entrega', 'entregado']).eq('sin_facturar', false).order('folio')
       .then(({ data }) => {
         const out: PorFac[] = []
         for (const o of (data ?? []) as unknown as Fila[]) {
@@ -135,7 +135,15 @@ function PorFacturar({ seg, onCambio }: { seg: Seg; onCambio: () => void }) {
               <td><Badge cls={COLOR_CONCEPTO[r.concepto]}>{CONCEPTOS_FAC[r.concepto]}</Badge> <span className="text-xs text-slate-500">{r.detalle}</span></td>
               <td><Badge cls={ETAPAS[r.etapa as keyof typeof ETAPAS].badge}>{ETAPAS[r.etapa as keyof typeof ETAPAS].label}</Badge></td>
               <td className="text-right">{money2(r.autorizado)}</td><td className="text-right">{money2(r.facturado)}</td><td className="text-right font-bold text-amber-700">{money2(r.saldo)}</td>
-              <td className="text-right">{puede('finanzas.gestionar') && <button className="btn btn-primary btn-sm" onClick={() => setSel(r)}><FilePlus2 className="h-4 w-4" /> Facturar</button>}</td></tr>))}
+              <td className="whitespace-nowrap text-right">{puede('finanzas.gestionar') && <>
+                <button className="btn btn-primary btn-sm" onClick={() => setSel(r)}><FilePlus2 className="h-4 w-4" /> Facturar</button>{' '}
+                <button className="btn btn-ghost btn-sm text-slate-500" title="Quitar esta orden de facturación (no se factura en el sistema)" onClick={async () => {
+                  if (!confirm(`¿Quitar la orden ${r.folio} de facturación? Todos sus conceptos dejarán de aparecer en «Por facturar». La orden y sus datos se conservan.`)) return
+                  const { error } = await supabase.rpc('orden_sin_facturar', { p_orden: r.orden_id, p_valor: true })
+                  if (error) return alert(errorTexto(error))
+                  cargar(); onCambio()
+                }}>Quitar</button>
+              </>}</td></tr>))}
           </tbody>
         </table></div>
       )}
