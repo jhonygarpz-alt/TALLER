@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Play, Plus, RotateCcw, Square, XCircle } from 'lucide-react'
+import { CheckCircle2, Pencil, Play, Plus, RotateCcw, Square, XCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { revertir } from '../lib/revertir'
 import { useAuth } from '../lib/auth'
@@ -161,6 +161,78 @@ export function NuevaActividad({ ordenId, onDone }: { ordenId?: number; onDone: 
   )
 }
 
+/** Editar un trabajo asignado. Terminados o validados: solo descripción, pieza y área (el destajo ya está calculado). */
+function EditarActividad({ a, onClose, onOk }: { a: Actividad; onClose: () => void; onOk: () => void }) {
+  const abierta = a.estado === 'asignada' || a.estado === 'en_proceso'
+  const [tarifas, setTarifas] = useState<Tarifa[]>([])
+  const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
+  const [proveedores, setProveedores] = useState<{ id: number; nombre: string }[]>([])
+  const [externo, setExterno] = useState(!!a.proveedor_id)
+  const [f, setF] = useState({ actividad: a.actividad, pieza: a.pieza ?? '', area: a.area, tecnico_id: a.tecnico_id ? String(a.tecnico_id) : '', proveedor_id: a.proveedor_id ? String(a.proveedor_id) : '', tarifa_id: a.tarifa_id ? String(a.tarifa_id) : '', costo: a.costo_proveedor != null ? String(a.costo_proveedor) : '' })
+  const [error, setError] = useState<string | null>(null)
+  const [guardando, setGuardando] = useState(false)
+  useEffect(() => {
+    if (!abierta) return
+    supabase.from('tarifas_destajo').select('*').eq('activo', true).order('area').order('importe').order('actividad').then(({ data }) => setTarifas((data ?? []) as Tarifa[]))
+    supabase.from('tecnicos').select('*').eq('activo', true).order('nombre').then(({ data }) => setTecnicos((data ?? []) as Tecnico[]))
+    supabase.from('proveedores').select('id,nombre').eq('activo', true).order('nombre').then(({ data }) => setProveedores(data ?? []))
+  }, [abierta])
+  const tarifa = tarifas.find(t => String(t.id) === f.tarifa_id)
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault(); setError(null)
+    if (!f.actividad.trim()) return setError('Escribe la descripción del trabajo')
+    const datos: Record<string, unknown> = { actividad: f.actividad.trim(), pieza: f.pieza.trim() || null, area: f.area }
+    if (abierta) {
+      if (externo) {
+        if (!f.proveedor_id) return setError('Elige el proveedor')
+        Object.assign(datos, { tecnico_id: null, proveedor_id: Number(f.proveedor_id), tarifa_id: null, importe_destajo: 0, costo_proveedor: f.costo ? Number(f.costo) : null })
+      } else {
+        if (!f.tecnico_id) return setError('Elige el técnico')
+        Object.assign(datos, { proveedor_id: null, costo_proveedor: null, tecnico_id: Number(f.tecnico_id), tarifa_id: tarifa ? tarifa.id : null, importe_destajo: tarifa ? tarifa.importe : 0 })
+      }
+    }
+    setGuardando(true)
+    const { error } = await supabase.from('actividades').update(datos).eq('id', a.id)
+    setGuardando(false)
+    if (error) return setError(errorTexto(error))
+    onOk()
+  }
+  return (
+    <Modal title="Editar trabajo" onClose={onClose}>
+      <form onSubmit={guardar} className="grid gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2"><ErrorMsg error={error} /></div>
+        {!abierta && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:col-span-2">Este trabajo ya está {a.estado === 'validada' ? 'validado' : 'terminado'}: puedes corregir la descripción, la pieza y el área. El técnico y el destajo ya no cambian; si están mal, anula el trabajo y vuelve a asignarlo.</p>}
+        <Field label="Descripción del trabajo *" className="sm:col-span-2"><input className="input" value={f.actividad} onChange={e => setF({ ...f, actividad: e.target.value })} /></Field>
+        <Field label="Pieza o piezas" className="sm:col-span-2"><input className="input" value={f.pieza} onChange={e => setF({ ...f, pieza: e.target.value })} /></Field>
+        <Field label="Área"><select className="input" value={f.area} onChange={e => setF({ ...f, area: e.target.value })}>{Object.entries(AREAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+        {abierta && <>
+          <Field grupo label="¿Quién hace el trabajo?">
+            <div className="inline-flex rounded-xl bg-slate-100 p-1">
+              {([[false, 'Técnico'], [true, 'Proveedor']] as const).map(([v, l]) => (
+                <button key={l} type="button" onClick={() => setExterno(v)} className={`rounded-lg px-4 py-1.5 text-sm font-semibold ${externo === v ? 'bg-white text-brand-700 shadow' : 'text-slate-600'}`}>{l}</button>
+              ))}
+            </div>
+          </Field>
+          {externo ? <>
+            <Field label="Proveedor *"><select className="input" value={f.proveedor_id} onChange={e => setF({ ...f, proveedor_id: e.target.value })}><option value="">Selecciona…</option>{proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre.trim()}</option>)}</select></Field>
+            <Field label="Importe por concepto"><input className="input" type="number" min="0" step="0.01" value={f.costo} onChange={e => setF({ ...f, costo: e.target.value })} /></Field>
+          </> : <>
+            <Field label="Técnico *"><select className="input" value={f.tecnico_id} onChange={e => setF({ ...f, tecnico_id: e.target.value })}><option value="">Selecciona…</option>{tecnicos.map(t => <option key={t.id} value={t.id}>{t.nombre.trim()} ({AREAS[t.area]})</option>)}</select></Field>
+            <Field label="Tarifa de destajo" hint={tarifa ? `Destajo: ${money2(tarifa.importe)}` : 'Sin tarifa no genera destajo'}>
+              <select className="input" value={f.tarifa_id} onChange={e => setF({ ...f, tarifa_id: e.target.value })}>
+                <option value="">Sin tarifa</option>
+                {Object.entries(AREAS).map(([k, v]) => { const ts = tarifas.filter(t => t.area === k); return ts.length ? <optgroup key={k} label={v}>{ts.map(t => <option key={t.id} value={t.id}>{t.actividad} — {money2(t.importe)}</option>)}</optgroup> : null })}
+              </select>
+            </Field>
+          </>}
+        </>}
+        <div className="flex justify-end gap-2 sm:col-span-2"><button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button><button className="btn btn-primary" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button></div>
+      </form>
+    </Modal>
+  )
+}
+
 /** Lista de actividades con el flujo: asignada → en proceso → terminada (con evidencia) → validada (genera destajo) */
 export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerrada, onCambio, mostrarOrden }: {
   ordenId?: number; filtroEstado?: string; filtroTecnico?: string; cerrada?: boolean; onCambio?: () => void; mostrarOrden?: boolean
@@ -171,6 +243,7 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
   const [terminar, setTerminar] = useState<Actividad | null>(null)
   const [verEv, setVerEv] = useState<Actividad | null>(null)
   const [nueva, setNueva] = useState(false)
+  const [editar, setEditar] = useState<Actividad | null>(null)
   const [avances, setAvances] = useState<Record<number, { porcentaje: number; nota: string | null; created_at: string }>>({})
 
   const cargar = useCallback(async () => {
@@ -253,6 +326,7 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
                   })()}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
+                  {a.estado !== 'cancelada' && a.ordenes?.etapa !== 'cancelado' && puede('actividades.asignar') && <button className="btn btn-secondary btn-sm" onClick={() => setEditar(a)}><Pencil className="h-3.5 w-3.5" /> Editar</button>}
                   {['terminada', 'validada'].includes(a.estado) && <button className="btn btn-secondary btn-sm" onClick={() => setVerEv(a)}>Evidencia</button>}
                   {a.estado === 'asignada' && puedeAvanzar && <button className="btn btn-secondary btn-sm" onClick={() => accion(a, 'iniciar')}><Play className="h-3.5 w-3.5" /> Iniciar</button>}
                   {['asignada', 'en_proceso'].includes(a.estado) && puedeAvanzar && <button className="btn btn-success btn-sm" onClick={() => setTerminar(a)}><Square className="h-3.5 w-3.5" /> Terminar</button>}
@@ -275,6 +349,7 @@ export default function Actividades({ ordenId, filtroEstado, filtroTecnico, cerr
       )}
       {terminar && <Terminar a={terminar} onClose={() => setTerminar(null)} onOk={() => { setTerminar(null); cargar(); onCambio?.() }} />}
       {verEv && <Evidencia a={verEv} onClose={() => setVerEv(null)} />}
+      {editar && <EditarActividad a={editar} onClose={() => setEditar(null)} onOk={() => { setEditar(null); cargar(); onCambio?.() }} />}
       {nueva && <Modal title="Asignar trabajo" onClose={() => setNueva(false)}><NuevaActividad ordenId={ordenId} onDone={() => { setNueva(false); cargar(); onCambio?.() }} /></Modal>}
     </div>
   )
