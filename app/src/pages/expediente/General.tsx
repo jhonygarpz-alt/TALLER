@@ -52,7 +52,7 @@ export function CambioEtapa({ o, recargar }: TabProps) {
           <input className="input" value={just} onChange={e => setJust(e.target.value)} placeholder="Ej. Autorización verbal del ajustador, se formaliza mañana" />
         </Field>
       )}
-      <p className="mt-2 text-xs text-slate-500">Las etapas de reparación requieren presupuesto autorizado; “Listo para entrega” requiere todos los trabajos validados; “Entregado” se registra con el checklist de calidad y el nombre de quien recibe. Las excepciones quedan registradas con usuario y justificación.</p>
+      <p className="mt-2 text-xs text-slate-500">Las etapas avanzan sin necesidad de presupuesto autorizado; “Listo para entrega” requiere todos los trabajos validados; “Entregado” se registra con el checklist de calidad y el nombre de quien recibe. Las excepciones quedan registradas con usuario y justificación.</p>
     </Card>
   )
 }

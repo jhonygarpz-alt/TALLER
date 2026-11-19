@@ -1,0 +1,2 @@
+-- orden_cambiar_etapa: ya no se exige presupuesto autorizado para avanzar a reparación, pintura, calidad o listo para entrega.
+-- Se conserva la regla de trabajos sin validar antes de "Listo para entrega" y la de cancelar con permiso y justificación.
