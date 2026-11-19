@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { BandaEstado } from '../lib/barraEstado'
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Bell, CalendarDays, CarFront, ClipboardList, House, LayoutGrid, LogOut, RefreshCw, UserRound, BarChart3, type LucideIcon } from 'lucide-react'
@@ -6,7 +6,7 @@ import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import LoginMovil from '../movil/pantallas/Login'
 import { usePush } from '../tecnicos/push'
-import { PERIODOS, useTablero, type Periodo, type Tablero } from './datos'
+import { PERIODOS, diaCorto, hoyTaller, useTablero, type Periodo, type Tablero } from './datos'
 import { fechaLarga } from './graficas'
 import Resumen from './pantallas/Resumen'
 import Ordenes from './pantallas/Ordenes'
@@ -15,7 +15,8 @@ import Reportes from './pantallas/Reportes'
 import Ajustes from './pantallas/Ajustes'
 
 const BASE = import.meta.env.BASE_URL
-const leerPeriodo = (): Periodo => { try { return (localStorage.getItem('gerencia.periodo') as Periodo) || 'hoy' } catch { return 'hoy' } }
+// Al abrir la app se recuerda el periodo (7 días, mes…), pero un día elegido o «ayer» vuelve a «hoy»
+const leerPeriodo = (): Periodo => { try { const v = localStorage.getItem('gerencia.periodo') || 'hoy'; return v === 'ayer' || v.startsWith('dia:') ? 'hoy' : v } catch { return 'hoy' } }
 
 export interface PropsPantalla { datos: Tablero; periodo: Periodo }
 
@@ -97,13 +98,26 @@ function Portada({ datos, cargando, recargar }: { datos: Tablero | null; cargand
 }
 
 function Periodos({ periodo, setPeriodo }: { periodo: Periodo; setPeriodo: (p: Periodo) => void }) {
+  const cal = useRef<HTMLInputElement>(null)
+  const elegido = periodo.startsWith('dia:') ? periodo.slice(4) : null
+  const chip = (activo: boolean) => `flex shrink-0 items-center justify-center gap-1 rounded-full px-3.5 py-2.5 text-[14px] whitespace-nowrap transition ${activo ? 'bg-gradient-to-b from-[#2298af] to-[#17657c] font-semibold text-white shadow-[0_4px_12px_rgba(23,101,124,.3)]' : 'border border-black/[.04] bg-white text-[#193344] shadow-[0_1px_2px_rgba(16,24,20,.05)]'}`
+  function abrirCalendario() {
+    const el = cal.current
+    if (!el) return
+    try { (el as HTMLInputElement & { showPicker?: () => void }).showPicker?.() ?? el.click() } catch { el.click() }
+  }
   return (
-    <div className="grid grid-cols-[.8fr_1fr_1.12fr_1.38fr] gap-1.5 px-4 pb-1">
-      {PERIODOS.map(p => (
-        <button key={p.id} onClick={() => setPeriodo(p.id)}
-          className={`flex items-center justify-center gap-1 rounded-full px-1 py-2.5 text-[14px] whitespace-nowrap transition ${periodo === p.id ? 'bg-gradient-to-b from-[#2298af] to-[#17657c] font-semibold text-white shadow-[0_4px_12px_rgba(23,101,124,.3)]' : 'border border-black/[.04] bg-white text-[#193344] shadow-[0_1px_2px_rgba(16,24,20,.05)]'}`}>
-          <CalendarDays className="h-[15px] w-[15px] shrink-0" strokeWidth={1.7} />{p.label}
+    <div className="-mb-1 flex gap-1.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none]">
+      <div className="relative shrink-0">
+        <button type="button" onClick={abrirCalendario} className={chip(!!elegido)} aria-label="Elegir un día en el calendario">
+          <CalendarDays className="h-[15px] w-[15px] shrink-0" strokeWidth={1.7} />{elegido ? diaCorto(elegido) : 'Elegir día'}
         </button>
+        <input ref={cal} type="date" max={hoyTaller()} value={elegido ?? ''} aria-label="Día a consultar"
+          onChange={e => e.target.value && setPeriodo(e.target.value === hoyTaller() ? 'hoy' : `dia:${e.target.value}`)}
+          className="pointer-events-none absolute inset-0 h-full w-full opacity-0" tabIndex={-1} />
+      </div>
+      {PERIODOS.map(p => (
+        <button key={p.id} onClick={() => setPeriodo(p.id)} className={chip(periodo === p.id)}>{p.label}</button>
       ))}
     </div>
   )

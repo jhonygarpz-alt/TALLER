@@ -2,6 +2,7 @@ import { ChevronRight, ClipboardList, Clock, FileStack, PackageX } from 'lucide-
 import { ETAPAS, type Etapa } from '../../lib/format'
 import { Kpi, type PropsPantalla } from '../AppGerencia'
 import { Panel } from '../graficas'
+import { diaDe } from '../datos'
 import { Miniatura } from '../../components/Fotos'
 import Recientes, { EtiquetaEtapa, useFotosOrdenes } from '../Recientes'
 
@@ -14,7 +15,8 @@ export function Etiqueta({ etapa }: { etapa: string }) {
   return <span className="rounded-full px-2 py-0.5 text-[12px] font-semibold" style={{ background: `${e?.color ?? '#64748b'}1a`, color: e?.color ?? '#475569' }}>{e?.label ?? etapa}</span>
 }
 
-export default function Ordenes({ datos: d }: PropsPantalla) {
+export default function Ordenes({ datos: d, periodo }: PropsPantalla) {
+  const dia = periodo === 'hoy' ? undefined : diaDe(periodo) ?? undefined
   const fotos = useFotosOrdenes(d.alertas.map(a => a.id))
   return (
     <>
@@ -49,7 +51,7 @@ export default function Ordenes({ datos: d }: PropsPantalla) {
         )}
       </Panel>
 
-      <Recientes actualizado={d.actualizado} cuantos={12} />
+      <Recientes actualizado={d.actualizado} cuantos={dia ? 40 : 12} dia={dia} />
       <p className="text-center text-[14px] text-[#4f6672]">Toca una orden para abrir su expediente en el sistema web</p>
     </>
   )

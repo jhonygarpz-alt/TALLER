@@ -7,13 +7,16 @@ export const TZ = 'America/Mexico_City'
 export const hoyTaller = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ })
 const sumar = (iso: string, dias: number) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + dias); return d.toISOString().slice(0, 10) }
 
-export type Periodo = 'hoy' | 'semana' | 'mes' | 'anterior'
+/** 'hoy' | 'ayer' | 'semana' | 'mes' | 'anterior' | 'dia:AAAA-MM-DD' (un día elegido en el calendario) */
+export type Periodo = string
 export const PERIODOS: { id: Periodo; label: string }[] = [
-  { id: 'hoy', label: 'Hoy' }, { id: 'semana', label: '7 días' }, { id: 'mes', label: 'Este mes' }, { id: 'anterior', label: 'Mes anterior' },
+  { id: 'hoy', label: 'Hoy' }, { id: 'ayer', label: 'Ayer' }, { id: 'semana', label: '7 días' }, { id: 'mes', label: 'Este mes' }, { id: 'anterior', label: 'Mes anterior' },
 ]
 export function rango(p: Periodo): { desde: string; hasta: string } {
   const h = hoyTaller()
   if (p === 'hoy') return { desde: h, hasta: h }
+  if (p === 'ayer') { const a = sumar(h, -1); return { desde: a, hasta: a } }
+  if (p.startsWith('dia:')) { const d = p.slice(4); return { desde: d, hasta: d } }
   if (p === 'semana') return { desde: sumar(h, -6), hasta: h }
   const ini = h.slice(0, 8) + '01'
   if (p === 'mes') return { desde: ini, hasta: h }
@@ -60,3 +63,8 @@ export function useTablero(p: Periodo) {
 export const nombreCorto = (n: string) => n.trim().split(/\s+/).slice(0, 2).join(' ')
 export const moneda = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })
 export const monedaCorta = (n: number) => Math.abs(n) >= 1e6 ? `$${(n / 1e6).toFixed(2)} M` : Math.abs(n) >= 1e3 ? `$${(n / 1e3).toFixed(1)} k` : `$${Math.round(n)}`
+
+/** Un solo día (hoy, ayer o un día elegido): devuelve la fecha AAAA-MM-DD, si no null */
+export const diaDe = (p: Periodo): string | null => p === 'hoy' ? hoyTaller() : p === 'ayer' ? sumar(hoyTaller(), -1) : p.startsWith('dia:') ? p.slice(4) : null
+/** "mar 18 nov" */
+export const diaCorto = (iso: string) => new Date(iso + 'T12:00:00Z').toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).replace(/\./g, '')

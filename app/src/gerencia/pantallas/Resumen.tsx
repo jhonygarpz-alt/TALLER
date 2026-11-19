@@ -3,6 +3,7 @@ import { AlarmClock, ArrowDownRight, ArrowUpRight, CarFront, CircleCheck, Clock,
 import { supabase } from '../../lib/supabase'
 import { Kpi, type PropsPantalla } from '../AppGerencia'
 import Recientes from '../Recientes'
+import { diaCorto, diaDe } from '../datos'
 import { C, Chispa, DIAS, Dona, Lineas, MESES, Panel } from '../graficas'
 
 type Rango = 'semana' | 'mes' | 'anio'
@@ -61,21 +62,23 @@ function Rendimiento() {
 export default function Resumen({ datos: d, periodo }: PropsPantalla) {
   const h = d.dia, p = d.periodo
   const hoy = periodo === 'hoy'
+  const dia = diaDe(periodo)
+  const etiquetaDia = hoy ? 'hoy' : periodo === 'ayer' ? 'ayer' : dia ? `del ${diaCorto(dia)}` : ''
   const ultimos = d.serie.slice(-7)
   const ayer = d.serie.length >= 2 ? d.serie[d.serie.length - 2] : null
   const g = grupos(d.etapas)
   return (
     <>
-      <Recientes actualizado={d.actualizado} cuantos={5} />
+      <Recientes actualizado={d.actualizado} cuantos={dia && !hoy ? 30 : 5} dia={hoy ? undefined : dia ?? undefined} />
       <div className="grid grid-cols-2 gap-3">
-        <Kpi icono={CarFront} label={hoy ? 'Ingresos hoy' : 'Ingresos'} valor={hoy ? h.ingresos : p.ingresos}
+        <Kpi icono={CarFront} label={dia ? `Ingresos ${etiquetaDia}` : 'Ingresos'} valor={hoy ? h.ingresos : p.ingresos}
           derecha={hoy && ayer ? <Tendencia hoy={h.ingresos} ayer={ayer.ingresos} /> : undefined}
           abajo={<Chispa valores={ultimos.map(s => s.ingresos)} />} />
-        <Kpi icono={CircleCheck} label={hoy ? 'Entregas hoy' : 'Entregas'} valor={hoy ? h.entregas : p.entregas}
+        <Kpi icono={CircleCheck} label={dia ? `Entregas ${etiquetaDia}` : 'Entregas'} valor={hoy ? h.entregas : p.entregas}
           derecha={hoy && ayer ? <Tendencia hoy={h.entregas} ayer={ayer.entregas} /> : undefined}
           abajo={<Chispa valores={ultimos.map(s => s.entregas)} color={C.lima} />} />
-        <Kpi icono={Wrench} label="Unidades en taller" valor={h.en_taller} />
-        <Kpi icono={Package} label="Listas para entrega" valor={h.listos} />
+        <Kpi icono={Wrench} label="Unidades en taller (ahora)" valor={h.en_taller} />
+        <Kpi icono={Package} label="Listas para entrega (ahora)" valor={h.listos} />
       </div>
 
       <Panel titulo="Órdenes de Trabajo" sub="Estado actual de las unidades" a="/taller">

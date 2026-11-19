@@ -31,18 +31,24 @@ export function EtiquetaEtapa({ etapa, retrasado }: { etapa: string; retrasado?:
 }
 
 /** Últimos vehículos ingresados, con foto, fecha y hora (se actualiza junto con el tablero) */
-export default function Recientes({ actualizado, cuantos = 6 }: { actualizado?: string; cuantos?: number }) {
+/** Sin `dia`: los últimos ingresos. Con `dia` (AAAA-MM-DD): los vehículos que ingresaron ese día */
+export default function Recientes({ actualizado, cuantos = 6, dia }: { actualizado?: string; cuantos?: number; dia?: string }) {
   const [rows, setRows] = useState<Ingreso[] | null>(null)
   useEffect(() => {
-    supabase.from('v_ordenes').select('id,folio,marca,modelo,anio,placas,color,tipo,aseguradora_nombre,cliente_nombre,fecha_ingreso,etapa,foto_portada,retrasado')
+    let q = supabase.from('v_ordenes').select('id,folio,marca,modelo,anio,placas,color,tipo,aseguradora_nombre,cliente_nombre,fecha_ingreso,etapa,foto_portada,retrasado')
       .neq('etapa', 'cancelado').order('fecha_ingreso', { ascending: false }).limit(cuantos)
-      .then(({ data }) => setRows((data ?? []) as Ingreso[]))
-  }, [actualizado, cuantos])
+    if (dia) { // día completo en hora del taller (Ciudad de México, UTC−6)
+      const sig = new Date(dia + 'T12:00:00Z'); sig.setUTCDate(sig.getUTCDate() + 1)
+      q = q.gte('fecha_ingreso', `${dia}T00:00:00-06:00`).lt('fecha_ingreso', `${sig.toISOString().slice(0, 10)}T00:00:00-06:00`)
+    }
+    setRows(null)
+    q.then(({ data }) => setRows((data ?? []) as Ingreso[]))
+  }, [actualizado, cuantos, dia])
 
   return (
-    <Panel titulo="Recién ingresados" sub="Los últimos vehículos que entraron al taller">
+    <Panel titulo={dia ? 'Ingresos del día' : 'Recién ingresados'} sub={dia ? `Vehículos que entraron el ${new Date(dia + 'T12:00:00Z').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}` : 'Los últimos vehículos que entraron al taller'}>
       {!rows ? <div className="space-y-3">{[0, 1, 2].map(i => <div key={i} className="h-24 animate-pulse rounded-2xl bg-[#eef6f8]" />)}</div>
-        : rows.length === 0 ? <p className="py-4 text-center text-[15px] text-[#4f6672]">Aún no hay ingresos.</p> : (
+        : rows.length === 0 ? <p className="py-4 text-center text-[15px] text-[#4f6672]">{dia ? 'Ese día no ingresaron vehículos.' : 'Aún no hay ingresos.'}</p> : (
         <ul className="-mx-1 divide-y divide-black/[.05]">
           {rows.map(r => (
             <li key={r.id}>
