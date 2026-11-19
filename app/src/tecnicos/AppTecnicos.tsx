@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
-import { ClipboardList, UserRound, Wallet } from 'lucide-react'
+import { ClipboardList, Package, UserRound, Wallet } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import { Cargando } from '../movil/ui'
@@ -10,6 +10,7 @@ import MisTrabajos from './pantallas/MisTrabajos'
 const Trabajo = lazy(() => import('./pantallas/Trabajo'))
 const Destajos = lazy(() => import('./pantallas/Destajos'))
 const Perfil = lazy(() => import('./pantallas/Perfil'))
+const Material = lazy(() => import('./pantallas/Material'))
 
 function BarraInferior() {
   const item = (to: string, Icono: typeof Wallet, label: string) => (
@@ -21,6 +22,7 @@ function BarraInferior() {
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+8px)] backdrop-blur">
       <div className="mx-auto flex max-w-lg gap-1.5">
         {item('/', ClipboardList, 'Mis trabajos')}
+        {item('/material', Package, 'Material')}
         {item('/destajos', Wallet, 'Destajos')}
         {item('/perfil', UserRound, 'Mi perfil')}
       </div>
@@ -47,6 +49,7 @@ export default function AppTecnicos() {
           <Routes>
             <Route path="/" element={<MisTrabajos />} />
             <Route path="/trabajo/:id" element={<Trabajo />} />
+            <Route path="/material" element={<Material />} />
             <Route path="/destajos" element={<Destajos />} />
             <Route path="/perfil" element={<Perfil />} />
             <Route path="*" element={<MisTrabajos />} />

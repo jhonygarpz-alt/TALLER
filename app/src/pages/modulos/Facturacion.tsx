@@ -7,14 +7,13 @@ import { usePeriodo } from '../../lib/periodo'
 import { urlFirmada } from '../../lib/storage'
 import { ETAPAS, errorTexto, fecha, hoyISO, money2 } from '../../lib/format'
 import { descargarCSV } from '../../lib/exportar'
-import type { Rentabilidad } from '../../lib/tipos'
 import { Badge, Card, Empty, ErrorMsg, Field, Modal, PageHeader, Pendiente, SinPermiso, Tabs, useTab } from '../../components/ui'
 import PeriodoSelect from '../../components/PeriodoSelect'
 
 interface Cxc {
   id: number; orden_id: number; orden_folio: string; folio: string; fecha: string; fecha_vencimiento: string; receptor: string; monto: number
   pagado: number; saldo: number; dias_vencido: number; deudor: string; tipo: string; cliente_id: number; aseguradora_id: number | null
-  archivo_path: string | null; estado_cfdi: string; uuid_cfdi: string | null
+  archivo_path: string | null; estado_cfdi: string; uuid_cfdi: string | null; concepto: string | null
 }
 
 /** Apartado de facturación: aseguradora o particular */
@@ -31,15 +30,21 @@ async function subirDocumento(facturaId: number, file: File) {
   if (error) throw error
 }
 
-function NuevaFactura({ r, seg, onDone }: { r: Rentabilidad & { saldo_facturar: number }; seg: Seg; onDone: () => void }) {
-  const [f, setF] = useState({ folio: '', receptor: seg === 'aseguradora' ? 'aseguradora' : 'cliente', monto: r.saldo_facturar.toFixed(2), fecha: hoyISO() })
+type Concepto = 'presupuesto' | 'ampliacion' | 'particular'
+const CONCEPTOS_FAC: Record<Concepto, string> = { presupuesto: 'Presupuesto', ampliacion: 'Ampliación', particular: 'Presupuesto particular' }
+const COLOR_CONCEPTO: Record<Concepto, string> = { presupuesto: 'bg-sky-100 text-sky-800', ampliacion: 'bg-amber-100 text-amber-800', particular: 'bg-violet-100 text-violet-800' }
+/** Un renglón por facturar: una orden y uno de sus conceptos (presupuesto, ampliación o particular) */
+interface PorFac { orden_id: number; folio: string; tipo: string; etapa: string; concepto: Concepto; detalle: string; autorizado: number; facturado: number; saldo: number }
+
+function NuevaFactura({ r, seg, onDone }: { r: PorFac; seg: Seg; onDone: () => void }) {
+  const [f, setF] = useState({ folio: '', monto: r.saldo.toFixed(2), fecha: hoyISO() })
   const [archivo, setArchivo] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   async function submit(e: FormEvent) {
     e.preventDefault()
     setEnviando(true)
-    const { data, error } = await supabase.from('facturas').insert({ orden_id: r.orden_id, folio: f.folio.trim(), receptor: f.receptor, monto: Number(f.monto), fecha: f.fecha }).select('id').single()
+    const { data, error } = await supabase.from('facturas').insert({ orden_id: r.orden_id, folio: f.folio.trim(), receptor: seg === 'aseguradora' ? 'aseguradora' : 'cliente', concepto: r.concepto, monto: Number(f.monto), fecha: f.fecha }).select('id').single()
     if (error) { setEnviando(false); return setError(errorTexto(error)) }
     if (archivo) { try { await subirDocumento(data.id, archivo) } catch (e2) { setEnviando(false); return setError('Factura registrada, pero el documento no se pudo adjuntar: ' + errorTexto(e2)) } }
     onDone()
@@ -47,7 +52,10 @@ function NuevaFactura({ r, seg, onDone }: { r: Rentabilidad & { saldo_facturar: 
   return (
     <form onSubmit={submit} className="space-y-3">
       <ErrorMsg error={error} />
-      <p className="text-sm">Orden <b>{r.folio}</b> · Autorizado {seg === 'aseguradora' ? 'aseguradora' : 'particular'} {money2(r.ingreso_reconocido)} · Ya facturado {money2(r.facturado)}</p>
+      <div className="rounded-xl bg-slate-50 p-3 text-sm">
+        <div>Orden <b>{r.folio}</b> · <Badge cls={COLOR_CONCEPTO[r.concepto]}>{CONCEPTOS_FAC[r.concepto]}</Badge> <span className="text-slate-500">{r.detalle}</span></div>
+        <div className="mt-1">Autorizado {money2(r.autorizado)} · Ya facturado {money2(r.facturado)} · <b>Por facturar {money2(r.saldo)}</b></div>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Folio / serie *"><input className="input" required value={f.folio} onChange={e => setF({ ...f, folio: e.target.value })} /></Field>
         <Field label="Receptor"><input className="input" disabled value={seg === 'aseguradora' ? 'Aseguradora' : 'Cliente particular'} /></Field>
@@ -55,7 +63,7 @@ function NuevaFactura({ r, seg, onDone }: { r: Rentabilidad & { saldo_facturar: 
         <Field label="Fecha"><input className="input" type="date" value={f.fecha} onChange={e => setF({ ...f, fecha: e.target.value })} /></Field>
       </div>
       <Field label="Documento (PDF / XML)" hint="El vencimiento se calcula con los días de crédito del cliente o aseguradora."><input className="input" type="file" accept="application/pdf,image/*" onChange={e => setArchivo(e.target.files?.[0] ?? null)} /></Field>
-      <div className="flex justify-end"><button className="btn btn-primary" disabled={enviando}>{enviando ? 'Guardando…' : 'Registrar factura'}</button></div>
+      <div className="flex justify-end"><button className="btn btn-primary" disabled={enviando}>{enviando ? 'Guardando…' : `Registrar factura de ${CONCEPTOS_FAC[r.concepto].toLowerCase()}`}</button></div>
     </form>
   )
 }
@@ -87,35 +95,51 @@ function RegistrarPago({ c, onDone }: { c: Cxc; onDone: () => void }) {
 
 function PorFacturar({ seg, onCambio }: { seg: Seg; onCambio: () => void }) {
   const { puede } = useAuth()
-  const [rows, setRows] = useState<(Rentabilidad & { saldo_facturar: number })[]>([])
-  const [sel, setSel] = useState<(Rentabilidad & { saldo_facturar: number }) | null>(null)
+  const [rows, setRows] = useState<PorFac[]>([])
+  const [sel, setSel] = useState<PorFac | null>(null)
   const cargar = useCallback(() => {
-    // Aseguradora: presupuestos de la aseguradora vs facturas a la aseguradora.
-    // Particular: órdenes particulares + presupuestos particulares de órdenes de aseguradora vs facturas al cliente.
-    type Fila = { id: number; folio: string; tipo: string; etapa: string; presupuestos: { particular: boolean; estado: string; presupuesto_partidas: { cantidad: number; precio_unit: number }[] }[]; facturas: { receptor: string; monto: number; cancelada: boolean }[] }
-    supabase.from('ordenes').select('id,folio,tipo,etapa,presupuestos(particular,estado,presupuesto_partidas(cantidad,precio_unit)),facturas(receptor,monto,cancelada)').in('etapa', ['listo_entrega', 'entregado']).order('folio')
-      .then(({ data }) => setRows(((data ?? []) as unknown as Fila[]).map(o => {
-        const delSeg = (pp: { particular: boolean }) => seg === 'aseguradora' ? o.tipo === 'aseguradora' && !pp.particular : o.tipo !== 'aseguradora' || pp.particular
-        const ingreso = o.presupuestos.filter(pp => pp.estado === 'autorizado' && delSeg(pp)).reduce((t, pp) => t + pp.presupuesto_partidas.reduce((u, x) => u + Number(x.cantidad) * Number(x.precio_unit), 0), 0)
-        const facturado = o.facturas.filter(f => !f.cancelada && (seg === 'aseguradora') === (f.receptor === 'aseguradora')).reduce((t, f) => t + Number(f.monto), 0)
-        return { orden_id: o.id, folio: o.folio, tipo: o.tipo, etapa: o.etapa, ingreso_reconocido: ingreso, facturado, saldo_facturar: ingreso - facturado } as unknown as Rentabilidad & { saldo_facturar: number }
-      }).filter(r => r.saldo_facturar > 0.005)))
+    type Pres = { numero: number; particular: boolean; es_ampliacion: boolean; estado: string; presupuesto_partidas: { cantidad: number; precio_unit: number }[] }
+    type Fila = { id: number; folio: string; tipo: string; etapa: string; presupuestos: Pres[]; facturas: { receptor: string; monto: number; cancelada: boolean; concepto: string | null }[] }
+    supabase.from('ordenes').select('id,folio,tipo,etapa,presupuestos(numero,particular,es_ampliacion,estado,presupuesto_partidas(cantidad,precio_unit)),facturas(receptor,monto,cancelada,concepto)').in('etapa', ['listo_entrega', 'entregado']).order('folio')
+      .then(({ data }) => {
+        const out: PorFac[] = []
+        for (const o of (data ?? []) as unknown as Fila[]) {
+          const aseg = o.tipo === 'aseguradora'
+          // Conceptos del apartado: aseguradora = presupuesto + ampliaciones (no particulares); particular = presupuesto particular (o todo en órdenes particulares)
+          const conceptos: Concepto[] = seg === 'aseguradora' ? (aseg ? ['presupuesto', 'ampliacion'] : []) : (aseg ? ['particular'] : ['presupuesto', 'ampliacion'])
+          const conceptoDe = (p: Pres): Concepto => (aseg && p.particular) ? 'particular' : p.es_ampliacion ? 'ampliacion' : 'presupuesto'
+          const facs = o.facturas.filter(f => !f.cancelada && (seg === 'aseguradora') === (f.receptor === 'aseguradora'))
+          let sinConcepto = facs.filter(f => !f.concepto).reduce((t, f) => t + Number(f.monto), 0) // facturas anteriores sin concepto: se aplican en orden
+          for (const c of conceptos) {
+            const ps = o.presupuestos.filter(p => p.estado === 'autorizado' && conceptoDe(p) === c).sort((a, b) => a.numero - b.numero)
+            const autorizado = ps.reduce((t, p) => t + p.presupuesto_partidas.reduce((u, x) => u + Number(x.cantidad) * Number(x.precio_unit), 0), 0)
+            if (autorizado <= 0) continue
+            let facturado = facs.filter(f => f.concepto === c).reduce((t, f) => t + Number(f.monto), 0)
+            const aplica = Math.min(sinConcepto, Math.max(0, autorizado - facturado)); facturado += aplica; sinConcepto -= aplica
+            out.push({ orden_id: o.id, folio: o.folio, tipo: o.tipo, etapa: o.etapa, concepto: c, detalle: ps.map(p => `#${p.numero}`).join(', '), autorizado, facturado, saldo: autorizado - facturado })
+          }
+        }
+        setRows(out.filter(r => r.saldo > 0.005))
+      })
   }, [seg])
   useEffect(() => { cargar() }, [cargar])
+  const porConcepto = (Object.keys(CONCEPTOS_FAC) as Concepto[]).map(c => [c, rows.filter(r => r.concepto === c).reduce((t, r) => t + r.saldo, 0)] as const).filter(([, v]) => v > 0)
   return (
-    <Card title={`${seg === 'aseguradora' ? 'Órdenes de aseguradora' : 'Órdenes particulares'} pendientes de facturación (${rows.length})`} action={<span className="text-lg font-extrabold">{money2(rows.reduce((s, r) => s + r.saldo_facturar, 0))}</span>}>
-      {rows.length === 0 ? <Empty icon={FileText}>Todas las órdenes {seg === 'aseguradora' ? 'de aseguradora' : 'particulares'} terminadas están facturadas</Empty> : (
+    <Card title={`${seg === 'aseguradora' ? 'Aseguradora' : 'Particular'}: conceptos pendientes de facturación (${rows.length})`} action={<span className="text-lg font-extrabold">{money2(rows.reduce((s, r) => s + r.saldo, 0))}</span>}>
+      {porConcepto.length > 0 && <div className="mb-3 flex flex-wrap gap-2">{porConcepto.map(([c, v]) => <Badge key={c} cls={COLOR_CONCEPTO[c]}>{CONCEPTOS_FAC[c]}: {money2(v)}</Badge>)}</div>}
+      {rows.length === 0 ? <Empty icon={FileText}>Todo lo autorizado {seg === 'aseguradora' ? 'a la aseguradora' : 'como particular'} en órdenes terminadas está facturado</Empty> : (
         <div className="-mx-5 overflow-x-auto px-5"><table className="tbl">
-          <thead><tr><th>Orden</th><th>Tipo</th><th>Etapa</th><th className="text-right">Autorizado {seg === 'aseguradora' ? 'aseguradora' : 'particular'}</th><th className="text-right">Facturado</th><th className="text-right">Por facturar</th><th></th></tr></thead>
+          <thead><tr><th>Orden</th><th>Concepto</th><th>Etapa</th><th className="text-right">Autorizado</th><th className="text-right">Facturado</th><th className="text-right">Por facturar</th><th></th></tr></thead>
           <tbody>{rows.map(r => (
-            <tr key={r.orden_id}><td><Link className="font-bold text-brand-700" to={`/ordenes/${r.orden_id}?tab=costos`}>{r.folio}</Link></td>
-              <td className="text-xs">{r.tipo === 'aseguradora' ? (seg === 'particular' ? 'Aseguradora · presupuesto particular' : 'Aseguradora') : 'Particular'}</td><td><Badge cls={ETAPAS[r.etapa].badge}>{ETAPAS[r.etapa].label}</Badge></td>
-              <td className="text-right">{money2(r.ingreso_reconocido)}</td><td className="text-right">{money2(r.facturado)}</td><td className="text-right font-bold text-amber-700">{money2(r.saldo_facturar)}</td>
+            <tr key={`${r.orden_id}-${r.concepto}`}><td><Link className="font-bold text-brand-700" to={`/ordenes/${r.orden_id}?tab=presupuesto`}>{r.folio}</Link><div className="text-[11px] text-slate-500">{r.tipo === 'aseguradora' ? 'Aseguradora' : 'Particular'}</div></td>
+              <td><Badge cls={COLOR_CONCEPTO[r.concepto]}>{CONCEPTOS_FAC[r.concepto]}</Badge> <span className="text-xs text-slate-500">{r.detalle}</span></td>
+              <td><Badge cls={ETAPAS[r.etapa as keyof typeof ETAPAS].badge}>{ETAPAS[r.etapa as keyof typeof ETAPAS].label}</Badge></td>
+              <td className="text-right">{money2(r.autorizado)}</td><td className="text-right">{money2(r.facturado)}</td><td className="text-right font-bold text-amber-700">{money2(r.saldo)}</td>
               <td className="text-right">{puede('finanzas.gestionar') && <button className="btn btn-primary btn-sm" onClick={() => setSel(r)}><FilePlus2 className="h-4 w-4" /> Facturar</button>}</td></tr>))}
           </tbody>
         </table></div>
       )}
-      {sel && <Modal title="Registrar factura" onClose={() => setSel(null)}><NuevaFactura r={sel} seg={seg} onDone={() => { setSel(null); cargar(); onCambio() }} /></Modal>}
+      {sel && <Modal title={`Registrar factura · ${CONCEPTOS_FAC[sel.concepto]}`} onClose={() => setSel(null)}><NuevaFactura r={sel} seg={seg} onDone={() => { setSel(null); cargar(); onCambio() }} /></Modal>}
     </Card>
   )
 }
@@ -147,19 +171,20 @@ function Facturas({ seg, version, onCambio }: { seg: Seg; version: number; onCam
           <button key={k} onClick={() => setFiltro(k)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${filtro === k ? 'bg-navy-800 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}>{l}</button>
         ))}
         <button className="btn btn-secondary btn-sm ml-auto" onClick={() => descargarCSV(`facturas_${seg}`, lista as unknown as Record<string, unknown>[], [
-          { key: 'folio', label: 'Factura' }, { key: 'orden_folio', label: 'Orden' }, { key: 'deudor', label: 'Deudor' }, { key: 'receptor', label: 'Receptor' }, { key: 'fecha', label: 'Fecha' },
+          { key: 'folio', label: 'Factura' }, { key: 'orden_folio', label: 'Orden' }, { key: 'concepto', label: 'Concepto' }, { key: 'deudor', label: 'Deudor' }, { key: 'receptor', label: 'Receptor' }, { key: 'fecha', label: 'Fecha' },
           { key: 'fecha_vencimiento', label: 'Vencimiento' }, { key: 'monto', label: 'Importe' }, { key: 'pagado', label: 'Pagado' }, { key: 'saldo', label: 'Saldo' }, { key: 'dias_vencido', label: 'Días vencido' }, { key: 'estado_cfdi', label: 'CFDI' }])}><Download className="h-4 w-4" /> Excel</button>
       </div>
       <Card pad={false}>
         {lista.length === 0 ? <Empty icon={Receipt}>Sin facturas con este filtro</Empty> : (
           <div className="overflow-x-auto"><table className="tbl">
-            <thead><tr><th>Factura</th><th>Orden</th><th>Deudor</th><th>Fecha</th><th>Vencimiento</th><th className="text-right">Importe</th><th className="text-right">Pagado</th><th className="text-right">Saldo</th><th>CFDI</th><th></th></tr></thead>
+            <thead><tr><th>Factura</th><th>Orden</th><th>Concepto</th><th>Deudor</th><th>Fecha</th><th>Vencimiento</th><th className="text-right">Importe</th><th className="text-right">Pagado</th><th className="text-right">Saldo</th><th>CFDI</th><th></th></tr></thead>
             <tbody>{lista.map(c => {
               const vencida = c.saldo > 0.005 && c.dias_vencido > 0
               return (
                 <tr key={c.id}>
                   <td className="font-semibold">{c.folio}{c.archivo_path && <button className="ml-1 text-brand-700" title="Ver documento" onClick={() => verDoc(c.archivo_path!)}><Paperclip className="inline h-3.5 w-3.5" /></button>}</td>
                   <td><Link className="text-brand-700" to={`/ordenes/${c.orden_id}?tab=costos`}>{c.orden_folio}</Link></td>
+                  <td>{c.concepto ? <Badge cls={COLOR_CONCEPTO[c.concepto as Concepto]}>{CONCEPTOS_FAC[c.concepto as Concepto]}</Badge> : <span className="text-xs text-slate-400">—</span>}</td>
                   <td>{c.deudor}<div className="text-xs text-slate-500">{c.receptor === 'aseguradora' ? 'Aseguradora' : 'Cliente'}</div></td>
                   <td>{fecha(c.fecha)}</td>
                   <td className={vencida ? 'font-semibold text-red-600' : ''}>{fecha(c.fecha_vencimiento)}{vencida && <div className="text-[11px]">Vencida hace {c.dias_vencido} d</div>}</td>
@@ -250,7 +275,7 @@ function EstadosCuenta({ seg, version }: { seg: Seg; version: number }) {
     if (!facturas.length) { setPagos([]); return }
     supabase.from('cobros').select('*, ordenes(folio,tipo), facturas(folio,receptor)').in('factura_id', facturas.map(f => f.id)).order('fecha').then(({ data }) => setPagos((data ?? []) as Cobro[]))
   }, [deudor, rows]) // eslint-disable-line react-hooks/exhaustive-deps
-  const movs = [...facturas.map(f => ({ fecha: f.fecha, concepto: `Factura ${f.folio} · ${f.orden_folio}`, cargo: Number(f.monto), abono: 0 })),
+  const movs = [...facturas.map(f => ({ fecha: f.fecha, concepto: `Factura ${f.folio} · ${f.orden_folio}${f.concepto ? ` · ${CONCEPTOS_FAC[f.concepto as Concepto]}` : ''}`, cargo: Number(f.monto), abono: 0 })),
     ...pagos.map(p => ({ fecha: p.fecha, concepto: `Pago ${p.metodo}${p.referencia ? ' · ' + p.referencia : ''} (${p.facturas?.folio})`, cargo: 0, abono: Number(p.monto) }))].sort((a, b) => a.fecha.localeCompare(b.fecha))
   let saldo = 0
   return (

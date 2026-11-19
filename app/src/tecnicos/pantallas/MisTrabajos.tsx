@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2, ClipboardList, Hammer, Paintbrush, PlayCircle, RefreshCw, Timer } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { CheckCircle2, ClipboardList, Hammer, Package, Paintbrush, PlayCircle, RefreshCw, Timer } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useEmpresa } from '../../lib/empresa'
@@ -84,6 +85,10 @@ export default function MisTrabajos() {
           ))}
         </div>
 
+        {fichas && fichas.length > 0 && <Link to="/material" className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/80 active:scale-[.99]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white"><Package className="h-5 w-5" /></span>
+          <span className="flex-1"><span className="block font-bold text-slate-900">Solicitar material</span><span className="text-xs text-slate-500">Pide al almacén lo que necesitas para tu trabajo</span></span>
+        </Link>}
         {msg && <Aviso tipo={msg.t === 'ok' ? 'ok' : 'error'} onClose={() => setMsg(null)}>{msg.m}</Aviso>}
         {fichas && fichas.length > 0 && <BannerNotificaciones />}
 

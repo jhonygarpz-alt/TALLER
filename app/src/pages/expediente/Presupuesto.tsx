@@ -73,8 +73,13 @@ export default function Presupuesto({ o, recargar }: TabProps) {
         {!cerrada && !hayBorrador && puede('presupuestos.gestionar') && (
           <button className="btn btn-primary" onClick={() => nuevo(false)}><FilePlus2 className="h-4 w-4" /> {pres.some(x => x.estado === 'autorizado' && !x.particular) ? 'Nueva ampliación' : 'Nuevo presupuesto'}</button>
         )}
-        {!cerrada && esAseguradora && !hayBorradorPart && puede('presupuestos.gestionar') && (
-          <button className="btn border-2 border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100" title="Trabajos que paga el cliente (no la aseguradora)" onClick={() => nuevo(true)}><FilePlus2 className="h-4 w-4" /> Presupuesto particular</button>
+        {esAseguradora && !hayBorradorPart && puede('presupuestos.gestionar') && (
+          <button disabled={o.etapa === 'cancelado'} onClick={() => nuevo(true)}
+            title={o.etapa === 'cancelado' ? 'La orden está cancelada' : 'Trabajos que paga el cliente (no la aseguradora)'}
+            className="rounded-xl border-2 border-dashed border-violet-400 bg-violet-50 px-4 py-2 text-left text-sm text-violet-800 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50">
+            <div className="flex items-center gap-1.5 font-bold"><FilePlus2 className="h-4 w-4" /> Presupuesto particular</div>
+            <div className="text-xs">{o.etapa === 'cancelado' ? 'Orden cancelada' : pres.some(x => x.particular) ? 'Agregar ampliación particular' : 'Lo paga el cliente'}</div>
+          </button>
         )}
         <div className="ml-auto flex gap-6 text-right text-sm">
           <div><div className="text-xs text-slate-500">{esAseguradora ? 'Autorizado aseguradora' : 'Total autorizado'} (incl. ampliaciones)</div><div className="text-xl font-extrabold text-green-700">{money2(totalAut)}</div></div>

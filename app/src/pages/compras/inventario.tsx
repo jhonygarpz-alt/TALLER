@@ -33,11 +33,12 @@ function MaterialForm({ m, proveedores, onDone }: { m: Material | null; proveedo
     codigo: m?.codigo ?? '', descripcion: m?.descripcion ?? '', tipo: m?.tipo ?? 'material', categoria: m?.categoria ?? '',
     unidad: m?.unidad ?? 'pza', minimo: String(m?.minimo ?? 0), proveedor_id: String(m?.proveedor_id ?? ''), activo: m?.activo ?? true,
   })
+  const [secciones, setSecciones] = useState<string[]>((m as { secciones?: string[] } | null)?.secciones ?? [])
   const [error, setError] = useState<string | null>(null)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const d = clean(f)
+    const d = { ...clean(f), secciones }
     const { error } = m ? await supabase.from('materiales').update(d).eq('id', m.id) : await supabase.from('materiales').insert(d)
     if (error) return setError(errorTexto(error))
     onDone()
@@ -53,6 +54,11 @@ function MaterialForm({ m, proveedores, onDone }: { m: Material | null; proveedo
       <Field label="Nivel mínimo"><input className="input" type="number" step="0.001" min="0" value={f.minimo} onChange={set('minimo')} /></Field>
       <Field label="Proveedor habitual"><select className="input" value={f.proveedor_id} onChange={set('proveedor_id')}><option value="">—</option>{proveedores.filter(p => p.activo !== false || String(p.id) === String(f.proveedor_id)).map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.activo} onChange={e => setF({ ...f, activo: e.target.checked })} /> Activo</label>
+      <Field grupo label="Aparece en la solicitud de material de la app de técnicos" className="sm:col-span-2">
+        <div className="flex flex-wrap gap-4 text-sm">{([['hojalateria', 'Listado de hojalatería'], ['pintura', 'Listado de pintura']] as const).map(([k, l]) => (
+          <label key={k} className="flex items-center gap-2"><input type="checkbox" checked={secciones.includes(k)} onChange={e => setSecciones(e.target.checked ? [...secciones, k] : secciones.filter(x => x !== k))} /> {l}</label>
+        ))}</div>
+      </Field>
       <datalist id="cats">{['Pintura base', 'Barniz / transparente', 'Primer', 'Thinner / solventes', 'Lijas y abrasivos', 'Masillas', 'Cintas y enmascarado', 'Pulido', 'Refacciones de carrocería'].map(c => <option key={c} value={c} />)}</datalist>
       {!m && <p className="text-xs text-slate-500 sm:col-span-2">La existencia inicial se registra con “Ajustar” (inventario inicial) o al recibir una compra.</p>}
       <div className="flex justify-end gap-2 sm:col-span-2"><button type="button" className="btn btn-secondary" onClick={onDone}>Cancelar</button><button className="btn btn-primary">Guardar</button></div>
