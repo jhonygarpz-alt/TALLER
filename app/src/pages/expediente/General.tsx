@@ -127,8 +127,8 @@ export default function General(props: TabProps) {
               {checklist.map(([k, v]) => (
                 <li key={k} className="flex justify-between">
                   <span>{k}</span>
-                  <span className={v === 'danado' ? 'font-semibold text-red-600' : v === 'no_tiene' ? 'text-slate-400' : 'text-green-700'}>
-                    {v === 'bien' ? 'Bien' : v === 'danado' ? 'Dañado' : v === 'no_tiene' ? 'No tiene' : v}
+                  <span className={v === 'danado' ? 'font-semibold text-red-600' : v === 'no_tiene' || v === 'no' ? 'text-slate-400' : 'text-green-700'}>
+                    {v === 'bien' ? 'Bien' : v === 'si' ? 'Sí' : v === 'no' ? 'No' : v === 'danado' ? 'Dañado' : v === 'no_tiene' ? 'No tiene' : v}
                   </span>
                 </li>
               ))}

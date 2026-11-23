@@ -11,11 +11,19 @@ import { useBorrador } from '../../lib/borrador'
 import { AvisoBorrador, BorradorGuardado, resumenBorrador } from '../../components/AvisoBorrador'
 import { SelectorAsignacion, asegurarAsignacion, type AsignacionSel } from '../../components/SelectorAsignacion'
 
-export const CHECKLIST_RECEPCION = [
-  'Espejos', 'Faros', 'Calaveras', 'Parabrisas', 'Cristales', 'Limpiaparabrisas', 'Antena', 'Tapones de rueda',
-  'Llanta de refacción', 'Gato y herramienta', 'Tapetes', 'Estéreo / pantalla', 'Encendedor', 'Molduras', 'Emblemas', 'Tapón de gasolina',
+/** Inventario de recepción (mismos conceptos que la hoja impresa del taller) */
+export const GRUPOS_RECEPCION: [string, string[]][] = [
+  ['Interiores', ['Espejo retrovisor', 'Encendedor', 'Ceniceros', 'Botones', 'Radio', 'Viseras', 'Llavero', 'Cinturones', 'Manijas', 'Tapetes alfombra', 'Tapetes plástico', 'Cabeceras', 'Tarjeta de circulación', 'Comprobante de verificación', 'Testigos encendidos', 'Claxon', 'Birlo de seguridad']],
+  ['Exteriores', ['Faros', 'Cuartos', 'Espejos y tapas', 'Calaveras', 'Emblemas', 'Tapones de rueda (4)', 'Molduras', 'Limpiadores (plumas)', 'Tapón de gasolina', 'Placas', 'Cristales rotos', 'Golpes', 'Pintura rayada']],
+  ['Cajuela', ['Gato', 'Llave de tuercas', 'Herramienta', 'Reflejantes', 'Extinguidor', 'Cables pasa corriente', 'Llanta de refacción']],
+  ['Mecánica', ['Tapón de aceite', 'Tapón de radiador', 'Varilla de aceite', 'Portafiltro de aire', 'Batería']],
 ]
-const ESTADOS_CHECK: Record<string, string> = { bien: 'Bien', danado: 'Dañado', no_tiene: 'No tiene' }
+export const CHECKLIST_RECEPCION = GRUPOS_RECEPCION.flatMap(([, xs]) => xs)
+/** Conceptos donde "Sí" significa un problema: inician en "No" */
+const INICIAN_NO = ['Testigos encendidos', 'Cristales rotos', 'Golpes', 'Pintura rayada']
+export const checklistInicial = () => Object.fromEntries(CHECKLIST_RECEPCION.map(i => [i, INICIAN_NO.includes(i) ? 'no' : 'si']))
+export const NIVELES_GASOLINA = ['Reserva', 'Menos de 1/4', '1/4', '1/2', '3/4', 'Lleno']
+const ESTADOS_CHECK: Record<string, string> = { si: 'Sí', no: 'No', danado: 'Dañado' }
 
 interface TipoRep { id: number; nombre: string; dias_objetivo: number; aseguradora_id: number | null }
 
@@ -44,7 +52,7 @@ export default function Recepcion() {
     marca: '', modelo: '', anio: '', placas: '', color: '', vin: '',
     kilometraje: '', combustible: '1/2', danos_reportados: '', objetos: '', asesor_id: perfil?.id ?? '',
   })
-  const [checklist, setChecklist] = useState<Record<string, string>>(Object.fromEntries(CHECKLIST_RECEPCION.map(i => [i, 'bien'])))
+  const [checklist, setChecklist] = useState<Record<string, string>>(checklistInicial)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF(p => ({ ...p, [k]: e.target.value }))
 
   // Borrador: todo lo capturado se guarda solo en este equipo y se recupera si se cierra o recarga la página
@@ -263,20 +271,27 @@ export default function Recepcion() {
         {paso === 3 && (<>
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Kilometraje"><input className="input" type="number" min={0} value={f.kilometraje} onChange={set('kilometraje')} /></Field>
-            <Field label="Combustible"><select className="input" value={f.combustible} onChange={set('combustible')}>{['Reserva', '1/4', '1/2', '3/4', 'Lleno'].map(c => <option key={c}>{c}</option>)}</select></Field>
+            <Field label="Combustible"><select className="input" value={f.combustible} onChange={set('combustible')}>{NIVELES_GASOLINA.map(c => <option key={c}>{c}</option>)}</select></Field>
             <Field label="Fecha y hora de ingreso"><input className="input" disabled value={new Date().toLocaleString('es-MX')} /></Field>
           </div>
           <Field label="Daños reportados *"><textarea className="input" rows={3} value={f.danos_reportados} onChange={set('danos_reportados')} placeholder="Ej. Golpe en puerta delantera izquierda y defensa" /></Field>
           <div>
-            <div className="label">Checklist de condiciones físicas</div>
-            <div className="grid gap-1.5 sm:grid-cols-2">
-              {CHECKLIST_RECEPCION.map(item => (
-                <div key={item} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-1.5 text-sm">
-                  <span>{item}</span>
-                  <div className="flex overflow-hidden rounded-md ring-1 ring-slate-200">
-                    {Object.entries(ESTADOS_CHECK).map(([k, v]) => (
-                      <button key={k} type="button" onClick={() => setChecklist(c => ({ ...c, [item]: k }))}
-                        className={`px-2 py-1 text-[11px] font-semibold ${checklist[item] === k ? (k === 'bien' ? 'bg-green-600 text-white' : k === 'danado' ? 'bg-red-600 text-white' : 'bg-slate-600 text-white') : 'bg-white text-slate-500'}`}>{v}</button>
+            <div className="label">Inventario del vehículo</div>
+            <div className="space-y-3">
+              {GRUPOS_RECEPCION.map(([grupo, items]) => (
+                <div key={grupo}>
+                  <div className="mb-1 text-[11px] font-bold tracking-wide text-slate-500 uppercase">{grupo}</div>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {items.map(item => (
+                      <div key={item} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-1.5 text-sm">
+                        <span>{item}</span>
+                        <div className="flex overflow-hidden rounded-md ring-1 ring-slate-200">
+                          {Object.entries(ESTADOS_CHECK).map(([k, v]) => (
+                            <button key={k} type="button" onClick={() => setChecklist(c => ({ ...c, [item]: k }))}
+                              className={`px-2.5 py-1 text-[11px] font-semibold ${checklist[item] === k ? (k === 'si' ? 'bg-green-600 text-white' : k === 'danado' ? 'bg-red-600 text-white' : 'bg-slate-600 text-white') : 'bg-white text-slate-500'}`}>{v}</button>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>

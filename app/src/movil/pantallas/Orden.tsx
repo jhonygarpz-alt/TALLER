@@ -82,7 +82,7 @@ export default function Orden() {
 
   const tarjeta = 'rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80'
   const titulo = (Icono: typeof User, t: string, extra?: ReactNode) => <div className="mb-2 flex items-center gap-2 text-[15px] font-bold text-slate-900"><Icono className="h-5 w-5 text-brand-700" /><span className="flex-1">{t}</span>{extra}</div>
-  const estadoChk: Record<string, [string, string, string]> = { bien: ['Bien', 'text-brand-700', 'bg-brand-600'], danado: ['Dañado', 'text-amber-600', 'bg-amber-500'], no_tiene: ['No tiene', 'text-slate-500', 'bg-slate-400'] }
+  const estadoChk: Record<string, [string, string, string]> = { bien: ['Bien', 'text-brand-700', 'bg-brand-600'], si: ['Sí', 'text-brand-700', 'bg-brand-600'], danado: ['Dañado', 'text-amber-600', 'bg-amber-500'], no_tiene: ['No tiene', 'text-slate-500', 'bg-slate-400'], no: ['No', 'text-slate-500', 'bg-slate-400'] }
   const fotosVisibles = verTodasFotos ? fotos : fotos.slice(0, 6)
 
   return (

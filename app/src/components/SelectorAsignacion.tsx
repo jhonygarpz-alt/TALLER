@@ -29,11 +29,13 @@ export async function buscarAsignaciones(aseguradoraId: string, q: string) {
 /** Si la asignación es nueva, la registra (o reutiliza la del mismo siniestro si aún no tiene orden) y devuelve su id */
 export async function asegurarAsignacion(d: { aseguradora_id: number; siniestro: string; asegurado: string; telefono?: string | null; marca?: string; modelo?: string; anio?: number | null; placas?: string | null; asesor_id?: string | null }) {
   const sin = d.siniestro.trim()
-  const { data: ya } = await supabase.from('asignaciones').select('id,estatus').eq('aseguradora_id', d.aseguradora_id).eq('siniestro', sin).maybeSingle()
-  if (ya) {
-    if (ya.estatus === 'ingresado') throw new Error(`El siniestro ${sin} ya está ligado a otra orden de trabajo.`)
-    return ya.id as number
-  }
+  // Un mismo siniestro puede cubrir varios vehículos: se reutiliza una asignación libre del mismo siniestro
+  // (de preferencia con las mismas placas); si todas ya tienen orden, se crea una nueva para este vehículo.
+  const { data: previas } = await supabase.from('asignaciones').select('id,estatus,placas').eq('aseguradora_id', d.aseguradora_id).eq('siniestro', sin)
+  const norm = (x?: string | null) => (x ?? '').replace(/[\s-]/g, '').toUpperCase()
+  const libres = (previas ?? []).filter(a => a.estatus !== 'ingresado')
+  const ya = libres.find(a => d.placas && norm(a.placas) === norm(d.placas)) ?? libres.find(a => !a.placas || !d.placas)
+  if (ya) return ya.id as number
   const { data, error } = await supabase.from('asignaciones').insert({
     aseguradora_id: d.aseguradora_id, siniestro: sin, asegurado: d.asegurado.trim() || '(sin nombre)', telefono: d.telefono || null,
     marca: d.marca || null, modelo: d.modelo || null, anio: d.anio ?? null, placas: d.placas?.toUpperCase() || null,

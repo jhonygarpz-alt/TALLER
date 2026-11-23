@@ -7,7 +7,7 @@ import { subirFoto } from '../../lib/storage'
 import { errorTexto, esDomingo, MSG_DOMINGO, sumarDiasLaborables } from '../../lib/format'
 import { useBorrador } from '../../lib/borrador'
 import { AvisoBorrador, BorradorGuardado, resumenBorrador } from '../../components/AvisoBorrador'
-import { CHECKLIST_RECEPCION } from '../../pages/vehiculos/Recepcion'
+import { GRUPOS_RECEPCION, NIVELES_GASOLINA, checklistInicial } from '../../pages/vehiculos/Recepcion'
 import { Campo, EncabezadoClaro, Vacio, entrada } from '../ui'
 import { RejillaEvidencia, fotosVacias, listaFotos, totalFotos, type FotosGuiadas } from '../Evidencia'
 import { SelectorAsignacion, asegurarAsignacion, type AsignacionSel } from '../../components/SelectorAsignacion'
@@ -15,7 +15,7 @@ import { SelectorAsignacion, asegurarAsignacion, type AsignacionSel } from '../.
 interface TipoRep { id: number; nombre: string; dias_objetivo: number; aseguradora_id: number | null }
 const COLORES = ['BLANCO', 'NEGRO', 'GRIS', 'PLATA', 'ROJO', 'AZUL', 'VERDE', 'ARENA', 'CAFÉ', 'VINO', 'AMARILLO', 'NARANJA']
 const MUESTRA: Record<string, string> = { BLANCO: '#f8fafc', NEGRO: '#111827', GRIS: '#9ca3af', PLATA: '#cbd5e1', ROJO: '#dc2626', AZUL: '#2563eb', VERDE: '#16a34a', ARENA: '#d6c29a', 'CAFÉ': '#7c4a2d', VINO: '#7f1d1d', AMARILLO: '#facc15', NARANJA: '#ea580c' }
-const COMBUSTIBLE = ['Reserva', '1/4', '1/2', '3/4', 'Lleno']
+const COMBUSTIBLE = NIVELES_GASOLINA
 const PASOS = ['Origen', 'Propietario y vehículo', 'Condiciones de ingreso', 'Fotografías']
 
 export default function NuevaOrden() {
@@ -32,7 +32,7 @@ export default function NuevaOrden() {
   const [asig, setAsig] = useState<AsignacionSel | null>(null)
   const [asigNueva, setAsigNueva] = useState(false)
   const [asesores, setAsesores] = useState<{ id: string; nombre: string }[]>([])
-  const [checklist, setChecklist] = useState<Record<string, string>>(Object.fromEntries(CHECKLIST_RECEPCION.map(i => [i, 'bien'])))
+  const [checklist, setChecklist] = useState<Record<string, string>>(checklistInicial)
   const [f, setF] = useState({
     tipo: 'aseguradora' as 'aseguradora' | 'particular', folio: '', aseguradora_id: '', siniestro: '', tipo_reparacion_id: '', fecha_compromiso: '',
     placas: '', marca: '', modelo: '', anio: '', color: '', cliente_nombre: '', cliente_telefono: '',
@@ -232,21 +232,26 @@ export default function NuevaOrden() {
           <Campo label="Kilometraje"><input className={entrada} inputMode="numeric" value={f.kilometraje} onChange={set('kilometraje')} placeholder="Ej. 85000" /></Campo>
           <div>
             <span className="mb-1.5 block text-[13px] font-semibold text-slate-600">Combustible</span>
-            <div className="grid grid-cols-5 gap-1.5">{COMBUSTIBLE.map(c => <button key={c} onClick={() => setF(p => ({ ...p, combustible: c }))} className={`rounded-xl py-3 text-xs font-bold ring-1 ${f.combustible === c ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-slate-600 ring-slate-200'}`}>{c}</button>)}</div>
+            <div className="grid grid-cols-3 gap-1.5">{COMBUSTIBLE.map(c => <button key={c} onClick={() => setF(p => ({ ...p, combustible: c }))} className={`rounded-xl py-3 text-xs font-bold ring-1 ${f.combustible === c ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-slate-600 ring-slate-200'}`}>{c}</button>)}</div>
           </div>
           <Campo label="Daños reportados"><textarea className={entrada} rows={4} value={f.danos_reportados} onChange={set('danos_reportados')} placeholder="Ej. Golpe en defensa delantera y salpicadera derecha" /></Campo>
           <Campo label="Objetos y accesorios en el auto"><input className={entrada} value={f.objetos} onChange={set('objetos')} placeholder="Ej. Silla de bebé, herramienta" /></Campo>
           <div>
-            <span className="mb-1.5 block text-[13px] font-semibold text-slate-600">Revisión rápida <span className="font-normal text-slate-400">(toca para cambiar)</span></span>
-            <div className="grid grid-cols-2 gap-2">{CHECKLIST_RECEPCION.map(item => {
-              const v = checklist[item]; const sig = v === 'bien' ? 'danado' : v === 'danado' ? 'no_tiene' : 'bien'
-              const est = { bien: ['Bien', 'bg-emerald-50 text-emerald-800 ring-emerald-200'], danado: ['Dañado', 'bg-red-50 text-red-700 ring-red-200'], no_tiene: ['No tiene', 'bg-slate-100 text-slate-500 ring-slate-200'] }[v] ?? ['Bien', '']
-              return (
-                <button key={item} onClick={() => setChecklist(c => ({ ...c, [item]: sig }))} className={`flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-left text-xs font-semibold ring-1 ${est[1]}`}>
-                  <span>{item}</span><span className="shrink-0 text-[10px] uppercase">{est[0]}</span>
-                </button>
-              )
-            })}</div>
+            <span className="mb-1.5 block text-[13px] font-semibold text-slate-600">Inventario del vehículo <span className="font-normal text-slate-400">(toca para cambiar)</span></span>
+            {GRUPOS_RECEPCION.map(([grupo, items]) => (
+              <div key={grupo} className="mb-3">
+                <div className="mb-1.5 text-[11px] font-bold tracking-wide text-slate-500 uppercase">{grupo}</div>
+                <div className="grid grid-cols-2 gap-2">{items.map(item => {
+                  const v = checklist[item]; const sig = v === 'si' ? 'no' : v === 'no' ? 'danado' : 'si'
+                  const est = { si: ['Sí', 'bg-emerald-50 text-emerald-800 ring-emerald-200'], no: ['No', 'bg-slate-100 text-slate-600 ring-slate-200'], danado: ['Dañado', 'bg-red-50 text-red-700 ring-red-200'] }[v] ?? ['Sí', '']
+                  return (
+                    <button key={item} onClick={() => setChecklist(c => ({ ...c, [item]: sig }))} className={`flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-left text-xs font-semibold ring-1 ${est[1]}`}>
+                      <span>{item}</span><span className="shrink-0 text-[10px] uppercase">{est[0]}</span>
+                    </button>
+                  )
+                })}</div>
+              </div>
+            ))}
           </div>
         </>}
 

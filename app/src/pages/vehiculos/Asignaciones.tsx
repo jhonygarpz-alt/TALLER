@@ -46,7 +46,7 @@ function FormAsignacion({ onDone, actual }: { onDone: () => void; actual?: Asign
 
   async function submit(e: FormEvent) {
     e.preventDefault(); setError(null)
-    const datos = { ...f, placas: f.placas.toUpperCase().trim(), siniestro: f.siniestro.trim(), asegurado: f.asegurado.trim() }
+    const datos = { ...f, placas: f.placas.toUpperCase().trim(), siniestro: f.siniestro.trim(), asegurado: f.asegurado.trim() || 'POR CAPTURAR' }
     setGuardando(true)
     const { error } = actual
       ? await supabase.from('asignaciones').update({
@@ -70,7 +70,7 @@ function FormAsignacion({ onDone, actual }: { onDone: () => void; actual?: Asign
         </select>
       </Field>
       <Field label="Número de siniestro *" hint={ligada ? 'Ya está ligada a una orden: el siniestro y la aseguradora no se cambian aquí.' : undefined}><input className="input" required disabled={ligada} value={f.siniestro} onChange={set('siniestro')} /></Field>
-      <Field label="Nombre del asegurado *"><input className="input" required value={f.asegurado} onChange={set('asegurado')} /></Field>
+      <Field label="Nombre del asegurado" hint="Si no llegó volante, déjalo vacío y complétalo después con Editar."><input className="input" value={f.asegurado === 'POR CAPTURAR' ? '' : f.asegurado} placeholder="Por capturar" onChange={set('asegurado')} /></Field>
       <Field label="Teléfono"><input className="input" type="tel" value={f.telefono} onChange={set('telefono')} /></Field>
       <div className="grid grid-cols-3 gap-2 sm:col-span-2">
         <Field label="Marca"><input className="input" value={f.marca} onChange={set('marca')} /></Field>
