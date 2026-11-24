@@ -216,7 +216,7 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
               </tr>))}
             </tbody>
           </table>
-          {ordenId && <p className="mt-2 text-right text-sm">Costo de materiales cargado a la orden: <b>{money2(totalCargado)}</b> neto ({money2(totalCargado * 1.16)} con IVA){totalEstimado > 0 && <span className="ml-3 text-slate-500">Por entregar (estimado): <b>{money2(totalEstimado)}</b></span>}</p>}
+          {ordenId && <p className="mt-2 text-right text-sm">Costo de materiales cargado a la orden: <b>{money2(totalCargado)}</b> (sin IVA){totalEstimado > 0 && <span className="ml-3 text-slate-500">Por entregar (estimado, sin IVA): <b>{money2(totalEstimado)}</b></span>}</p>}
         </div>
       )}
       {nueva && <Modal title="Solicitud de material" onClose={() => setNueva(false)}><NuevaSolicitud ordenId={ordenId} onDone={() => { setNueva(false); cargar(); al.recargar(); onCambio?.() }} /></Modal>}
