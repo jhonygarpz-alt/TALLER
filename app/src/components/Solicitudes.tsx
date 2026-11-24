@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { revertir } from '../lib/revertir'
 import { useAuth } from '../lib/auth'
 import { useAlertas } from '../lib/alertas'
-import { ESTADO_SOLICITUD, TIPOS_MATERIAL, errorTexto, fechaHora, money2, num, SECCIONES_MAT, seccionPorTipo } from '../lib/format'
+import { ESTADO_SOLICITUD, TIPOS_MATERIAL, errorTexto, fechaHora, money2, num, SECCIONES_MAT, seccionPorTipo, MEDIDAS_COLOR, medidaColor, usaMedidasColor } from '../lib/format'
 import type { Material } from '../lib/tipos'
 import { Badge, Empty, ErrorMsg, Field, Modal } from './ui'
 
@@ -107,7 +107,9 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
         )}
       </div>
       {(destino === 'orden' || ordenId) && <Field label="Sección del gasto *"><select className="input" value={f.seccion || seccionPorTipo(mat?.tipo)} onChange={e => setF({ ...f, seccion: e.target.value })}>{Object.entries(SECCIONES_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>}
-      <Field label={`Cantidad *${mat ? ` (${mat.unidad})` : ''}`}><input className="input" type="number" step="0.001" min="0.001" required value={f.cantidad} onChange={e => setF({ ...f, cantidad: e.target.value })} /></Field>
+      {usaMedidasColor(mat)
+        ? <Field label="Cantidad *"><select className="input" required value={f.cantidad} onChange={e => setF({ ...f, cantidad: e.target.value })}><option value="">Elige la medida…</option>{MEDIDAS_COLOR.map(([l, v]) => <option key={l} value={v}>{l} ({num(v, 2)} ml)</option>)}</select></Field>
+        : <Field label={`Cantidad *${mat ? ` (${mat.unidad})` : ''}`}><input className="input" type="number" step="0.001" min="0.001" required value={f.cantidad} onChange={e => setF({ ...f, cantidad: e.target.value })} /></Field>}
       <Field label="Notas"><input className="input" value={f.notas} onChange={e => setF({ ...f, notas: e.target.value })} /></Field>
       {mat?.sobre_pedido && <p className="text-xs text-brand-700 sm:col-span-2">Material que se compra sobre pedido: el almacén lo entrega aunque no haya existencia. Captura su importe con «Editar importe».</p>}
       {mat && !mat.sobre_pedido && Number(f.cantidad) > Number(mat.existencia) && <p className="text-xs text-amber-700 sm:col-span-2">La existencia actual ({num(mat.existencia, 3)} {mat.unidad}) es menor a lo solicitado; almacén no podrá entregar hasta recibir compra.</p>}
@@ -180,7 +182,7 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
                 <td className="text-xs whitespace-nowrap">{fechaHora(s.solicitado_at)}<div className="text-slate-400">{s.solicitante?.nombre}</div></td>
                 <td><div className="font-medium">{s.materiales?.descripcion}</div><div className="text-xs text-slate-500">{TIPOS_MATERIAL[s.materiales?.tipo ?? '']}{s.notas && ` · ${s.notas}`}</div></td>
                 {!ordenId && <td>{s.orden_id ? <Link className="font-semibold text-brand-700 hover:underline" to={`/ordenes/${s.orden_id}?tab=materiales`}>{s.ordenes?.folio}</Link> : <span className="text-xs">General: {s.centro_costo}</span>}</td>}
-                <td className="text-right">{num(s.cantidad_solicitada, 3)} {s.materiales?.unidad}</td>
+                <td className="text-right">{num(s.cantidad_solicitada, 3)} {s.materiales?.unidad}{s.materiales?.unidad === 'ml' && medidaColor(s.cantidad_solicitada) && <div className="text-[11px] text-slate-500">{medidaColor(s.cantidad_solicitada)}</div>}</td>
                 <td className="text-right">{s.cantidad_aprobada != null ? num(s.cantidad_aprobada, 3) : '—'}</td>
                 <td className="text-right">{s.cantidad_entregada != null ? num(s.cantidad_entregada, 3) : '—'}{s.entrego && <div className="text-[11px] text-slate-400">{s.entrego.nombre}</div>}</td>
                 <td className="text-right">{s.costo_total != null ? money2(s.costo_total)

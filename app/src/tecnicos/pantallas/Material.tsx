@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Hammer, Loader2, Minus, Package, Paintbrush, Plus, Send } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { errorTexto, fechaHora, num } from '../../lib/format'
+import { errorTexto, fechaHora, num, MEDIDAS_COLOR, usaMedidasColor } from '../../lib/format'
 import { Aviso, Cargando, EncabezadoClaro, Vacio, botonPrimario, entrada } from '../../movil/ui'
 import { useMisFichas } from '../datos'
 
 type Seccion = 'hojalateria' | 'pintura'
-interface Mat { id: number; descripcion: string; unidad: string; secciones: string[]; orden_lista: number | null }
+interface Mat { id: number; descripcion: string; unidad: string; secciones: string[]; orden_lista: number | null; sobre_pedido?: boolean }
 interface OrdenTec { orden_id: number; actividad_id: number; area: string; folio: string; auto: string; placas: string | null }
 interface Sol { id: number; estado: string; cantidad_solicitada: number; cantidad_entregada: number | null; solicitado_at: string; seccion: string | null; materiales: { descripcion: string; unidad: string } | null; ordenes: { folio: string } | null }
 
@@ -34,7 +34,7 @@ export default function Material() {
   useEffect(() => {
     if (!fichas) return
     if (fichas[0]) setSeccion(seccionDeArea(fichas[0].area))
-    supabase.from('materiales').select('id,descripcion,unidad,secciones,orden_lista').eq('activo', true).order('orden_lista', { nullsFirst: false }).order('descripcion')
+    supabase.from('materiales').select('id,descripcion,unidad,secciones,orden_lista,sobre_pedido').eq('activo', true).order('orden_lista', { nullsFirst: false }).order('descripcion')
       .then(({ data }) => setMats((data ?? []) as Mat[]))
     if (!fichas.length) { setOrdenes([]); return }
     supabase.from('actividades').select('id,orden_id,area,ordenes(folio,etapa,vehiculos(marca,modelo,placas))').in('tecnico_id', fichas.map(f => f.id)).in('estado', ['asignada', 'en_proceso']).order('fecha_asignacion', { ascending: false })
@@ -125,11 +125,17 @@ export default function Material() {
                 return (
                   <li key={m.id} className={`flex items-center gap-2 px-3 py-2.5 ${Number(v) > 0 ? 'bg-brand-50/60' : ''}`}>
                     <span className="min-w-0 flex-1 text-[15px] font-semibold text-slate-800">{m.descripcion}</span>
+                    {usaMedidasColor(m) ? (
+                      <select aria-label={`Medida de ${m.descripcion}`} className="rounded-xl border border-slate-200 bg-white px-2 py-2 text-base font-bold" value={v} onChange={e => setCant({ ...cant, [m.id]: e.target.value })}>
+                        <option value="">Medida…</option>{MEDIDAS_COLOR.map(([l, x]) => <option key={l} value={x}>{l}</option>)}
+                      </select>
+                    ) : <>
                     <button type="button" aria-label={`Menos ${m.descripcion}`} onClick={() => cambiar(m, -paso(m.unidad))} className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:bg-slate-200"><Minus className="h-4 w-4" /></button>
                     <input inputMode="decimal" aria-label={`Cantidad de ${m.descripcion}`} className="w-16 rounded-xl border border-slate-200 px-2 py-1.5 text-center text-base font-bold" value={v} placeholder="0"
                       onChange={e => setCant({ ...cant, [m.id]: e.target.value.replace(/[^0-9.]/g, '') })} />
                     <button type="button" aria-label={`Más ${m.descripcion}`} onClick={() => cambiar(m, paso(m.unidad))} className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-white active:bg-brand-700"><Plus className="h-4 w-4" /></button>
                     <span className="w-7 text-xs font-semibold text-slate-500">{m.unidad}</span>
+                    </>}
                   </li>
                 )
               })}

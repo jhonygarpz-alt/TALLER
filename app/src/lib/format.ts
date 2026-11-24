@@ -127,3 +127,13 @@ export async function ordenAseguradoraDelVehiculo(sb: { from: (t: string) => any
   const { data } = await sb.from('ordenes').select('id').eq('vehiculo_id', vehiculoId).eq('tipo', 'aseguradora').neq('etapa', 'cancelado').order('fecha_ingreso', { ascending: false }).limit(1)
   return (data?.[0]?.id as number | undefined) ?? null
 }
+
+/** Medidas de pintura (color) en fracciones de litro, guardadas en ml */
+export const MEDIDAS_COLOR: [string, number][] = [
+  ['1/32 L', 31.25], ['1/16 L', 62.5], ['1/8 L', 125], ['1/4 L', 250], ['1/2 L', 500], ['3/4 L', 750],
+  ['1 L', 1000], ['1 1/2 L', 1500], ['2 L', 2000], ['2 1/2 L', 2500], ['3 L', 3000],
+]
+/** "250 ml" → "1/4 L" si coincide con una medida de color */
+export const medidaColor = (ml: number) => MEDIDAS_COLOR.find(([, v]) => Math.abs(v - Number(ml)) < 0.01)?.[0] ?? null
+/** Material que se pide por medidas de color (sobre pedido y en ml) */
+export const usaMedidasColor = (m?: { sobre_pedido?: boolean; unidad?: string } | null) => !!m?.sobre_pedido && m.unidad === 'ml'
