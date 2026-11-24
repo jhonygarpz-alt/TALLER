@@ -1,0 +1,1 @@
+-- _gerencia_datos: finanzas excluye órdenes históricas (sin_facturar).

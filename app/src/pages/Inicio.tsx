@@ -70,13 +70,17 @@ export default function Inicio() {
       .then(r => setAsignadas(r.count ?? 0))
     supabase.from('asignaciones').select('id', { count: 'exact', head: true }).eq('estatus', 'cita_programada').then(r => setCitas(r.count ?? 0))
     supabase.from('actividades').select('id', { count: 'exact', head: true }).in('estado', ['asignada', 'en_proceso', 'terminada']).then(r => setPendientes(r.count ?? 0))
-    supabase.from('v_ordenes').select('id,tipo,aseguradora_nombre,fecha_ingreso,fecha_entrega,etapa,entregado_a_tiempo,fecha_compromiso').neq('etapa', 'cancelado').limit(5000)
-      .then(({ data }) => setOrdenes((data ?? []) as OrdenMin[]))
-    supabase.from('actividades').select('estado, fecha_fin, tecnicos(nombre)').in('estado', ['terminada', 'validada']).not('tecnico_id', 'is', null).gte('fecha_fin', desdeConsulta).limit(5000)
-      .then(({ data }) => setActs((data ?? []) as unknown as ActMin[]))
+    // Las órdenes históricas importadas de la bitácora (marcadas "no se facturan") no cuentan en los indicadores
+    supabase.from('ordenes').select('id').eq('sin_facturar', true).limit(5000).then(({ data: hist }) => {
+      const fuera = new Set((hist ?? []).map(h => h.id as number))
+      supabase.from('v_ordenes').select('id,tipo,aseguradora_nombre,fecha_ingreso,fecha_entrega,etapa,entregado_a_tiempo,fecha_compromiso').neq('etapa', 'cancelado').limit(5000)
+        .then(({ data }) => setOrdenes(((data ?? []) as OrdenMin[]).filter(o => !fuera.has(o.id))))
+      supabase.from('actividades').select('estado, fecha_fin, orden_id, tecnicos(nombre)').in('estado', ['terminada', 'validada']).not('tecnico_id', 'is', null).gte('fecha_fin', desdeConsulta).limit(5000)
+        .then(({ data }) => setActs(((data ?? []) as unknown as (ActMin & { orden_id: number })[]).filter(x => !fuera.has(x.orden_id))))
+      if (verFin) supabase.from('v_rentabilidad').select('*').eq('etapa', 'entregado').gte('fecha_entrega', desdeConsulta).lt('fecha_entrega', hasta)
+        .then(({ data }) => setRentTodo(((data ?? []) as Rentabilidad[]).filter(r => !fuera.has(r.orden_id))))
+    })
     if (verFin) {
-      supabase.from('v_rentabilidad').select('*').eq('etapa', 'entregado').gte('fecha_entrega', desdeConsulta).lt('fecha_entrega', hasta)
-        .then(({ data }) => setRentTodo((data ?? []) as Rentabilidad[]))
       supabase.from('cobros').select('monto').gte('fecha', desde).lt('fecha', hasta)
         .then(({ data }) => setCobrado((data ?? []).reduce((s, r) => s + Number(r.monto), 0)))
     }
@@ -172,7 +176,7 @@ export default function Inicio() {
         <KpiCard icon={Truck} tone="sky" value={a.activas.filter(o => o.fecha_compromiso && o.fecha_compromiso >= hoyISO() && o.fecha_compromiso <= sieteDias).length} label="Entregas programadas (próximos 7 días)" to="/calendario" />
         <KpiCard icon={AlertTriangle} tone="red" value={a.retrasadas.length} label="Órdenes con retraso" hint="fecha compromiso vencida" to="/ordenes?filtro=retrasados" />
         {verFin ? <>
-          <KpiCard icon={Wallet} tone="cyan" value={money(fin.ingresos)} label="Ingresos del periodo (órdenes entregadas)" delta={finPrev ? { pct: variacion(fin.ingresos, finPrev.ingresos) ?? NaN, bueno: 'sube' } : null} hint={comp} to="/costos?tab=rentabilidad" />
+          <KpiCard icon={Wallet} tone="cyan" value={money(fin.ingresos)} label="Monto autorizado de órdenes entregadas" delta={finPrev ? { pct: variacion(fin.ingresos, finPrev.ingresos) ?? NaN, bueno: 'sube' } : null} hint={comp} to="/costos?tab=rentabilidad" />
           <KpiCard icon={Receipt} tone="orange" value={money(fin.costos)} label="Costos operativos directos" delta={finPrev ? { pct: variacion(fin.costos, finPrev.costos) ?? NaN, bueno: 'baja' } : null} hint={comp} to="/costos?tab=financiero" />
           <KpiCard icon={TrendingUp} tone={fin.utilidad >= 0 ? 'green' : 'red'} value={money(fin.utilidad)} label={`Utilidad estimada · margen ${pct(fin.margen)}`} delta={finPrev ? { pct: variacion(fin.utilidad, finPrev.utilidad) ?? NaN, bueno: 'sube' } : null} hint={comp} to="/costos?tab=rentabilidad" />
         </> : (

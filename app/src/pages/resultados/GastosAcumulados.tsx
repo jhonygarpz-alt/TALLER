@@ -36,7 +36,9 @@ export default function GastosAcumulados() {
     ;(async () => {
       const campo = base === 'ingreso' ? 'fecha_ingreso' : 'fecha_entrega'
       const { data: r } = await supabase.from('v_rentabilidad').select('*').neq('etapa', 'cancelado').gte(campo, per.desde).lt(campo, per.hasta).order(campo).limit(2000)
-      const rent = (r ?? []) as Rentabilidad[]
+      const { data: hist } = await supabase.from('ordenes').select('id').eq('sin_facturar', true).limit(5000)
+      const fuera = new Set((hist ?? []).map(h => h.id as number)) // órdenes históricas de la bitácora: no cuentan
+      const rent = ((r ?? []) as Rentabilidad[]).filter(x => !fuera.has(x.orden_id))
       const ids = rent.map(x => x.orden_id)
       const { data: rel } = ids.length ? await supabase.from('v_ordenes').select('id,relacionada_folio').in('id', ids) : { data: [] }
       const relDe = Object.fromEntries(((rel ?? []) as { id: number; relacionada_folio: string | null }[]).map(x => [x.id, x.relacionada_folio]))
