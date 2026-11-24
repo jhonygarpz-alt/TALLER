@@ -14,6 +14,7 @@ import { Badge, Tabs, useTab } from '../../components/ui'
 import { Miniatura } from '../../components/Fotos'
 import { EtapaBadge } from '../Inicio'
 import General from './General'
+import Relacion from './Relacion'
 import Diagnostico from './Diagnostico'
 import Presupuesto from './Presupuesto'
 import Trabajos from './Trabajos'
@@ -54,7 +55,8 @@ export default function Expediente() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-extrabold">{o.folio}</h1>
             <EtapaBadge o={o} />
-            <Badge cls={o.tipo === 'aseguradora' ? 'bg-brand-600 text-white' : 'bg-slate-700 text-white'}>{o.aseguradora_nombre ?? 'Particular'}</Badge>
+            <Badge cls={o.tipo === 'aseguradora' ? 'bg-brand-600 text-white' : 'bg-violet-600 text-white'}>{o.aseguradora_nombre ?? 'Particular'}</Badge>
+            <Relacion o={o} recargar={recargar} />
             {o.detenido_material && <Badge cls="bg-orange-100 text-orange-700"><AlertTriangle className="h-3 w-3" /> Detenido por material</Badge>}
           </div>
           <div className="mt-1 text-lg font-semibold text-slate-800">{o.marca} {o.modelo} {o.anio} <span className="font-mono text-base text-slate-500">{o.placas}</span></div>

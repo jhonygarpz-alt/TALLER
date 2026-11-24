@@ -81,7 +81,7 @@ export default function Presupuesto({ o, recargar }: TabProps) {
           <button key={x.id} onClick={() => setSel(x.id)}
             className={`rounded-xl border-2 px-4 py-2 text-left text-sm ${sel === x.id ? (x.particular ? 'border-violet-500 bg-violet-50' : 'border-brand-600 bg-brand-50') : x.particular ? 'border-violet-200 bg-white' : 'border-slate-200 bg-white'}`}>
             <div className="flex items-center gap-2 font-bold">{nombrePres(x)}
-              {esAseguradora && x.es_ampliacion && x.estado === 'autorizado' && o.etapa !== 'cancelado' && puede('presupuestos.gestionar') && (
+              {esAseguradora && x.particular && x.es_ampliacion && x.estado === 'autorizado' && o.etapa !== 'cancelado' && puede('presupuestos.gestionar') && (
                 <span role="button" tabIndex={0} title={x.particular ? 'Regresar a la aseguradora' : 'Pasar a presupuesto particular (lo paga el cliente)'}
                   onClick={e => { e.stopPropagation(); cambiarTipo(x) }} onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); cambiarTipo(x) } }}
                   className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${x.particular ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-violet-600 text-white hover:bg-violet-700'}`}>
@@ -95,7 +95,7 @@ export default function Presupuesto({ o, recargar }: TabProps) {
         {!cerrada && !hayBorrador && puede('presupuestos.gestionar') && (
           <button className="btn btn-primary" onClick={() => nuevo(false)}><FilePlus2 className="h-4 w-4" /> {pres.some(x => x.estado === 'autorizado' && !x.particular) ? 'Nueva ampliación' : 'Nuevo presupuesto'}</button>
         )}
-        {esAseguradora && !hayBorradorPart && puede('presupuestos.gestionar') && (
+        {false && esAseguradora && !hayBorradorPart && puede('presupuestos.gestionar') && (
           <button disabled={o.etapa === 'cancelado'} onClick={() => nuevo(true)}
             title={o.etapa === 'cancelado' ? 'La orden está cancelada' : 'Trabajos que paga el cliente (no la aseguradora)'}
             className="rounded-xl border-2 border-dashed border-violet-400 bg-violet-50 px-4 py-2 text-left text-sm text-violet-800 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50">
@@ -111,10 +111,15 @@ export default function Presupuesto({ o, recargar }: TabProps) {
 
       {!p ? <Card><Empty>No hay presupuestos. Crea el primero después del diagnóstico.</Empty></Card> : (
         <Card title={nombrePres(p)} action={<span className="flex flex-wrap items-center justify-end gap-2">
-          {esAseguradora && p.es_ampliacion && o.etapa !== 'cancelado' && puede('presupuestos.gestionar') && (
-            <button className={`btn btn-sm ${p.particular ? 'btn-secondary' : 'border-2 border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100'}`} onClick={() => cambiarTipo(p)}>
-              {p.particular ? 'Regresar a la aseguradora' : 'Pasar a presupuesto particular'}
-            </button>
+          {esAseguradora && p.particular && p.es_ampliacion && o.etapa !== 'cancelado' && puede('presupuestos.gestionar') && (
+            <button className="btn btn-secondary btn-sm" onClick={() => cambiarTipo(p)}>Regresar a la aseguradora</button>
+          )}
+          {p.estado !== 'borrador' && o.etapa !== 'cancelado' && (puede('presupuestos.autorizar') || puede('excepciones.autorizar')) && (
+            <button className="btn btn-secondary btn-sm" title="Regresa el presupuesto a borrador para corregir o borrar sus partidas" onClick={() => {
+              const m = prompt(`¿Qué se va a corregir del ${nombrePres(p)}? El presupuesto regresa a borrador para editar o borrar partidas y después se vuelve a autorizar.`)
+              if (!m?.trim()) return
+              run(() => supabase.rpc('presupuesto_reabrir', { p_id: p.id, p_motivo: m }), () => setAviso(`${nombrePres(p)} regresó a borrador: corrige sus partidas y vuelve a enviarlo/autorizarlo.`))
+            }}>Corregir presupuesto</button>
           )}
           {p.particular && <Badge cls="bg-violet-100 text-violet-700">Lo paga el cliente</Badge>}<Badge cls={ESTADO_PRESUPUESTO[p.estado].badge}>{ESTADO_PRESUPUESTO[p.estado].label}</Badge></span>}>
           {p.particular && <p className="mb-3 rounded-lg bg-violet-50 px-3 py-2 text-sm text-violet-800">Presupuesto particular: trabajos que paga el cliente aparte de la aseguradora. Se factura en <b>Facturación particular</b> y no cambia la etapa de la orden.</p>}

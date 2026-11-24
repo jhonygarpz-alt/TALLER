@@ -14,7 +14,9 @@ export default function VehicleCard({ o, avance, importe }: { o: VOrden; avance?
         <Miniatura auto={o} path={o.foto_portada} className="h-44 w-full !rounded-[16px]" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0b2133]/45 via-transparent to-transparent" />
         <div className="absolute top-2.5 left-2.5"><EtapaBadge o={o} /></div>
-        <span className="absolute bottom-2.5 left-2.5 rounded-full bg-[#102c43]/80 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur">{o.tipo === 'aseguradora' ? (o.aseguradora_nombre ?? 'Aseguradora') : 'Particular'}</span>
+        <span className={`absolute bottom-2.5 left-2.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur ${o.tipo === 'aseguradora' ? 'bg-[#17657c]/90' : 'bg-violet-600/90'}`}>
+          {o.tipo === 'aseguradora' ? (o.aseguradora_nombre ?? 'Aseguradora') : o.relacionada_folio ? `Particular · de ${o.relacionada_folio}` : 'Particular'}
+        </span>
         {o.detenido_material && <span className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-full bg-orange-500/90 px-2 py-0.5 text-[11px] font-semibold text-white"><PackageX className="h-3 w-3" /> Sin material</span>}
         {importe != null && <span className="absolute right-2.5 bottom-2.5 rounded-full bg-white/90 px-2.5 py-0.5 text-[12px] font-bold text-[#193344]">{money(importe)}</span>}
       </div>

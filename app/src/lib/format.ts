@@ -120,3 +120,10 @@ export function sumarDiasLaborables(desde: Date, dias: number) {
 /** Sección del gasto de material de una unidad */
 export const SECCIONES_MAT: Record<string, string> = { hojalateria: 'Materiales de hojalatería', pintura: 'Materiales de pintura', refaccion: 'Refacciones' }
 export const seccionPorTipo = (tipo?: string | null) => tipo === 'pintura' ? 'pintura' : tipo === 'refaccion' ? 'refaccion' : 'hojalateria'
+
+/** Para una orden particular: la orden de aseguradora más reciente del mismo vehículo (no cancelada), si existe */
+export async function ordenAseguradoraDelVehiculo(sb: { from: (t: string) => any }, vehiculoId: number | null): Promise<number | null> { // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (!vehiculoId) return null
+  const { data } = await sb.from('ordenes').select('id').eq('vehiculo_id', vehiculoId).eq('tipo', 'aseguradora').neq('etapa', 'cancelado').order('fecha_ingreso', { ascending: false }).limit(1)
+  return (data?.[0]?.id as number | undefined) ?? null
+}

@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Check, Loader2, Search, X } from 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { subirFoto } from '../../lib/storage'
-import { errorTexto, esDomingo, MSG_DOMINGO, sumarDiasLaborables } from '../../lib/format'
+import { errorTexto, esDomingo, MSG_DOMINGO, sumarDiasLaborables, ordenAseguradoraDelVehiculo } from '../../lib/format'
 import { useBorrador } from '../../lib/borrador'
 import { AvisoBorrador, BorradorGuardado, resumenBorrador } from '../../components/AvisoBorrador'
 import { GRUPOS_RECEPCION, NIVELES_GASOLINA, checklistInicial } from '../../pages/vehiculos/Recepcion'
@@ -130,8 +130,9 @@ export default function NuevaOrden() {
       } else if (!existente?.cliente_id) {
         await supabase.from('vehiculos').update({ cliente_id: clienteId }).eq('id', vehiculoId)
       }
+      const relacionada = f.tipo === 'particular' ? await ordenAseguradoraDelVehiculo(supabase, vehiculoId) : null
       const { data: orden, error } = await supabase.from('ordenes').insert({
-        ...(f.folio.trim() ? { folio: f.folio.trim().toUpperCase() } : {}),
+        ...(f.folio.trim() ? { folio: f.folio.trim().toUpperCase() } : {}), orden_relacionada_id: relacionada,
         tipo: f.tipo, aseguradora_id: f.tipo === 'aseguradora' ? Number(f.aseguradora_id) : null,
         siniestro: f.tipo === 'aseguradora' ? f.siniestro.trim() : null, asignacion_id: asignacionFinal,
         cliente_id: clienteId, vehiculo_id: vehiculoId, tipo_reparacion_id: f.tipo_reparacion_id ? Number(f.tipo_reparacion_id) : null,

@@ -40,6 +40,7 @@ export function ListaOrdenes() {
   const [vista, setVistaS] = useState<Vista>(leerVista)
   const [tecnico, setTecnico] = useState('')
   const [aseg, setAseg] = useState('')
+  const [tipoSel, setTipoSel] = useState<'' | 'aseguradora' | 'particular'>('')
   const setFechas = (d: string, h: string) => {
     const n = new URLSearchParams(sp)
     if (d) n.set('ingreso_desde', d); else n.delete('ingreso_desde')
@@ -95,6 +96,7 @@ export function ListaOrdenes() {
   const vistas = useMemo(() => {
     const f = rows.filter(r =>
       (!tecnico || (r.tecnicos_activos ?? '').split(',').map(s => s.trim()).includes(tecnico)) &&
+      (!tipoSel || r.tipo === tipoSel) &&
       (!aseg || (r.tipo === 'particular' ? 'Particular' : (r.aseguradora_nombre ?? 'Aseguradora')) === aseg) &&
       (!desde || dia(r.fecha_ingreso) >= desde) && (!hasta || dia(r.fecha_ingreso) <= hasta))
     const cmp: Record<Orden, (a: VOrden, b: VOrden) => number> = {
@@ -102,7 +104,7 @@ export function ListaOrdenes() {
       compromiso: (a, b) => (a.fecha_compromiso ?? '9999').localeCompare(b.fecha_compromiso ?? '9999'), dias: (a, b) => b.dias_en_taller - a.dias_en_taller,
     }
     return [...f].sort(cmp[orden])
-  }, [rows, tecnico, aseg, desde, hasta, orden])
+  }, [rows, tecnico, aseg, tipoSel, desde, hasta, orden])
   useEffect(() => setPagina(0), [vistas.length, filtro, q, vista])
   const paginas = Math.max(1, Math.ceil(vistas.length / POR_PAGINA))
   const pag = vistas.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA)
@@ -166,6 +168,17 @@ export function ListaOrdenes() {
       </div>
 
       {/* Filtros */}
+      <div className="flex flex-wrap gap-2">
+        {([['', 'Todas', 'bg-[#102c43]'], ['aseguradora', 'Aseguradora (MAPFRE)', 'bg-[#17657c]'], ['particular', 'Particulares', 'bg-violet-600']] as const).map(([k, l, c]) => {
+          const n = rows.filter(r => !k || r.tipo === k).length
+          return (
+            <button key={k} type="button" onClick={() => setTipoSel(k)}
+              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${tipoSel === k ? `${c} text-white shadow` : 'bg-white text-[#193344] ring-1 ring-[#dbe9ee]'}`}>
+              {l}<span className={`rounded-full px-2 text-xs ${tipoSel === k ? 'bg-white/20' : 'bg-slate-100'}`}>{n}</span>
+            </button>
+          )
+        })}
+      </div>
       <div className="flex flex-wrap items-center gap-2 rounded-[20px] border border-[#dbe9ee] bg-white/75 p-2.5 backdrop-blur">
         <SlidersHorizontal className="ml-1 h-4 w-4 text-[#2298af]" />
         <select className="input !w-auto !rounded-full !py-2" value={filtro.startsWith('etapa:') ? '' : filtro} onChange={e => setFiltro(e.target.value)} aria-label="Estado de las órdenes">
