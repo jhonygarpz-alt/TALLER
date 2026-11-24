@@ -1,0 +1,5 @@
+-- Lavado: el destajo siempre es $60 (fn_actividad_guard en alta y edición; actividad_cambiar_destajo).
+-- gastos_desglose: "Destajo lavado" en lugar de "Materiales pulido" (el material de pulido se suma a Materiales).
+-- solicitud_precio(p_id, p_costo_unit): precio capturado a mano en una solicitud (p. ej. COLOR).
+-- solicitud_entregar: si el material no tiene costo promedio, usa el precio de la solicitud.
+-- materiales: COLOR pasa a ml.

@@ -1,7 +1,7 @@
 import UnidadSelect from './UnidadSelect'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, PackageCheck, Plus, XCircle } from 'lucide-react'
+import { CheckCircle2, PackageCheck, Pencil, Plus, XCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { revertir } from '../lib/revertir'
 import { useAuth } from '../lib/auth'
@@ -184,7 +184,19 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
                 <td className="text-right">{s.cantidad_entregada != null ? num(s.cantidad_entregada, 3) : '—'}{s.entrego && <div className="text-[11px] text-slate-400">{s.entrego.nombre}</div>}</td>
                 <td className="text-right">{s.costo_total != null ? money2(s.costo_total)
                   : s.costo_estimado != null && s.estado !== 'rechazada' ? <span title={`Estimado: ${num(s.cantidad_aprobada ?? s.cantidad_solicitada, 3)} × ${money2(Number(s.costo_unit_estimado ?? 0))}`}>{money2(Number(s.costo_estimado) * ((s.cantidad_aprobada ?? s.cantidad_solicitada) / s.cantidad_solicitada))}<div className="text-[10px] text-slate-400">estimado</div></span>
-                  : s.estado === 'rechazada' ? '—' : <span className="text-[11px] text-amber-700">sin precio</span>}</td>
+                  : s.estado === 'rechazada' ? '—' : <span className="text-[11px] text-amber-700">sin precio</span>}
+                  {s.estado !== 'rechazada' && (puede('almacen.gestionar') || puede('materiales.autorizar') || puede('finanzas.gestionar')) && (
+                    <button className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-brand-700 hover:underline" title="Capturar el precio a mano" onClick={() => {
+                      // Se captura el importe total de lo pedido (ej. $325 por medio litro de color); el sistema calcula el precio por unidad
+                      const q = Number(s.estado === 'entregada' ? s.cantidad_entregada : (s.cantidad_aprobada ?? s.cantidad_solicitada)) || 0
+                      const actual = Number(s.costo_total ?? (Number(s.costo_unit_estimado ?? 0) * q))
+                      const v = prompt(`Importe total de ${num(q, 3)} ${s.materiales?.unidad ?? ''} de ${s.materiales?.descripcion} (en pesos):`, actual ? actual.toFixed(2) : '')
+                      if (v === null) return
+                      const n = Number(v.replace(/[$,\s]/g, ''))
+                      if (!(n >= 0) || v.trim() === '' || !q) return setError('Escribe un importe válido')
+                      rpc('solicitud_precio', { p_id: s.id, p_costo_unit: n / q })
+                    }}><Pencil className="h-3 w-3" /> Editar importe</button>
+                  )}</td>
                 <td><Badge cls={ESTADO_SOLICITUD[s.estado].badge}>{ESTADO_SOLICITUD[s.estado].label}</Badge>{s.motivo_rechazo && <div className="text-[11px] text-red-600">{s.motivo_rechazo}</div>}</td>
                 <td className="whitespace-nowrap text-right">
                   {s.estado === 'solicitada' && puede('materiales.autorizar') && <>

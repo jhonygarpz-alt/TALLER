@@ -12,12 +12,12 @@ import PeriodoSelect from '../../components/PeriodoSelect'
 interface Fila {
   orden_id: number; folio: string; tipo: string; etapa: Etapa; fecha: string; relacion: string
   presupuesto: number; ampliacion: number; particular: number; autorizado: number
-  gastos_adicionales: number; materiales_pulido: number; mo_hojalatero: number; mo_pintor: number; materiales: number; refacciones: number
+  gastos_adicionales: number; destajo_lavado: number; mo_hojalatero: number; mo_pintor: number; materiales: number; refacciones: number
   porEntregar: number; suma: number; iva: number; total: number; ganancia: number; margen: number
 }
 
-const CLAVES = ['presupuesto', 'ampliacion', 'particular', 'autorizado', 'gastos_adicionales', 'materiales_pulido', 'mo_hojalatero', 'mo_pintor', 'materiales', 'refacciones', 'porEntregar', 'suma', 'iva', 'total', 'ganancia'] as const
-const GASTOS: [typeof CLAVES[number], string][] = [['gastos_adicionales', 'Gastos adicionales'], ['materiales_pulido', 'Materiales pulido'], ['mo_hojalatero', 'M.O. Hojalatero'], ['mo_pintor', 'M.O. Pintor'], ['materiales', 'Materiales'], ['refacciones', 'Refacciones']]
+const CLAVES = ['presupuesto', 'ampliacion', 'particular', 'autorizado', 'gastos_adicionales', 'destajo_lavado', 'mo_hojalatero', 'mo_pintor', 'materiales', 'refacciones', 'porEntregar', 'suma', 'iva', 'total', 'ganancia'] as const
+const GASTOS: [typeof CLAVES[number], string][] = [['gastos_adicionales', 'Gastos adicionales'], ['destajo_lavado', 'Destajo lavado'], ['mo_hojalatero', 'M.O. Hojalatero'], ['mo_pintor', 'M.O. Pintor'], ['materiales', 'Materiales'], ['refacciones', 'Refacciones']]
 
 /**
  * Acumulado de gastos económicos y autorizaciones por orden: lo autorizado (presupuesto, ampliaciones y particular),
@@ -65,7 +65,7 @@ export default function GastosAcumulados() {
         return {
           orden_id: x.orden_id, folio: x.folio, tipo: x.tipo, etapa: x.etapa, relacion: x.tipo === 'particular' ? (relDe[x.orden_id] ? `De aseguradora ${relDe[x.orden_id]}` : 'Sin relación') : '', fecha: (base === 'ingreso' ? x.fecha_ingreso : x.fecha_entrega ?? '').slice(0, 10),
           ...a, autorizado,
-          gastos_adicionales: n('gastos_adicionales'), materiales_pulido: n('materiales_pulido'), mo_hojalatero: n('mo_hojalatero'), mo_pintor: n('mo_pintor'),
+          gastos_adicionales: n('gastos_adicionales'), destajo_lavado: n('destajo_lavado'), mo_hojalatero: n('mo_hojalatero'), mo_pintor: n('mo_pintor'),
           materiales: n('materiales'), refacciones: n('refacciones'), porEntregar: n('por_entregar'), suma: n('suma'), iva: n('iva'), total: n('total'),
           ganancia, margen: autorizado ? (ganancia / autorizado) * 100 : NaN,
         }

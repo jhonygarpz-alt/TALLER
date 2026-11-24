@@ -16,7 +16,7 @@ interface Cobro { id: number; fecha: string; monto: number; metodo: string; refe
 
 const TIPOS_COSTO: Record<string, string> = { mano_obra_adicional: 'Mano de obra adicional', servicio_externo: 'Servicio externo', material: 'Materiales (compra directa)', refaccion: 'Refacciones (compra directa)', pulido: 'Pulido', otro: 'Otro gasto directo' }
 
-export interface Desglose { gastos_adicionales: number; materiales_pulido: number; mo_hojalatero: number; mo_pintor: number; materiales: number; refacciones: number; por_entregar: number; suma: number; iva: number; total: number }
+export interface Desglose { gastos_adicionales: number; destajo_lavado: number; mo_hojalatero: number; mo_pintor: number; materiales: number; refacciones: number; por_entregar: number; suma: number; iva: number; total: number }
 
 /** Desglose de gastos con los conceptos del formato del taller (misma regla que el reporte de gastos económicos) */
 export function useDesglose(ordenId: number, version?: unknown) {
@@ -52,7 +52,7 @@ export function DesgloseRentabilidad({ r, version }: { r: Rentabilidad; version?
         <div className="mb-1 text-xs font-bold text-slate-500 uppercase">Gastos</div>
         {!g ? <div className="esqueleto h-40" /> : <>
           {fila('Gastos adicionales', g.gastos_adicionales)}
-          {fila('Materiales pulido', g.materiales_pulido)}
+          {fila('Destajo lavado', g.destajo_lavado)}
           {fila('M.O. Hojalatero', g.mo_hojalatero)}
           {fila('M.O. Pintor', g.mo_pintor)}
           {fila('Materiales', g.materiales)}

@@ -35,7 +35,7 @@ export async function cargarReporte(ordenId: number, _elaboro?: string): Promise
     // Material entregado (costo real) y el solicitado/autorizado aún por entregar (costo estimado del catálogo)
     supabase.from('solicitudes_material').select('estado,cantidad_solicitada,cantidad_aprobada,cantidad_entregada,costo_total,costo_estimado,centro_costo,seccion,materiales(descripcion,unidad,tipo),actividades(area)').eq('orden_id', ordenId).in('estado', ['solicitada', 'autorizada', 'entregada']).order('id'),
     supabase.from('orden_costos').select('tipo,concepto,proveedor,monto').eq('orden_id', ordenId).order('fecha').order('id'),
-    supabase.from('destajos').select('importe,actividades(area),tecnicos(nombre)').eq('orden_id', ordenId).neq('estado', 'cancelado'),
+    supabase.from('destajos').select('importe,actividades(area,actividad),tecnicos(nombre)').eq('orden_id', ordenId).neq('estado', 'cancelado'),
     supabase.from('actividades').select('area,actividad,pieza,tecnicos(nombre)').eq('orden_id', ordenId).neq('estado', 'cancelada').order('id'),
     supabase.from('facturas').select('receptor,monto').eq('orden_id', ordenId).eq('cancelada', false),
     supabase.from('configuracion').select('valor').eq('clave', 'pequeno_material').maybeSingle(),
@@ -45,7 +45,7 @@ export async function cargarReporte(ordenId: number, _elaboro?: string): Promise
   const ord = o.data
   type Sol = { estado: string; cantidad_solicitada: number; cantidad_aprobada: number | null; cantidad_entregada: number | null; costo_total: number | null; costo_estimado: number | null; centro_costo: string | null; seccion: string | null; materiales: { descripcion: string; unidad: string; tipo: string } | null; actividades: { area: string } | null }
   type Cos = { tipo: string; concepto: string; proveedor: string | null; monto: number }
-  type Des = { importe: number; actividades: { area: string } | null; tecnicos: { nombre: string } | null }
+  type Des = { importe: number; actividades: { area: string; actividad?: string } | null; tecnicos: { nombre: string } | null }
   type Act = { area: string; actividad: string; pieza: string | null; tecnicos: { nombre: string } | null }
   // Cantidad e importe de cada solicitud: lo entregado si ya se entregó; si no, lo autorizado/solicitado con costo estimado
   const sols = ((sol.data ?? []) as unknown as Sol[]).map(x => {
@@ -79,11 +79,14 @@ export async function cargarReporte(ordenId: number, _elaboro?: string): Promise
     return { texto: `${cant ? `${+cant.toFixed(2)} ${unidad === 'PZA' ? '' : unidad} `.replace(/\s+/g, ' ') : ''}${up(s.materiales?.descripcion)}`.trim(), mat: r2(Number(s.costo_total ?? 0)) }
   }
   const matsMaterial = sols.filter(s => !esRef(s))
-  const matHoj = [...matsMaterial.filter(s => !esPintura(s)).map(filaMat), ...costos.filter(c => c.tipo === 'material').map(c => ({ texto: up(c.concepto), mat: r2(Number(c.monto)) }))]
+  const matHoj = [...matsMaterial.filter(s => !esPintura(s)).map(filaMat), ...costos.filter(c => c.tipo === 'material' || c.tipo === 'pulido').map(c => ({ texto: up(c.concepto), mat: r2(Number(c.monto)) }))]
   const matPin = matsMaterial.filter(esPintura).map(filaMat)
 
   // 3) Mano de obra (destajos validados, no cancelados)
-  const sumaArea = (pred: (a: string) => boolean) => r2(destajos.filter(d => pred(d.actividades?.area ?? 'otros')).reduce((t, d) => t + Number(d.importe), 0))
+  // El lavado va en su propio renglón (Destajo lavado), fuera de las áreas
+  const esLavado = (d: Des) => /lavad/i.test(d.actividades?.actividad ?? '')
+  const lavado = r2(destajos.filter(esLavado).reduce((t, d) => t + Number(d.importe), 0))
+  const sumaArea = (pred: (a: string) => boolean) => r2(destajos.filter(d => !esLavado(d) && pred(d.actividades?.area ?? 'otros')).reduce((t, d) => t + Number(d.importe), 0))
   const moH = sumaArea(a => AREAS_HOJ.includes(a))
   const moP = sumaArea(a => a === 'pintura')
 
@@ -95,7 +98,7 @@ export async function cargarReporte(ordenId: number, _elaboro?: string): Promise
   }
   for (const c of costos.filter(c => ['servicio_externo', 'otro', 'mano_obra_adicional'].includes(c.tipo)))
     extras.push({ texto: `${up(c.concepto)}${c.proveedor ? ` (${up(c.proveedor)})` : ''}`.slice(0, 60), sub: r2(Number(c.monto)) })
-  const pulido = r2(costos.filter(c => c.tipo === 'pulido').reduce((t, c) => t + Number(c.monto), 0))
+  const pulido = lavado
   // Pequeño material: gasto fijo por orden (parámetro configurable, $300 por omisión)
   const pm = Number(cfg.data?.valor ?? 300)
   if (pm > 0) extras.push({ texto: 'PEQUEÑO MATERIAL', sub: pm })
@@ -134,7 +137,7 @@ export async function cargarReporte(ordenId: number, _elaboro?: string): Promise
     { texto: 'GASTAMOS' }, { texto: importe(suma) }, { texto: '' },
     { texto: 'GASTOS ADICIONALES TOYOTA' },
   ].map(sub)
-  filas.push({ texto: 'MATERIALES PULIR', mat: pulido || null, sinSub: true })
+  filas.push({ texto: 'DESTAJO LAVADO', mat: pulido || null, sinSub: true })
 
   const nombres = (pred: (a: string) => boolean) => [...new Set([
     ...destajos.filter(d => pred(d.actividades?.area ?? '')).map(d => d.tecnicos?.nombre),
@@ -234,7 +237,7 @@ function construir(d: DatosReporte): Hoja {
   put({ r: p[8], c: 0, cs: 2, v: d.hojalatero, borde: true, al: 'center', tam: 6.5 })
   put({ r: p[8], c: 2, cs: 5, v: d.pintor, borde: true, al: 'center', tam: 6.5 })
   const der: [string, number, boolean?][] = [
-    ['Gastos Adicionales', d.gastosAdicionales], ['Materiales Pulido', d.materialesPulido], ['M.O. Hojalatero', d.moHojalatero],
+    ['Gastos Adicionales', d.gastosAdicionales], ['Destajo Lavado', d.materialesPulido], ['M.O. Hojalatero', d.moHojalatero],
     ['M.O. Pintor', d.moPintor], ['Materiales', d.materiales], ['Refacciones', d.refacciones],
     ['Suma', d.suma, true], ['IVA', d.iva], ['Total', d.total, true],
   ]
