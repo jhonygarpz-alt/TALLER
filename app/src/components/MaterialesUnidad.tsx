@@ -107,7 +107,7 @@ export default function MaterialesUnidad({ ordenId, conPresupuesto = true, actua
         )
       })}
       <div className="flex flex-wrap justify-end gap-x-6 gap-y-1 border-t pt-2 text-sm">
-        <span>Gastado (entregado y comprado): <b>{money2(totReal)}</b></span>
+        <span>Gastado (entregado y comprado): <b>{money2(totReal)}</b> neto · IVA {money2(totReal * 0.16)} · <b>{money2(totReal * 1.16)}</b> con IVA</span>
         {totPend > 0 && <span className="text-slate-500">Por confirmar (solicitado o en compra): <b>{money2(totPend)}</b></span>}
       </div>
     </div>

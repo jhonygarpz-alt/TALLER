@@ -1,0 +1,3 @@
+-- Los precios de materiales se habían cargado con IVA: se guardan netos (÷ 1.16), igual que las compras.
+-- materiales.costo_promedio / precio_unidad / precio_presentacion, ajustes de inventario y estimados de solicitudes abiertas.
+-- configuracion.materiales_iva_separado = 1. Respaldo de los precios anteriores en auditoria (accion 'precios_a_neto').

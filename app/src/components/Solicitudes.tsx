@@ -176,7 +176,7 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
       {rows.length === 0 ? <Empty>Sin solicitudes de material</Empty> : (
         <div className="-mx-5 overflow-x-auto px-5">
           <table className="tbl">
-            <thead><tr><th>Fecha</th><th>Material</th>{!ordenId && <th>Destino</th>}<th className="text-right">Solicitado</th><th className="text-right">Autorizado</th><th className="text-right">Entregado</th><th className="text-right">Costo</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Material</th>{!ordenId && <th>Destino</th>}<th className="text-right">Solicitado</th><th className="text-right">Autorizado</th><th className="text-right">Entregado</th><th className="text-right">Costo neto</th><th>Estado</th><th></th></tr></thead>
             <tbody>{rows.map(s => (
               <tr key={s.id}>
                 <td className="text-xs whitespace-nowrap">{fechaHora(s.solicitado_at)}<div className="text-slate-400">{s.solicitante?.nombre}</div></td>
@@ -192,12 +192,13 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
                     <button className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-brand-700 hover:underline" title="Capturar el precio a mano" onClick={() => {
                       // Se captura el importe total de lo pedido (ej. $325 por medio litro de color); el sistema calcula el precio por unidad
                       const q = Number(s.estado === 'entregada' ? s.cantidad_entregada : (s.cantidad_aprobada ?? s.cantidad_solicitada)) || 0
-                      const actual = Number(s.costo_total ?? (Number(s.costo_unit_estimado ?? 0) * q))
-                      const v = prompt(`Importe total de ${num(q, 3)} ${s.materiales?.unidad ?? ''} de ${s.materiales?.descripcion} (en pesos):`, actual ? actual.toFixed(2) : '')
+                      // Se captura el importe CON IVA (como viene en la nota); el sistema guarda el neto (÷ 1.16) y desglosa el IVA
+                      const actual = Number(s.costo_total ?? (Number(s.costo_unit_estimado ?? 0) * q)) * 1.16
+                      const v = prompt(`Importe total CON IVA de ${num(q, 3)} ${s.materiales?.unidad ?? ''} de ${s.materiales?.descripcion} (en pesos):`, actual ? actual.toFixed(2) : '')
                       if (v === null) return
                       const n = Number(v.replace(/[$,\s]/g, ''))
                       if (!(n >= 0) || v.trim() === '' || !q) return setError('Escribe un importe válido')
-                      rpc('solicitud_precio', { p_id: s.id, p_costo_unit: n / q })
+                      rpc('solicitud_precio', { p_id: s.id, p_costo_unit: n / 1.16 / q })
                     }}><Pencil className="h-3 w-3" /> Editar importe</button>
                   )}</td>
                 <td><Badge cls={ESTADO_SOLICITUD[s.estado].badge}>{ESTADO_SOLICITUD[s.estado].label}</Badge>{s.motivo_rechazo && <div className="text-[11px] text-red-600">{s.motivo_rechazo}</div>}</td>
@@ -215,7 +216,7 @@ export default function Solicitudes({ ordenId, filtroEstado = 'todas', cerrada, 
               </tr>))}
             </tbody>
           </table>
-          {ordenId && <p className="mt-2 text-right text-sm">Costo de materiales cargado a la orden: <b>{money2(totalCargado)}</b>{totalEstimado > 0 && <span className="ml-3 text-slate-500">Por entregar (estimado): <b>{money2(totalEstimado)}</b></span>}</p>}
+          {ordenId && <p className="mt-2 text-right text-sm">Costo de materiales cargado a la orden: <b>{money2(totalCargado)}</b> neto ({money2(totalCargado * 1.16)} con IVA){totalEstimado > 0 && <span className="ml-3 text-slate-500">Por entregar (estimado): <b>{money2(totalEstimado)}</b></span>}</p>}
         </div>
       )}
       {nueva && <Modal title="Solicitud de material" onClose={() => setNueva(false)}><NuevaSolicitud ordenId={ordenId} onDone={() => { setNueva(false); cargar(); al.recargar(); onCambio?.() }} /></Modal>}

@@ -83,9 +83,9 @@ function Ajuste({ m, onDone }: { m: Material; onDone: () => void }) {
   return (
     <form onSubmit={submit} className="space-y-3">
       <ErrorMsg error={error} />
-      <p className="text-sm">Existencia en sistema: <b>{num(m.existencia, 3)} {m.unidad}</b> · Costo promedio {money2(m.costo_promedio)}</p>
+      <p className="text-sm">Existencia en sistema: <b>{num(m.existencia, 3)} {m.unidad}</b> · Costo promedio neto {money2(m.costo_promedio)} · con IVA {money2(m.costo_promedio * 1.16)}</p>
       <Field label="Existencia real (conteo físico) *"><input className="input" type="number" step="0.001" min="0" required value={ex} onChange={e => setEx(e.target.value)} /></Field>
-      <Field label="Costo unitario" hint="Solo para inventario inicial o corrección de costo; vacío conserva el costo promedio"><input className="input" type="number" step="0.0001" min="0" value={costo} onChange={e => setCosto(e.target.value)} /></Field>
+      <Field label="Costo unitario neto (sin IVA)" hint={costo ? `Con IVA (16%): ${money2(Number(costo) * 1.16)}. Solo para inventario inicial o corrección de costo; vacío conserva el costo promedio.` : 'Captura el costo SIN IVA (precio con IVA ÷ 1.16). Vacío conserva el costo promedio.'}><input className="input" type="number" step="0.0001" min="0" value={costo} onChange={e => setCosto(e.target.value)} /></Field>
       <Field label="Motivo *"><input className="input" required value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ej. Conteo físico mensual" /></Field>
       <div className="flex justify-end gap-2"><button type="button" className="btn btn-secondary" onClick={onDone}>Cancelar</button><button className="btn btn-primary">Aplicar ajuste</button></div>
     </form>
@@ -113,7 +113,7 @@ export function TabMateriales() {
         <input className="input w-60" placeholder="Buscar código o descripción…" value={q} onChange={e => setQ(e.target.value)} />
         <select className="input w-auto" value={tipo} onChange={e => setTipo(e.target.value)}><option value="">Todos los tipos</option>{Object.entries(TIPOS_MATERIAL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         <label className="flex items-center gap-1 text-sm"><input type="checkbox" checked={bajo} onChange={e => setBajo(e.target.checked)} /> Bajo mínimo</label>
-        <span className="ml-auto text-sm text-slate-500">Valor del inventario: <b className="text-slate-900">{money2(valor)}</b></span>
+        <span className="ml-auto text-sm text-slate-500">Valor del inventario: <b className="text-slate-900">{money2(valor)}</b> neto + IVA {money2(valor * 0.16)} = <b className="text-slate-900">{money2(valor * 1.16)}</b></span>
         <button className="btn btn-secondary btn-sm" onClick={() => descargarCSV('inventario', lista.map(m => ({ ...m, tipo: TIPOS_MATERIAL[m.tipo], valor: (Number(m.existencia) * Number(m.costo_promedio)).toFixed(2), proveedor: prov(m.proveedor_id) })), [
           { key: 'codigo', label: 'Código' }, { key: 'descripcion', label: 'Descripción' }, { key: 'tipo', label: 'Tipo' }, { key: 'categoria', label: 'Categoría' }, { key: 'unidad', label: 'Unidad' },
           { key: 'existencia', label: 'Existencia' }, { key: 'minimo', label: 'Mínimo' }, { key: 'costo_promedio', label: 'Costo promedio' }, { key: 'valor', label: 'Valor' }, { key: 'proveedor', label: 'Proveedor' },
@@ -123,7 +123,7 @@ export function TabMateriales() {
       <Card pad={false}>
         {lista.length === 0 ? <Empty icon={Package}>Sin materiales</Empty> : (
           <div className="overflow-x-auto"><table className="tbl">
-            <thead><tr><th>Código</th><th>Descripción</th><th>Tipo / categoría</th><th className="text-right">Existencia</th><th className="text-right">Mínimo</th><th className="text-right">Costo prom.</th><th>Proveedor</th><th></th></tr></thead>
+            <thead><tr><th>Código</th><th>Descripción</th><th>Tipo / categoría</th><th className="text-right">Existencia</th><th className="text-right">Mínimo</th><th className="text-right">Costo neto</th><th className="text-right">IVA</th><th className="text-right">Con IVA</th><th>Proveedor</th><th></th></tr></thead>
             <tbody>{lista.map(m => {
               const b = !m.sobre_pedido && Number(m.existencia) <= Number(m.minimo)
               return (
@@ -131,7 +131,7 @@ export function TabMateriales() {
                   <td className="font-mono text-xs">{m.codigo ?? '—'}</td><td className="font-medium">{m.descripcion}</td>
                   <td className="text-xs">{TIPOS_MATERIAL[m.tipo]}<div className="text-slate-500">{m.categoria}</div></td>
                   <td className={`text-right font-semibold ${b ? 'text-red-600' : ''}`}>{m.sobre_pedido ? <span className="text-xs font-semibold text-brand-700">Sobre pedido</span> : <>{num(m.existencia, 3)} {m.unidad}{b && <AlertTriangle className="ml-1 inline h-3.5 w-3.5" />}</>}</td>
-                  <td className="text-right text-slate-500">{num(m.minimo, 3)}</td><td className="text-right">{money2(m.costo_promedio)}</td><td className="text-xs">{prov(m.proveedor_id)}</td>
+                  <td className="text-right text-slate-500">{num(m.minimo, 3)}</td><td className="text-right">{money2(m.costo_promedio)}</td><td className="text-right text-slate-500">{money2(m.costo_promedio * 0.16)}</td><td className="text-right font-semibold">{money2(m.costo_promedio * 1.16)}</td><td className="text-xs">{prov(m.proveedor_id)}</td>
                   <td className="whitespace-nowrap text-right">{puede('almacen.gestionar') && <>
                     <button className="btn btn-secondary btn-sm" onClick={() => setModal({ t: 'ajuste', m })}>Ajustar</button>{' '}
                     <button className="btn btn-secondary btn-sm" onClick={() => setModal({ t: 'form', m })}>Editar</button></>}
