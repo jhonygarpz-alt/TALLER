@@ -81,7 +81,7 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
           <option value="">{materiales.length ? 'Selecciona…' : 'No hay materiales en el catálogo'}</option>
           {Object.entries(TIPOS_MATERIAL).map(([k, v]) => {
             const lista = materiales.filter(m => m.tipo === k)
-            return lista.length ? <optgroup key={k} label={v}>{lista.map(m => <option key={m.id} value={m.id}>{m.codigo ? `[${m.codigo}] ` : ''}{m.descripcion} — exist. {num(m.existencia, 3)} {m.unidad}</option>)}</optgroup> : null
+            return lista.length ? <optgroup key={k} label={v}>{lista.map(m => <option key={m.id} value={m.id}>{m.codigo ? `[${m.codigo}] ` : ''}{m.descripcion} — {m.sobre_pedido ? 'se compra sobre pedido' : `exist. ${num(m.existencia, 3)} ${m.unidad}`}</option>)}</optgroup> : null
           })}
         </select>
         {materiales.length === 0 && !alta && (
@@ -109,7 +109,8 @@ export function NuevaSolicitud({ ordenId, onDone }: { ordenId?: number; onDone: 
       {(destino === 'orden' || ordenId) && <Field label="Sección del gasto *"><select className="input" value={f.seccion || seccionPorTipo(mat?.tipo)} onChange={e => setF({ ...f, seccion: e.target.value })}>{Object.entries(SECCIONES_MAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>}
       <Field label={`Cantidad *${mat ? ` (${mat.unidad})` : ''}`}><input className="input" type="number" step="0.001" min="0.001" required value={f.cantidad} onChange={e => setF({ ...f, cantidad: e.target.value })} /></Field>
       <Field label="Notas"><input className="input" value={f.notas} onChange={e => setF({ ...f, notas: e.target.value })} /></Field>
-      {mat && Number(f.cantidad) > Number(mat.existencia) && <p className="text-xs text-amber-700 sm:col-span-2">La existencia actual ({num(mat.existencia, 3)} {mat.unidad}) es menor a lo solicitado; almacén no podrá entregar hasta recibir compra.</p>}
+      {mat?.sobre_pedido && <p className="text-xs text-brand-700 sm:col-span-2">Material que se compra sobre pedido: el almacén lo entrega aunque no haya existencia. Captura su importe con «Editar importe».</p>}
+      {mat && !mat.sobre_pedido && Number(f.cantidad) > Number(mat.existencia) && <p className="text-xs text-amber-700 sm:col-span-2">La existencia actual ({num(mat.existencia, 3)} {mat.unidad}) es menor a lo solicitado; almacén no podrá entregar hasta recibir compra.</p>}
       <div className="flex justify-end gap-2 sm:col-span-2">
         <button type="button" className="btn btn-secondary" onClick={onDone}>Cancelar</button>
         <button className="btn btn-primary">Enviar solicitud</button>

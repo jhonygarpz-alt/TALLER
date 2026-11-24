@@ -34,11 +34,12 @@ function MaterialForm({ m, proveedores, onDone }: { m: Material | null; proveedo
     unidad: m?.unidad ?? 'pza', minimo: String(m?.minimo ?? 0), proveedor_id: String(m?.proveedor_id ?? ''), activo: m?.activo ?? true,
   })
   const [secciones, setSecciones] = useState<string[]>((m as { secciones?: string[] } | null)?.secciones ?? [])
+  const [sobrePedido, setSobrePedido] = useState(!!m?.sobre_pedido)
   const [error, setError] = useState<string | null>(null)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const d = { ...clean(f), secciones }
+    const d = { ...clean(f), secciones, sobre_pedido: sobrePedido }
     const { error } = m ? await supabase.from('materiales').update(d).eq('id', m.id) : await supabase.from('materiales').insert(d)
     if (error) return setError(errorTexto(error))
     onDone()
@@ -54,6 +55,7 @@ function MaterialForm({ m, proveedores, onDone }: { m: Material | null; proveedo
       <Field label="Nivel mínimo"><input className="input" type="number" step="0.001" min="0" value={f.minimo} onChange={set('minimo')} /></Field>
       <Field label="Proveedor habitual"><select className="input" value={f.proveedor_id} onChange={set('proveedor_id')}><option value="">—</option>{proveedores.filter(p => p.activo !== false || String(p.id) === String(f.proveedor_id)).map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Field>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.activo} onChange={e => setF({ ...f, activo: e.target.checked })} /> Activo</label>
+      <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={sobrePedido} onChange={e => setSobrePedido(e.target.checked)} /> Se compra sobre pedido (se entrega sin existencia; ej. color)</label>
       <Field grupo label="Aparece en la solicitud de material de la app de técnicos" className="sm:col-span-2">
         <div className="flex flex-wrap gap-4 text-sm">{([['hojalateria', 'Listado de hojalatería'], ['pintura', 'Listado de pintura']] as const).map(([k, l]) => (
           <label key={k} className="flex items-center gap-2"><input type="checkbox" checked={secciones.includes(k)} onChange={e => setSecciones(e.target.checked ? [...secciones, k] : secciones.filter(x => x !== k))} /> {l}</label>
@@ -102,7 +104,7 @@ export function TabMateriales() {
   }, [])
   useEffect(() => { cargar() }, [cargar])
   const s = q.toLowerCase()
-  const lista = rows.filter(m => (!s || `${m.codigo} ${m.descripcion} ${m.categoria}`.toLowerCase().includes(s)) && (!tipo || m.tipo === tipo) && (!bajo || Number(m.existencia) <= Number(m.minimo)))
+  const lista = rows.filter(m => (!s || `${m.codigo} ${m.descripcion} ${m.categoria}`.toLowerCase().includes(s)) && (!tipo || m.tipo === tipo) && (!bajo || (!m.sobre_pedido && Number(m.existencia) <= Number(m.minimo))))
   const valor = rows.reduce((t, m) => t + Number(m.existencia) * Number(m.costo_promedio), 0)
   const prov = (id: number | null) => proveedores.find(p => p.id === id)?.nombre ?? '—'
   return (
@@ -123,12 +125,12 @@ export function TabMateriales() {
           <div className="overflow-x-auto"><table className="tbl">
             <thead><tr><th>Código</th><th>Descripción</th><th>Tipo / categoría</th><th className="text-right">Existencia</th><th className="text-right">Mínimo</th><th className="text-right">Costo prom.</th><th>Proveedor</th><th></th></tr></thead>
             <tbody>{lista.map(m => {
-              const b = Number(m.existencia) <= Number(m.minimo)
+              const b = !m.sobre_pedido && Number(m.existencia) <= Number(m.minimo)
               return (
                 <tr key={m.id} className={m.activo ? '' : 'opacity-50'}>
                   <td className="font-mono text-xs">{m.codigo ?? '—'}</td><td className="font-medium">{m.descripcion}</td>
                   <td className="text-xs">{TIPOS_MATERIAL[m.tipo]}<div className="text-slate-500">{m.categoria}</div></td>
-                  <td className={`text-right font-semibold ${b ? 'text-red-600' : ''}`}>{num(m.existencia, 3)} {m.unidad}{b && <AlertTriangle className="ml-1 inline h-3.5 w-3.5" />}</td>
+                  <td className={`text-right font-semibold ${b ? 'text-red-600' : ''}`}>{m.sobre_pedido ? <span className="text-xs font-semibold text-brand-700">Sobre pedido</span> : <>{num(m.existencia, 3)} {m.unidad}{b && <AlertTriangle className="ml-1 inline h-3.5 w-3.5" />}</>}</td>
                   <td className="text-right text-slate-500">{num(m.minimo, 3)}</td><td className="text-right">{money2(m.costo_promedio)}</td><td className="text-xs">{prov(m.proveedor_id)}</td>
                   <td className="whitespace-nowrap text-right">{puede('almacen.gestionar') && <>
                     <button className="btn btn-secondary btn-sm" onClick={() => setModal({ t: 'ajuste', m })}>Ajustar</button>{' '}
