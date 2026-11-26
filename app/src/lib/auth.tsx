@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
-export interface Perfil { id: string; email: string; nombre: string; rol: string; activo: boolean; cambiar_password?: boolean }
+export interface Perfil { id: string; email: string; nombre: string; rol: string; activo: boolean; cambiar_password?: boolean; sin_gerencia?: boolean }
 interface AuthCtx {
   session: Session | null
   perfil: Perfil | null

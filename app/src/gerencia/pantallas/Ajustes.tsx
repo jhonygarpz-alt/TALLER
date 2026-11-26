@@ -5,17 +5,11 @@ import { supabase } from '../../lib/supabase'
 import { errorTexto, ROLES } from '../../lib/format'
 import { useInstalar } from '../../movil/ui'
 import { usePush } from '../../tecnicos/push'
+import { AVISOS_GERENCIA } from '../../lib/avisos'
 import { Panel } from '../graficas'
 
 const BASE = import.meta.env.BASE_URL
-const AVISOS = [
-  { id: 'ingreso', label: 'Ingreso de vehículo', sub: 'Cada vez que se abre una orden de trabajo' },
-  { id: 'asignacion', label: 'Trabajo asignado', sub: 'Cuando se asigna un trabajo a un técnico o proveedor' },
-  { id: 'trabajo', label: 'Trabajo terminado', sub: 'Cuando cada hojalatero o pintor termina su trabajo' },
-  { id: 'entrega', label: 'Orden cerrada / vehículo entregado', sub: 'Con los días que estuvo en el taller' },
-  { id: 'encuesta', label: 'Calificación baja', sub: 'Encuestas de 3 estrellas o menos' },
-  { id: 'resumen', label: 'Resumen del día', sub: 'Todos los días a las 7:10 p. m.' },
-]
+const AVISOS = AVISOS_GERENCIA
 
 function Interruptor({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (

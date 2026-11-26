@@ -1,8 +1,10 @@
 import AyudaContextual, { BotonAyuda } from './AyudaContextual'
+import AvisosWeb from './AvisosWeb'
 import { Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
-  BarChart3, Bell, Car, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, ClipboardCheck, ClipboardList, LogOut, Menu, Plus,
+  BarChart3, Bell, BellRing, Car, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, ClipboardCheck, ClipboardList, LogOut, Menu, Plus,
   Search, Settings, Smartphone, Wrench, X,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -148,6 +150,7 @@ export function UserAvatar({ nombre, className = 'h-10 w-10 text-sm' }: { nombre
 function MenuUsuario() {
   const { perfil, puede } = useAuth()
   const [open, setOpen] = useState(false)
+  const [avisos, setAvisos] = useState(false)
   const ref = useFuera(open, () => setOpen(false))
   const fila = 'flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm hover:bg-[#f1f8fa]'
   return (
@@ -165,13 +168,15 @@ function MenuUsuario() {
           {(puede('usuarios.gestionar') || puede('config.gestionar') || puede('auditoria.ver')) && (
             <Link to="/administracion" onClick={() => setOpen(false)} className={fila}><Settings className="h-4 w-4 text-[#66818f]" /> Configuración</Link>
           )}
+          {puede('reportes.ver') && <button onClick={() => { setOpen(false); setAvisos(true) }} className={`${fila} w-full`}><BellRing className="h-4 w-4 text-[#66818f]" /> Notificaciones en esta computadora</button>}
           <a href={`${import.meta.env.BASE_URL}movil/`} target="_blank" rel="noreferrer" className={fila}><Smartphone className="h-4 w-4 text-[#66818f]" /> App móvil (instalar)</a>
           <a href={`${import.meta.env.BASE_URL}tecnicos/`} target="_blank" rel="noreferrer" className={fila}><Wrench className="h-4 w-4 text-[#66818f]" /> App de técnicos (instalar)</a>
-          {puede('reportes.ver') && <a href={`${import.meta.env.BASE_URL}gerencia/`} target="_blank" rel="noreferrer" className={fila}><BarChart3 className="h-4 w-4 text-[#66818f]" /> App de gerencia (instalar)</a>}
+          {puede('reportes.ver') && !perfil?.sin_gerencia && <a href={`${import.meta.env.BASE_URL}gerencia/`} target="_blank" rel="noreferrer" className={fila}><BarChart3 className="h-4 w-4 text-[#66818f]" /> App de gerencia (instalar)</a>}
           <div className="my-1 h-px bg-[#e8f1f4]" />
           <button onClick={() => supabase.auth.signOut()} className={`${fila} w-full text-red-600 hover:!bg-red-50`}><LogOut className="h-4 w-4" /> Cerrar sesión</button>
         </PanelFlotante>
       )}
+      {avisos && createPortal(<AvisosWeb onClose={() => setAvisos(false)} />, document.body)}
     </div>
   )
 }

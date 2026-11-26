@@ -15,7 +15,7 @@ const esIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
 const instalada = () => window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true
 
 /** Estado y acciones de las notificaciones push de este celular */
-export function usePush(app: 'tecnicos' | 'gerencia' = 'tecnicos') {
+export function usePush(app: 'tecnicos' | 'gerencia' | 'web' = 'tecnicos') {
   const [estado, setEstado] = useState<EstadoPush>('cargando')
 
   const revisar = useCallback(async () => {

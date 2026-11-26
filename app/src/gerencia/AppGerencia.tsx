@@ -195,5 +195,6 @@ export default function AppGerencia() {
   if (!session) return <LoginMovil titulo="Gerencia" sub="Panel ejecutivo del taller" icono="gerencia/icon-192.png" soloIcono />
   if (!perfil?.activo) return <Bloqueo><p>Tu cuenta <b>{session.user.email}</b> aún no está activa. Pide a Dirección que la active.</p></Bloqueo>
   if (!puede('reportes.ver')) return <Bloqueo><p>Esta app es para <b>Dirección y Gerencia</b>. Tu usuario no tiene permiso para ver los reportes del taller.</p></Bloqueo>
+  if (perfil.sin_gerencia) return <Bloqueo><p>Tu usuario no tiene acceso a la app de Gerencia. Los avisos del taller te llegan en el <b>sistema web</b> (menú de tu perfil → Notificaciones).</p></Bloqueo>
   return <Contenido />
 }

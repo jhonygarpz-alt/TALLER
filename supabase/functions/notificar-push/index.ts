@@ -5,6 +5,7 @@
 //     { tipo: 'cliente_listo' | 'cliente_encuesta', orden_id } → avisos a la app del cliente
 //     { tipo: 'gerencia_ingreso' | 'gerencia_entrega' | 'gerencia_encuesta', orden_id } | { tipo: 'gerencia_resumen' } → app de gerencia
 //     { tipo: 'gerencia_asignacion' | 'gerencia_trabajo', actividad_id } → app de gerencia (trabajo asignado / terminado)
+//     Cada aviso de gerencia_ también llega al sistema web (app 'web') de quienes lo activaron en su computadora.
 //  2) Desde la app, con la sesión del usuario: { tipo: 'prueba' } → aviso de prueba a sus propios celulares.
 // Las llaves VAPID se leen de Supabase Vault mediante push_config() (solo service_role).
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -19,6 +20,7 @@ const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { sta
 const APP_URL = 'https://jhonygarpz-alt.github.io/TALLER/tecnicos/'
 const APP_CLIENTE = 'https://jhonygarpz-alt.github.io/TALLER/cliente/'
 const APP_GERENCIA = 'https://jhonygarpz-alt.github.io/TALLER/gerencia/'
+const APP_WEB = 'https://jhonygarpz-alt.github.io/TALLER/'
 const TZ = 'America/Mexico_City'
 
 Deno.serve(async (req) => {
@@ -37,6 +39,7 @@ Deno.serve(async (req) => {
     // deno-lint-ignore no-explicit-any
     let subs: any[] | null = null
     let tablaSubs = 'push_suscripciones'
+    let urlWeb = APP_WEB // destino del aviso en el sistema web (computadora)
 
     if (req.headers.get('x-webhook-secret') && String(body.tipo ?? '').startsWith('cliente_')) {
       if (req.headers.get('x-webhook-secret') !== cfg.push_webhook) return json({ error: 'No autorizado' }, 401)
@@ -67,6 +70,7 @@ Deno.serve(async (req) => {
         // deno-lint-ignore no-explicit-any
         const act = a as any
         if (!act) return json({ ok: true, omitido: 'trabajo no encontrado' })
+        urlWeb = `${APP_WEB}ordenes/${act.orden_id}`
         const v = act.ordenes?.vehiculos
         const auto = v ? `${v.marca} ${v.modelo}${v.placas ? ` · ${v.placas}` : ''}` : ''
         const quien = act.tecnicos?.nombre?.trim() ?? (act.proveedores?.nombre ? `Proveedor ${act.proveedores.nombre.trim()}` : '')
@@ -79,6 +83,7 @@ Deno.serve(async (req) => {
         // deno-lint-ignore no-explicit-any
         const ord = o as any
         if (!ord) return json({ ok: true, omitido: 'orden no encontrada' })
+        urlWeb = `${APP_WEB}ordenes/${ord.id}`
         const auto = `${ord.marca} ${ord.modelo}${ord.placas ? ` · ${ord.placas}` : ''}`
         const origen = ord.tipo === 'aseguradora' ? (ord.aseguradora_nombre ?? 'Aseguradora') : 'Particular'
         aviso = tipo === 'gerencia_ingreso'
@@ -87,13 +92,14 @@ Deno.serve(async (req) => {
           ? { title: '✅ Vehículo entregado', body: `${ord.folio} · ${auto}\n${origen} · ${ord.dias_en_taller} días en taller`, url: APP_GERENCIA, tag: `g-ent-${ord.id}` }
           : { title: `⚠️ Calificación baja: ${'★'.repeat(ord.satisfaccion ?? 0)}`, body: `${ord.folio} · ${auto} · ${ord.cliente_nombre}${ord.encuesta_comentario ? `\n“${ord.encuesta_comentario}”` : ''}`, url: APP_GERENCIA, tag: `g-enc-${ord.id}` }
       }
-      // Destinatarios: celulares de la app de gerencia de usuarios activos con permiso de reportes que aceptan este aviso
-      const { data: s } = await admin.from('push_suscripciones').select('id, endpoint, p256dh, auth, avisos, perfiles(rol, activo)').eq('app', 'gerencia')
+      // Destinatarios: app de gerencia y sistema web de usuarios activos con permiso de reportes que aceptan este aviso
+      // (a quien no tiene acceso a la app de gerencia solo le llega en el sistema web)
+      const { data: s } = await admin.from('push_suscripciones').select('id, app, endpoint, p256dh, auth, avisos, perfiles(rol, activo, sin_gerencia)').in('app', ['gerencia', 'web'])
       const { data: rp } = await admin.from('rol_permisos').select('rol').eq('permiso', 'reportes.ver')
       const roles = new Set(['direccion', ...(rp ?? []).map((r: { rol: string }) => r.rol)])
       const clave = tipo.replace('gerencia_', '')
       // deno-lint-ignore no-explicit-any
-      subs = (s ?? []).filter((x: any) => x.perfiles?.activo && roles.has(x.perfiles.rol) && (!x.avisos || x.avisos.includes(clave)))
+      subs = (s ?? []).filter((x: any) => x.perfiles?.activo && roles.has(x.perfiles.rol) && !(x.app === 'gerencia' && x.perfiles.sin_gerencia) && (!x.avisos || x.avisos.includes(clave)))
     } else if (req.headers.get('x-webhook-secret')) {
       if (req.headers.get('x-webhook-secret') !== cfg.push_webhook) return json({ error: 'No autorizado' }, 401)
       const { data: a } = await admin.from('actividades')
@@ -115,9 +121,9 @@ Deno.serve(async (req) => {
       const { data: u } = await usuario.auth.getUser()
       if (!u?.user || body.tipo !== 'prueba') return json({ error: 'No autorizado' }, 401)
       perfilId = u.user.id
-      const app = body.app === 'gerencia' ? 'gerencia' : 'tecnicos'
-      aviso = app === 'gerencia'
-        ? { title: '✅ Notificaciones activadas', body: 'Te avisaremos de ingresos, trabajos asignados y terminados, entregas, calificaciones bajas y el resumen del día.', url: APP_GERENCIA, tag: 'prueba' }
+      const app = body.app === 'gerencia' || body.app === 'web' ? body.app : 'tecnicos'
+      aviso = app !== 'tecnicos'
+        ? { title: '✅ Notificaciones activadas', body: 'Te avisaremos de ingresos, trabajos asignados y terminados, entregas, calificaciones bajas y el resumen del día.', url: app === 'web' ? APP_WEB : APP_GERENCIA, tag: 'prueba' }
         : { title: '✅ Notificaciones activadas', body: 'Así te avisaremos cuando te asignen un trabajo.', url: APP_URL, tag: 'prueba' }
       subs = (await admin.from('push_suscripciones').select('id, endpoint, p256dh, auth').eq('perfil_id', perfilId).eq('app', app)).data
     }
@@ -127,7 +133,7 @@ Deno.serve(async (req) => {
     const errores: string[] = []
     for (const s of subs ?? []) {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(aviso), { TTL: 86400, urgency: 'high' })
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(s.app === 'web' ? { ...aviso, url: urlWeb } : aviso), { TTL: 86400, urgency: 'high' })
         enviados++
       } catch (e) {
         fallidos++
