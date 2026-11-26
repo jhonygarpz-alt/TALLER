@@ -4,6 +4,7 @@
 //     { tipo: 'asignado' | 'retrabajo', actividad_id }
 //     { tipo: 'cliente_listo' | 'cliente_encuesta', orden_id } → avisos a la app del cliente
 //     { tipo: 'gerencia_ingreso' | 'gerencia_entrega' | 'gerencia_encuesta', orden_id } | { tipo: 'gerencia_resumen' } → app de gerencia
+//     { tipo: 'gerencia_asignacion' | 'gerencia_trabajo', actividad_id } → app de gerencia (trabajo asignado / terminado)
 //  2) Desde la app, con la sesión del usuario: { tipo: 'prueba' } → aviso de prueba a sus propios celulares.
 // Las llaves VAPID se leen de Supabase Vault mediante push_config() (solo service_role).
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -59,6 +60,20 @@ Deno.serve(async (req) => {
         if (eD) throw eD
         const x = (d as { dia: Record<string, number> }).dia
         aviso = { title: '📊 Resumen del día', body: `Ingresaron ${x.ingresos} · Entregados ${x.entregas}\nEn taller ${x.en_taller} · Retrasados ${x.retrasados} · Listos ${x.listos}`, url: APP_GERENCIA, tag: `resumen-${hoy}` }
+      } else if (tipo === 'gerencia_asignacion' || tipo === 'gerencia_trabajo') {
+        const { data: a } = await admin.from('actividades')
+          .select('id, orden_id, actividad, pieza, area, horas, tecnicos(nombre), proveedores(nombre), ordenes(folio, vehiculos(marca, modelo, placas))')
+          .eq('id', body.actividad_id).single()
+        // deno-lint-ignore no-explicit-any
+        const act = a as any
+        if (!act) return json({ ok: true, omitido: 'trabajo no encontrado' })
+        const v = act.ordenes?.vehiculos
+        const auto = v ? `${v.marca} ${v.modelo}${v.placas ? ` · ${v.placas}` : ''}` : ''
+        const quien = act.tecnicos?.nombre?.trim() ?? (act.proveedores?.nombre ? `Proveedor ${act.proveedores.nombre.trim()}` : '')
+        const trabajo = `${act.actividad}${act.pieza ? ` (${act.pieza})` : ''}`
+        aviso = tipo === 'gerencia_asignacion'
+          ? { title: '🔧 Trabajo asignado', body: `${quien} · ${trabajo}\n${act.ordenes?.folio ?? ''} · ${auto}`, url: APP_GERENCIA, tag: `g-asig-${act.id}` }
+          : { title: '🏁 Trabajo terminado', body: `${quien} terminó ${trabajo}\n${act.ordenes?.folio ?? ''} · ${auto}`, url: APP_GERENCIA, tag: `g-term-${act.id}` }
       } else {
         const { data: o } = await admin.from('v_ordenes').select('id, folio, tipo, marca, modelo, placas, aseguradora_nombre, dias_en_taller, satisfaccion, encuesta_comentario, cliente_nombre').eq('id', body.orden_id).single()
         // deno-lint-ignore no-explicit-any
@@ -102,7 +117,7 @@ Deno.serve(async (req) => {
       perfilId = u.user.id
       const app = body.app === 'gerencia' ? 'gerencia' : 'tecnicos'
       aviso = app === 'gerencia'
-        ? { title: '✅ Notificaciones activadas', body: 'Te avisaremos de ingresos, entregas, calificaciones bajas y el resumen del día.', url: APP_GERENCIA, tag: 'prueba' }
+        ? { title: '✅ Notificaciones activadas', body: 'Te avisaremos de ingresos, trabajos asignados y terminados, entregas, calificaciones bajas y el resumen del día.', url: APP_GERENCIA, tag: 'prueba' }
         : { title: '✅ Notificaciones activadas', body: 'Así te avisaremos cuando te asignen un trabajo.', url: APP_URL, tag: 'prueba' }
       subs = (await admin.from('push_suscripciones').select('id, endpoint, p256dh, auth').eq('perfil_id', perfilId).eq('app', app)).data
     }
